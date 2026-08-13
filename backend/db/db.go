@@ -152,5 +152,15 @@ func migrateSchema(db *sql.DB) error {
 	`
 
 	_, err := db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Schema alterations for existing DB files
+	_, _ = db.Exec("ALTER TABLE users ADD COLUMN google_account_email TEXT;")
+	_, _ = db.Exec("ALTER TABLE users ADD COLUMN google_credentials_json TEXT;")
+	_, _ = db.Exec("ALTER TABLE user_environments ADD COLUMN google_account_email TEXT;")
+	_, _ = db.Exec("ALTER TABLE user_environments ADD COLUMN google_credentials_json TEXT;")
+
+	return nil
 }

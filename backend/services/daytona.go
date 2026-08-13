@@ -329,6 +329,14 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 	if apiKey == "" {
 		return nil, fmt.Errorf("Daytona API Key required")
 	}
+
+	// Auto-resolve real active sandbox if demo or placeholder sandboxId is provided
+	if sandboxId == "" || sandboxId == "sb-daytona-demo" || strings.HasPrefix(sandboxId, "sb-daytona") {
+		if activeSb, err := s.GetActiveSandbox(apiKey, serverUrl, "default-user"); err == nil && activeSb != nil && activeSb.ID != "" && activeSb.ID != sandboxId {
+			sandboxId = activeSb.ID
+		}
+	}
+
 	if sandboxId == "" {
 		return nil, fmt.Errorf("Daytona Sandbox ID required")
 	}

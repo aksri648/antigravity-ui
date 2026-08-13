@@ -95,7 +95,7 @@ func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId 
 		serverUrl = "https://app.daytona.io/api"
 	}
 
-	clientId := "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+	clientId := "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
 	if oauthClientId != "" {
 		clientId = oauthClientId
 	}
@@ -198,7 +198,7 @@ func (s *AGYService) ExchangeGoogleAuthCode(apiKey string, serverUrl string, san
 	}
 
 	if clientId == "" {
-		clientId = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+		clientId = "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
 	}
 	if redirectURI == "" {
 		redirectURI = "http://localhost:8080/api/auth/google/callback"

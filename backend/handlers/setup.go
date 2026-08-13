@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"backend/db"
 	"backend/models"
 	"backend/services"
 
@@ -103,7 +105,26 @@ func CheckGoogleAuthStatus(daytonaSvc *services.DaytonaService, agySvc *services
 		apiKey := c.Query("apiKey")
 		serverUrl := c.Query("serverUrl")
 
-		if sandboxId != "" && apiKey != "" {
+		// 1. Check persistent SQLite database first
+		if db.DB != nil && userId != "" {
+			var isAuth int
+			var dbEmail sql.NullString
+			err := db.DB.QueryRow("SELECT is_google_authenticated, google_account_email FROM users WHERE id = ? OR email = ?", userId, userId).Scan(&isAuth, &dbEmail)
+			if err == nil && isAuth == 1 {
+				em := "Google AI Pro User"
+				if dbEmail.Valid && dbEmail.String != "" {
+					em = dbEmail.String
+				}
+				c.JSON(http.StatusOK, models.AuthStatusResponse{
+					Authenticated: true,
+					AccountEmail:  em,
+				})
+				return
+			}
+		}
+
+		// 2. Check directly inside the Daytona sandbox volume
+		if apiKey != "" {
 			cmd := `if [ -f /home/daytona/persist/gemini/oauth_creds.json ] || [ -f /root/.gemini/oauth_creds.json ]; then cat /home/daytona/persist/gemini/google_accounts.json 2>/dev/null || cat /root/.gemini/google_accounts.json 2>/dev/null || echo '{"active":"Google AI Pro User"}'; elif [ -f /home/daytona/persist/gemini/.env ] && grep -q "API_KEY" /home/daytona/persist/gemini/.env; then echo '{"active":"Gemini API Key Active"}'; else echo 'NOT_AUTH'; fi`
 			res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 			if err == nil && res != nil && !strings.Contains(res.Result, "NOT_AUTH") && strings.TrimSpace(res.Result) != "" {
@@ -115,21 +136,18 @@ func CheckGoogleAuthStatus(daytonaSvc *services.DaytonaService, agySvc *services
 				if email == "" {
 					email = "Google AI Pro User"
 				}
+
+				// Update DB cache
+				if db.DB != nil && userId != "" {
+					_, _ = db.DB.Exec("UPDATE users SET is_google_authenticated = 1, google_account_email = ? WHERE id = ?", email, userId)
+				}
+
 				c.JSON(http.StatusOK, models.AuthStatusResponse{
 					Authenticated: true,
 					AccountEmail:  email,
 				})
 				return
 			}
-		}
-
-		if userId != "" && userId != "default-user" {
-			// If no sandbox specified, return unauthenticated so UI prompts for login
-			c.JSON(http.StatusOK, models.AuthStatusResponse{
-				Authenticated: false,
-				AccountEmail:  "",
-			})
-			return
 		}
 
 		c.JSON(http.StatusOK, models.AuthStatusResponse{
@@ -205,12 +223,17 @@ func GoogleOAuthCallback(daytonaSvc *services.DaytonaService, agySvc *services.A
 		}
 		clientId := state.ClientId
 		if clientId == "" {
-			clientId = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+			clientId = "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
 		}
 
 		_, email, err := agySvc.ExchangeGoogleAuthCode(state.ApiKey, state.ServerUrl, state.SandboxId, code, clientId, state.ClientSecret, redirectURI)
 		if err != nil {
 			log.Printf("Google token exchange error: %v", err)
+		}
+
+		if db.DB != nil && state.UserId != "" {
+			_, _ = db.DB.Exec("UPDATE users SET is_google_authenticated = 1, google_account_email = ? WHERE id = ? OR email = ?", email, state.UserId, state.UserId)
+			_, _ = db.DB.Exec("UPDATE user_environments SET agy_authenticated = 1, google_account_email = ? WHERE user_id = ?", email, state.UserId)
 		}
 
 		successHTML := fmt.Sprintf(`<!DOCTYPE html>

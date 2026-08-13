@@ -91,7 +91,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [authSuccess, setAuthSuccess] = useState(false);
 
   // Custom OAuth Client Settings
-  const [oauthClientId, setOauthClientId] = useState(() => localStorage.getItem("google_oauth_client_id") || "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com");
+  const [oauthClientId, setOauthClientId] = useState(() => localStorage.getItem("google_oauth_client_id") || "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com");
   const [oauthClientSecret, setOauthClientSecret] = useState(() => localStorage.getItem("google_oauth_client_secret") || "");
   const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(false);
 
@@ -203,7 +203,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Trigger Google OAuth 2.0 Web Sign-In
   const handleTriggerGoogleAuth = () => {
     const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
-    const clientId = oauthClientId.trim() || "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com";
+    const clientId = oauthClientId.trim() || "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com";
     const redirectUri = `${window.location.protocol}//${window.location.hostname}:8080/api/auth/google/callback`;
 
     // Save custom OAuth credentials to local storage if provided
