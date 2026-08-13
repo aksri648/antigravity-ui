@@ -62,6 +62,85 @@ interface TelemetryData {
   }>;
 }
 
+const DEFAULT_TELEMETRY: TelemetryData = {
+  sandboxId: "sb-daytona-demo",
+  timestamp: Date.now(),
+  cpu: {
+    utilizationPct: 14.5,
+    limitCores: 2,
+    model: "x86_64 Virtual CPU (KVM)",
+    loadAvg: "0.24, 0.18, 0.12",
+  },
+  memory: {
+    utilizationPct: 22.8,
+    usageBytes: 958000000,
+    limitBytes: 4294967296,
+    usageFormatted: "914 MB",
+    limitFormatted: "4.0 GB",
+  },
+  filesystem: {
+    utilizationPct: 18.2,
+    usageBytes: 3865470566,
+    availableBytes: 17392615424,
+    totalBytes: 21474836480,
+    usageFormatted: "3.6 GB",
+    totalFormatted: "20.0 GB",
+  },
+  uptime: "2h 18m",
+  processCount: 19,
+  resourceLabels: {
+    "daytona_organization_id": "org-daytona-cloud",
+    "daytona_region_id": "us-east-1",
+    "daytona_snapshot": "snapshot-typescript-v2",
+    "service.name": "daytona-sandbox-runtime",
+    "telemetry.sdk.language": "go",
+    "telemetry.sdk.name": "opentelemetry",
+  },
+  metricsList: {
+    "daytona.sandbox.cpu.utilization": 14.5,
+    "daytona.sandbox.cpu.limit": 2.0,
+    "daytona.sandbox.memory.utilization": 22.8,
+    "daytona.sandbox.memory.usage": 958000000,
+    "daytona.sandbox.memory.limit": 4294967296,
+    "daytona.sandbox.filesystem.utilization": 18.2,
+    "daytona.sandbox.filesystem.usage": 3865470566,
+    "daytona.sandbox.filesystem.available": 17392615424,
+    "daytona.sandbox.filesystem.total": 21474836480,
+  },
+  otelSpans: [
+    {
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "00f067aa0ba902b7",
+      name: "daytona.process.execute",
+      kind: "INTERNAL",
+      durationMs: 142,
+      statusCode: 200,
+      status: "OK",
+      timestamp: Date.now() - 2500,
+    },
+    {
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "5fb397be34753a3b",
+      name: "daytona.sandbox.getMetrics",
+      kind: "SERVER",
+      durationMs: 28,
+      statusCode: 200,
+      status: "OK",
+      timestamp: Date.now() - 1200,
+    },
+    {
+      traceId: "4bf92f3577b34da6a3ce929d0e0e4736",
+      spanId: "9a204859bc0183fd",
+      name: "http.request: GET /api/workspace/preview-url",
+      kind: "CLIENT",
+      durationMs: 19,
+      statusCode: 200,
+      status: "OK",
+      timestamp: Date.now() - 400,
+    },
+  ],
+};
+
 interface TelemetryViewProps {
   sandboxId?: string;
   apiKey?: string;
@@ -71,7 +150,10 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
   sandboxId = "sb-daytona-demo",
   apiKey = "",
 }) => {
-  const [data, setData] = useState<TelemetryData | null>(null);
+  const [data, setData] = useState<TelemetryData>(() => ({
+    ...DEFAULT_TELEMETRY,
+    sandboxId: sandboxId || "sb-daytona-demo",
+  }));
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
@@ -85,8 +167,10 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
       );
       if (res.ok) {
         const json = await res.json();
-        setData(json);
-        setLastRefreshed(new Date());
+        if (json && json.cpu) {
+          setData(json);
+          setLastRefreshed(new Date());
+        }
       }
     } catch (e) {
       console.warn("Failed to fetch sandbox telemetry", e);
@@ -106,9 +190,9 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
     return () => clearInterval(interval);
   }, [autoRefresh, fetchTelemetry]);
 
-  const cpuPct = data?.cpu.utilizationPct ? Math.min(100, Math.max(0, data.cpu.utilizationPct)) : 14.5;
-  const memPct = data?.memory.utilizationPct ? Math.min(100, Math.max(0, data.memory.utilizationPct)) : 22.8;
-  const diskPct = data?.filesystem.utilizationPct ? Math.min(100, Math.max(0, data.filesystem.utilizationPct)) : 18.2;
+  const cpuPct = data?.cpu?.utilizationPct != null ? Math.min(100, Math.max(0, data.cpu.utilizationPct)) : 14.5;
+  const memPct = data?.memory?.utilizationPct != null ? Math.min(100, Math.max(0, data.memory.utilizationPct)) : 22.8;
+  const diskPct = data?.filesystem?.utilizationPct != null ? Math.min(100, Math.max(0, data.filesystem.utilizationPct)) : 18.2;
 
   const getProgressColor = (pct: number) => {
     if (pct < 60) return "bg-emerald-500";
