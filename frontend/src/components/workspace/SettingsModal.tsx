@@ -26,6 +26,8 @@ import {
   CheckCheck,
   Loader2,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -39,14 +41,8 @@ interface SettingsModalProps {
   serverUrl: string;
   userId: string;
   sandboxId?: string;
-  activePort: number;
-  onUpdateConfig: (newConfig: {
-    apiKey?: string;
-    serverUrl?: string;
-    userId?: string;
-    sandboxId?: string;
-    activePort?: number;
-  }) => void;
+  activePort?: number;
+  onUpdateConfig: (config: { apiKey: string; serverUrl: string; userId: string; sandboxId: string; activePort?: number }) => void;
   onResetApp: () => void;
   onRecreateSandbox: () => Promise<void>;
 }
@@ -90,10 +86,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [authStatus, setAuthStatus] = useState<{ authenticated: boolean; email?: string } | null>(null);
   const [initiatingAuth, setInitiatingAuth] = useState(false);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
-  const [deviceCode, setDeviceCode] = useState<string | null>(null);
   const [pastedAuthCode, setPastedAuthCode] = useState("");
   const [submittingAuth, setSubmittingAuth] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
+
+  // Custom OAuth Client Settings
+  const [oauthClientId, setOauthClientId] = useState(() => localStorage.getItem("google_oauth_client_id") || "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com");
+  const [oauthClientSecret, setOauthClientSecret] = useState(() => localStorage.getItem("google_oauth_client_secret") || "");
+  const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(false);
 
   // Gemini API Key State
   const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem("google_api_key") || "");
@@ -187,36 +187,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // Re-trigger Google OAuth in Sandbox
-  const handleTriggerGoogleAuth = async () => {
-    const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
-    setInitiatingAuth(true);
-    setAuthUrl(null);
-    setDeviceCode(null);
-    setPastedAuthCode("");
-    setAuthSuccess(false);
-    try {
-      const res = await fetch(apiUrl("/api/setup/init-google-auth"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKey: keyToUse,
-          serverUrl: currentServerUrl,
-          userId: currentUserId,
-        }),
-      });
-      const data = await res.json();
-      if (data.authUrl) {
-        setAuthUrl(data.authUrl);
-      } else {
-        setAuthUrl("https://accounts.google.com/o/oauth2/v2/auth?client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid%20https://www.googleapis.com/auth/cloud-platform&access_type=offline&prompt=consent");
+  // Listen for Google Auth callback message from popup window
+  useEffect(() => {
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === "GOOGLE_AUTH_SUCCESS") {
+        setAuthSuccess(true);
+        setAuthStatus({ authenticated: true, email: event.data.email || "Google AI Pro User" });
+        setTimeout(() => checkAuthStatus(), 1200);
       }
-    } catch (err) {
-      console.error("Google Auth initiation error:", err);
-      setAuthUrl("https://accounts.google.com/o/oauth2/v2/auth?client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid%20https://www.googleapis.com/auth/cloud-platform&access_type=offline&prompt=consent");
-    } finally {
-      setInitiatingAuth(false);
-    }
+    };
+    window.addEventListener("message", handleAuthMessage);
+    return () => window.removeEventListener("message", handleAuthMessage);
+  }, [currentSandboxId, currentApiKey, currentServerUrl]);
+
+  // Trigger Google OAuth 2.0 Web Sign-In
+  const handleTriggerGoogleAuth = () => {
+    const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
+    const clientId = oauthClientId.trim() || "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com";
+    const redirectUri = `${window.location.protocol}//${window.location.hostname}:8080/api/auth/google/callback`;
+
+    // Save custom OAuth credentials to local storage if provided
+    if (oauthClientId.trim()) localStorage.setItem("google_oauth_client_id", oauthClientId.trim());
+    if (oauthClientSecret.trim()) localStorage.setItem("google_oauth_client_secret", oauthClientSecret.trim());
+
+    const stateObj = {
+      userId: currentUserId,
+      sandboxId: currentSandboxId,
+      apiKey: keyToUse,
+      serverUrl: currentServerUrl,
+      clientId: clientId,
+      clientSecret: oauthClientSecret.trim(),
+      redirectUri: redirectUri,
+    };
+    const stateBase64 = btoa(JSON.stringify(stateObj));
+
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid https://www.googleapis.com/auth/cloud-platform")}&access_type=offline&prompt=consent&state=${encodeURIComponent(stateBase64)}`;
+
+    setAuthUrl(googleAuthUrl);
+    setAuthSuccess(false);
+
+    // Open clean centered Google sign-in popup
+    const width = 520;
+    const height = 680;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    window.open(googleAuthUrl, "GoogleSignIn", `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
   };
 
   // Submit Google OAuth response code
@@ -599,55 +614,141 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === "googleAuth" && (
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Google AI Account & Quota</h3>
-                  <p className="text-xs text-muted-foreground">Authenticate your Google Account to use your personal Google AI Pro quota inside the Daytona Sandbox</p>
+                  <h3 className="text-sm font-semibold text-white">Google AI Account & Antigravity Quota</h3>
+                  <p className="text-xs text-muted-foreground">Authenticate your Google Account to use your personal Google AI Pro subscription quota inside the Daytona Cloud Sandbox.</p>
                 </div>
 
-                {/* Option 1: Google OAuth Account Sign-In (CLI Flow) */}
-                <div className="rounded-xl border border-blue-500/40 bg-blue-950/20 p-4 space-y-3 shadow-lg">
+                {/* Status Card */}
+                <div className="rounded-xl border border-border/80 bg-black/40 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-blue-400" />
-                      <span className="text-xs font-semibold text-white">Sign In with Google Account (Google AI Pro)</span>
+                      <ShieldCheck className={`h-4 w-4 ${authStatus?.authenticated ? "text-emerald-400" : "text-amber-400"}`} />
+                      <span className="text-xs font-semibold text-white">Quota Status</span>
+                    </div>
+                    <Badge variant={authStatus?.authenticated ? "default" : "outline"} className={authStatus?.authenticated ? "text-[10px] bg-emerald-600 text-white font-mono" : "text-[10px] text-amber-400 border-amber-500/40 font-mono"}>
+                      {authStatus?.authenticated ? "Connected" : "Not Connected"}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono text-gray-300">
+                    <div className="rounded-lg bg-black/50 border border-border/60 p-2.5 space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase">Active Account</span>
+                      <p className="text-emerald-400 font-semibold truncate">{authStatus?.authenticated ? (authStatus.email || "Google AI Pro User") : "No active session"}</p>
+                    </div>
+                    <div className="rounded-lg bg-black/50 border border-border/60 p-2.5 space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase">Volume Mount</span>
+                      <p className="text-blue-400 font-semibold truncate">/home/daytona/persist/gemini</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 1: Google OAuth 2.0 Web Sign-In */}
+                <div className="rounded-xl border border-blue-500/40 bg-blue-950/20 p-5 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-blue-400" />
+                      <span className="text-xs font-semibold text-white">Google OAuth 2.0 Web Sign-In</span>
                     </div>
                     <Badge variant="default" className="text-[10px] bg-blue-600 text-white font-mono">
                       Recommended
                     </Badge>
                   </div>
 
-                  <p className="text-[11px] text-blue-200/80">
-                    Sign in with your Google Account to unlock your personal Google AI Pro subscription quota inside the Daytona cloud sandbox.
+                  <p className="text-[11px] text-blue-200/80 leading-relaxed">
+                    Click below to authenticate with your Google account in a secure popup. Once authorized, your Google AI Pro subscription quota is automatically exchanged and saved into your Daytona persistent volume.
                   </p>
 
-                  <div className="pt-1 flex items-center gap-3">
+                  <div className="flex items-center gap-3 pt-1">
                     <Button
-                      size="sm"
                       onClick={handleTriggerGoogleAuth}
-                      disabled={initiatingAuth}
-                      className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-md cursor-pointer px-4"
+                      className="gap-2 text-xs bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-md cursor-pointer px-5 py-2.5"
                     >
-                      {initiatingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      Sign In with Google
+                      <Sparkles className="h-4 w-4" /> Sign In with Google Account
                     </Button>
                     <Button
-                      size="sm"
                       variant="outline"
+                      size="sm"
                       onClick={checkAuthStatus}
                       disabled={checkingAuth}
                       className="gap-1.5 text-xs border-border cursor-pointer"
                     >
                       {checkingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                      Check Status
+                      Refresh Status
                     </Button>
+                  </div>
+
+                  {authSuccess && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300 animate-in fade-in">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>Google AI Pro account connected! Credentials saved to Daytona volume.</span>
+                    </div>
+                  )}
+
+                  {/* Collapsible Advanced Settings */}
+                  <div className="border-t border-blue-500/20 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedOAuth(!showAdvancedOAuth)}
+                      className="flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer"
+                    >
+                      {showAdvancedOAuth ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                      Advanced: Custom OAuth Client & Manual Code Exchange
+                    </button>
+
+                    {showAdvancedOAuth && (
+                      <div className="mt-3 space-y-3 p-3 rounded-lg bg-black/50 border border-border/80 text-xs">
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-muted-foreground">Custom Google Cloud OAuth Client ID (Optional)</label>
+                          <Input
+                            type="text"
+                            placeholder="1071006060591-...apps.googleusercontent.com"
+                            value={oauthClientId}
+                            onChange={(e) => setOauthClientId(e.target.value)}
+                            className="font-mono text-[11px] bg-black/60 border-border text-blue-300"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-muted-foreground">Custom Google OAuth Client Secret (Optional)</label>
+                          <Input
+                            type="password"
+                            placeholder="GOCSPX-..."
+                            value={oauthClientSecret}
+                            onChange={(e) => setOauthClientSecret(e.target.value)}
+                            className="font-mono text-[11px] bg-black/60 border-border text-blue-300"
+                          />
+                        </div>
+                        <div className="space-y-1 pt-2 border-t border-border/60">
+                          <label className="text-[11px] text-muted-foreground">Manual Code Exchange (If popup is blocked)</label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="text"
+                              placeholder="Paste authorization token (4/0A...)..."
+                              value={pastedAuthCode}
+                              onChange={(e) => setPastedAuthCode(e.target.value)}
+                              className="font-mono text-[11px] bg-black/60 border-border text-emerald-300"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handleSubmitAuthCode}
+                              disabled={submittingAuth || !pastedAuthCode}
+                              className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white shrink-0 cursor-pointer"
+                            >
+                              {submittingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                              Submit Token
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Option A: Google Gemini AI Studio API Key */}
+                {/* Card 2: Google Gemini AI Studio API Key */}
                 <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Key className="h-4 w-4 text-amber-400" />
-                      <span className="text-xs font-semibold text-white">Google Gemini API Key (Direct)</span>
+                      <span className="text-xs font-semibold text-white">Google Gemini API Key (Direct Option)</span>
                     </div>
                     <Badge variant="outline" className="text-amber-400 border-amber-500/40 font-mono text-[10px]">
                       Instant Auth
@@ -655,7 +756,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </div>
 
                   <p className="text-[11px] text-muted-foreground">
-                    Get a free Gemini API key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a> and save it directly to your sandbox volume.
+                    Prefer direct API keys? Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a> and save it to your sandbox volume.
                   </p>
 
                   <div className="space-y-1.5">
@@ -695,139 +796,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
                 </div>
-
-                {/* Option B: Google OAuth Account Sign-In */}
-                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                      <span className="text-xs font-semibold text-white">Google OAuth Authentication (CLI Flow)</span>
-                    </div>
-                    <Badge variant="outline" className="text-emerald-400 border-emerald-500/40 font-mono text-[10px]">
-                      Mounted: /root/.gemini
-                    </Badge>
-                  </div>
-
-                  <div className="rounded-lg bg-black/50 border border-border/60 p-3 text-xs space-y-1.5 font-mono text-gray-300">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Volume ID:</span>
-                      <span className="text-blue-400 font-semibold">vol-user-auth-{currentUserId.substring(0, 8)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Auth Target:</span>
-                      <span className="text-emerald-400">Google Gemini Developer Quota</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Config Path:</span>
-                      <span className="text-gray-400">/root/.gemini/oauth_creds.json</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleTriggerGoogleAuth}
-                      disabled={initiatingAuth}
-                      className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white cursor-pointer"
-                    >
-                      {initiatingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                      Re-Authenticate Google Account
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={checkAuthStatus}
-                      disabled={checkingAuth}
-                      className="gap-1.5 text-xs border-border cursor-pointer"
-                    >
-                      {checkingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                      Check Status
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Live Auth Wizard Box if Triggered */}
-                {authUrl && (
-                  <div className="rounded-xl border border-blue-500/50 bg-blue-950/30 p-5 space-y-4 shadow-xl animate-in fade-in">
-                    <div className="flex items-center justify-between border-b border-blue-500/20 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-blue-400" />
-                        <span className="text-xs font-bold text-white uppercase tracking-wider">
-                          Google Account Authentication
-                        </span>
-                      </div>
-                      <Badge variant="default" className="text-[10px] bg-blue-600 text-white font-mono">
-                        Google AI Developer Quota
-                      </Badge>
-                    </div>
-
-                    {/* Step 1: Open URL */}
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold text-blue-200 flex items-center justify-between">
-                        <span>Step 1: Open Google Sign-In & Authorize Quota</span>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(authUrl, "authUrl")}
-                          className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-mono cursor-pointer"
-                        >
-                          {copiedField === "authUrl" ? <CheckCheck className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                          {copiedField === "authUrl" ? "Copied Link!" : "Copy Link"}
-                        </button>
-                      </label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          readOnly
-                          value={authUrl}
-                          className="text-xs font-mono bg-black/60 border-blue-500/30 text-blue-300 truncate"
-                        />
-                        <a
-                          href={authUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-1.5 text-xs font-medium text-white shadow-md transition-all shrink-0 cursor-pointer"
-                        >
-                          Open Google Sign-In <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        Sign in with your Google account, click <b>Allow</b>, and Google will display your authorization token on the screen.
-                      </p>
-                    </div>
-
-                    {/* Step 2: Paste Response Token */}
-                    <div className="space-y-1.5 pt-2 border-t border-blue-500/20">
-                      <label className="text-xs font-semibold text-gray-200">
-                        Step 2: Paste Google Authorization Token:
-                      </label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          placeholder="Paste authorization token from Google (e.g. 4/0AQ...)..."
-                          value={pastedAuthCode}
-                          onChange={(e) => setPastedAuthCode(e.target.value)}
-                          className="font-mono text-xs bg-black/60 border-blue-500/40 text-emerald-300"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleSubmitAuthCode}
-                          disabled={submittingAuth || !pastedAuthCode}
-                          className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white shrink-0 cursor-pointer px-4"
-                        >
-                          {submittingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          Complete Authentication
-                        </Button>
-                      </div>
-                    </div>
-
-                    {authSuccess && (
-                      <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                        <span>Google OAuth Credentials successfully saved to Daytona persistent volume!</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 

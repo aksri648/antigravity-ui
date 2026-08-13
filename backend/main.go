@@ -62,6 +62,7 @@ func main() {
 		api.POST("/auth/logout", func(c *gin.Context) { c.JSON(200, gin.H{"success": true}) })
 		api.GET("/auth/me", handlers.GetMe(userSvc))
 		api.POST("/auth/settings", handlers.UpdateSettings(userSvc))
+		api.GET("/auth/google/callback", handlers.GoogleOAuthCallback(daytonaSvc, agySvc, userSvc))
 
 		// Persistent Chat & Runs History
 		api.GET("/chat/history", handlers.GetChatHistoryHandler(userSvc))

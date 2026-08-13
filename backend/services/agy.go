@@ -2,9 +2,13 @@ package services
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -185,6 +189,100 @@ fi
 		Success: true,
 		Message: "Google Account AI Pro quota successfully authenticated and saved to Daytona persistent volume!",
 	}, nil
+}
+
+// ExchangeGoogleAuthCode executes the token exchange with Google OAuth token endpoint and injects tokens into Daytona Sandbox volume
+func (s *AGYService) ExchangeGoogleAuthCode(apiKey string, serverUrl string, sandboxId string, code string, clientId string, clientSecret string, redirectURI string) (map[string]interface{}, string, error) {
+	if code == "" {
+		return nil, "", fmt.Errorf("authorization code cannot be empty")
+	}
+
+	if clientId == "" {
+		clientId = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+	}
+	if redirectURI == "" {
+		redirectURI = "http://localhost:8080/api/auth/google/callback"
+	}
+
+	data := url.Values{}
+	data.Set("code", code)
+	data.Set("client_id", clientId)
+	if clientSecret != "" {
+		data.Set("client_secret", clientSecret)
+	}
+	data.Set("redirect_uri", redirectURI)
+	data.Set("grant_type", "authorization_code")
+
+	resp, err := http.PostForm("https://oauth2.googleapis.com/token", data)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to contact Google token endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read Google token response: %w", err)
+	}
+
+	var tokenMap map[string]interface{}
+	if err := json.Unmarshal(bodyBytes, &tokenMap); err != nil {
+		return nil, "", fmt.Errorf("failed to parse Google token JSON: %w", err)
+	}
+
+	if _, ok := tokenMap["access_token"]; !ok {
+		errMsg := string(bodyBytes)
+		if e, ok := tokenMap["error_description"].(string); ok {
+			errMsg = e
+		}
+		return nil, "", fmt.Errorf("Google token error: %s", errMsg)
+	}
+
+	// Extract email from id_token
+	email := "Google AI Pro User"
+	if idToken, ok := tokenMap["id_token"].(string); ok && idToken != "" {
+		parts := strings.Split(idToken, ".")
+		if len(parts) >= 2 {
+			payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
+			if err == nil {
+				var claims struct {
+					Email string `json:"email"`
+				}
+				if err := json.Unmarshal(payloadBytes, &claims); err == nil && claims.Email != "" {
+					email = claims.Email
+				}
+			}
+		}
+	}
+
+	// Prepare credentials JSON payloads
+	oauthCredsJSON, _ := json.MarshalIndent(tokenMap, "", "  ")
+	googleAccountsJSON := fmt.Sprintf(`{"active":"%s","old":[]}`, email)
+
+	// Inject credentials into Daytona Sandbox persistent volume
+	if sandboxId != "" && apiKey != "" {
+		injectCmd := fmt.Sprintf(`#!/usr/bin/env bash
+mkdir -p /home/daytona/persist/gemini /root/persist/gemini /root/.gemini /home/daytona/.gemini /root/.gemini/antigravity-cli /home/daytona/persist/gemini/antigravity-cli
+
+cat << 'EOF' > /home/daytona/persist/gemini/oauth_creds.json
+%s
+EOF
+
+cat << 'EOF' > /home/daytona/persist/gemini/google_accounts.json
+%s
+EOF
+
+cp /home/daytona/persist/gemini/oauth_creds.json /root/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /root/.gemini/google_accounts.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/oauth_creds.json /home/daytona/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /home/daytona/.gemini/google_accounts.json 2>/dev/null || true
+
+echo "TOKENS_INJECTED_OK"
+`, string(oauthCredsJSON), googleAccountsJSON)
+
+		_, _ = s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, injectCmd)
+	}
+
+	return tokenMap, email, nil
 }
 
 // SaveGoogleApiKey configures Google Gemini AI Studio API key directly into Daytona sandbox persistent volume
