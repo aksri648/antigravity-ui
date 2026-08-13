@@ -186,10 +186,14 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
     fetchTelemetry();
   }, [fetchTelemetry]);
 
-  // Auto-refresh timer every 3 seconds
+  // Auto-refresh timer every 3 seconds (only when tab is visible)
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(fetchTelemetry, 3000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchTelemetry();
+      }
+    }, 3000);
     return () => clearInterval(interval);
   }, [autoRefresh, fetchTelemetry]);
 

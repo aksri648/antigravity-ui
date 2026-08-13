@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { LandingPage } from "./components/marketing/LandingPage";
 import { SetupWizard } from "./components/onboarding/SetupWizard";
+import { AuthView } from "./components/auth/AuthView";
 import { HeaderBar } from "./components/workspace/HeaderBar";
 import { ChatPane } from "./components/workspace/ChatPane";
 import type { ChatMessage } from "./components/workspace/ChatPane";
@@ -12,10 +13,16 @@ export function App() {
   const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem("daytona_api_key"));
   const [serverUrl, setServerUrl] = useState<string>(() => localStorage.getItem("daytona_server_url") || "https://app.daytona.io/api");
   const [userId, setUserId] = useState<string>(() => localStorage.getItem("daytona_user_id") || `user-${Math.random().toString(36).substring(2, 8)}`);
+  const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem("user_email") || "");
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem("user_name") || "");
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
   
-  // App Navigation View: "marketing" (Home Page) | "setup" (Setup Wizard) | "workspace" (Coding View)
-  const [currentView, setCurrentView] = useState<"marketing" | "setup" | "workspace">(() => {
-    return localStorage.getItem("daytona_api_key") ? "workspace" : "marketing";
+  // App Navigation Views: "marketing" | "auth" | "setup" | "workspace"
+  const [currentView, setCurrentView] = useState<"marketing" | "auth" | "setup" | "workspace">(() => {
+    if (localStorage.getItem("daytona_api_key") || localStorage.getItem("auth_token")) {
+      return "workspace";
+    }
+    return "marketing";
   });
 
   const [sandboxId, setSandboxId] = useState<string | undefined>(() => localStorage.getItem("daytona_sandbox_id") || undefined);
@@ -27,6 +34,75 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Auto-verify session and fetch profile & active sandbox from SQLite
+  useEffect(() => {
+    const checkUserSession = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return;
+
+      try {
+        const res = await fetch(apiUrl("/api/auth/me", { userId }), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) {
+            setUserEmail(data.user.email || "");
+            setUserName(data.user.name || "");
+            if (data.user.daytonaApiKey && !apiKey) {
+              setApiKey(data.user.daytonaApiKey);
+              localStorage.setItem("daytona_api_key", data.user.daytonaApiKey);
+            }
+            if (data.user.daytonaServerUrl) {
+              setServerUrl(data.user.daytonaServerUrl);
+            }
+          }
+          if (data.activeSandbox?.daytonaSandboxId) {
+            setSandboxId(data.activeSandbox.daytonaSandboxId);
+            localStorage.setItem("daytona_sandbox_id", data.activeSandbox.daytonaSandboxId);
+            if (data.activeSandbox.previewUrl) {
+              setPreviewUrl(data.activeSandbox.previewUrl);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Session check failed, continuing with local state", err);
+      }
+    };
+
+    checkUserSession();
+  }, [userId]);
+
+  // Load persistent chat history from SQLite when entering workspace
+  useEffect(() => {
+    if (currentView === "workspace" && userId) {
+      fetchChatHistory();
+    }
+  }, [currentView, userId, sandboxId]);
+
+  const fetchChatHistory = async () => {
+    try {
+      const res = await fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const parsedMessages: ChatMessage[] = data.map((m: any) => ({
+            id: m.id || `msg-${Date.now()}`,
+            sender: m.sender || "agy",
+            text: m.text || "",
+            thoughts: m.thoughts || [],
+            tools: m.tools || [],
+            isError: m.isError || false,
+            timestamp: m.timestamp || Date.now(),
+          }));
+          setMessages(parsedMessages);
+        }
+      }
+    } catch {
+      // Keep existing in-memory messages if fetch fails
+    }
+  };
 
   // Auto-provision or verify real Daytona sandbox when entering workspace
   useEffect(() => {
@@ -116,6 +192,45 @@ export function App() {
     });
   };
 
+  // Auth Success from SaaS Login / Registration
+  const handleAuthSuccess = (authData: {
+    token: string;
+    user: {
+      id: string;
+      email: string;
+      name?: string;
+      daytonaApiKey?: string;
+      daytonaServerUrl?: string;
+    };
+    activeSandbox?: {
+      id: string;
+      daytonaSandboxId: string;
+      previewUrl?: string;
+      activePort?: number;
+    };
+  }) => {
+    setAuthToken(authData.token);
+    setUserId(authData.user.id);
+    setUserEmail(authData.user.email);
+    if (authData.user.name) setUserName(authData.user.name);
+    if (authData.user.daytonaApiKey) setApiKey(authData.user.daytonaApiKey);
+    if (authData.user.daytonaServerUrl) setServerUrl(authData.user.daytonaServerUrl);
+
+    if (authData.activeSandbox?.daytonaSandboxId) {
+      setSandboxId(authData.activeSandbox.daytonaSandboxId);
+      if (authData.activeSandbox.previewUrl) {
+        setPreviewUrl(authData.activeSandbox.previewUrl);
+      }
+    }
+
+    // Check if onboarding setup is needed
+    if (!authData.user.daytonaApiKey) {
+      setCurrentView("setup");
+    } else {
+      setCurrentView("workspace");
+    }
+  };
+
   // Complete setup wizard
   const handleSetupComplete = (key: string, uid: string, initialSandboxId?: string) => {
     localStorage.setItem("daytona_api_key", key);
@@ -133,33 +248,45 @@ export function App() {
     }
   };
 
+  // Exit Workspace — Instant 0ms response to return to SaaS Home / Login
+  const handleExitWorkspace = useCallback(() => {
+    // Instant UI state transition without any blocking network requests
+    setCurrentView("marketing");
+    setIsProcessing(false);
+  }, []);
+
   // Full reset app state & local storage — wipes Daytona volume + sandbox
   const handleResetApp = async () => {
-    // Call backend to wipe Daytona volume data and delete sandbox
-    try {
-      await fetch(apiUrl("/api/workspace/reset"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          apiKey: apiKey || localStorage.getItem("daytona_api_key") || "",
-          serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
-          userId: userId,
-          sandboxId: sandboxId || "",
-        }),
-      });
-    } catch (err) {
-      console.warn("Backend reset call failed (continuing local reset)", err);
-    }
+    // 1. Immediately switch view and clear local state (Instant 0ms UI update)
+    const currentKey = apiKey;
+    const currentUid = userId;
+    const currentSb = sandboxId;
 
-    // Clear all local state
     localStorage.clear();
     setApiKey(null);
+    setAuthToken(null);
+    setUserEmail("");
+    setUserName("");
     setSandboxId(undefined);
     setMessages([]);
     setTerminalLogs([]);
     setPreviewUrl(null);
     setIsProcessing(false);
     setCurrentView("marketing");
+
+    // 2. Perform backend cleanup asynchronously in background
+    if (currentKey && currentSb) {
+      fetch(apiUrl("/api/workspace/reset"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: currentKey,
+          serverUrl: serverUrl || "",
+          userId: currentUid,
+          sandboxId: currentSb,
+        }),
+      }).catch((e) => console.warn("Background reset notice:", e));
+    }
   };
 
   // Create Daytona Workspace via Go Backend
@@ -248,9 +375,15 @@ export function App() {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     setMessages([]);
     setTerminalLogs([]);
+    // Delete in SQLite database
+    try {
+      fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }), {
+        method: "DELETE",
+      });
+    } catch {}
   };
 
   // Stop generating / cancel active prompt
@@ -340,25 +473,35 @@ export function App() {
       {/* VIEW 1: MARKETING HOME PAGE */}
       {currentView === "marketing" && (
         <LandingPage
-          onStartSetup={() => setCurrentView("setup")}
+          onStartSetup={() => setCurrentView("auth")}
           onResetApp={handleResetApp}
         />
       )}
 
-      {/* VIEW 2: ONBOARDING SETUP WIZARD */}
+      {/* VIEW 2: MULTI-USER SAAS AUTHENTICATION */}
+      {currentView === "auth" && (
+        <AuthView
+          onAuthSuccess={handleAuthSuccess}
+          onContinueAsGuest={() => setCurrentView("setup")}
+        />
+      )}
+
+      {/* VIEW 3: ONBOARDING SETUP WIZARD */}
       {currentView === "setup" && (
         <SetupWizard onComplete={handleSetupComplete} />
       )}
 
-      {/* VIEW 3: MAIN 30/70 SPLIT CODING WORKSPACE */}
+      {/* VIEW 4: MAIN 30/70 SPLIT CODING WORKSPACE */}
       {currentView === "workspace" && (
         <>
           {/* Main Workspace Navigation Header */}
           <HeaderBar
             sandboxId={sandboxId}
             userId={userId}
+            userEmail={userEmail}
+            userName={userName}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onExitWorkspace={handleResetApp}
+            onExitWorkspace={handleExitWorkspace}
           />
 
           {/* Main 30 / 70 Split Screen Workspace */}

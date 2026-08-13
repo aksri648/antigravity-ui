@@ -41,6 +41,68 @@ type ExecResult struct {
 	Result   string `json:"result"`
 }
 
+// Multi-User SaaS Models
+type User struct {
+	ID                    string    `json:"id"`
+	Email                 string    `json:"email"`
+	Name                  string    `json:"name"`
+	DaytonaApiKey         string    `json:"daytonaApiKey,omitempty"`
+	DaytonaServerUrl      string    `json:"daytonaServerUrl,omitempty"`
+	VolumeID              string    `json:"volumeId,omitempty"`
+	IsGoogleAuthenticated bool      `json:"isGoogleAuthenticated"`
+	CreatedAt             time.Time `json:"createdAt"`
+}
+
+type UserSandbox struct {
+	ID               string    `json:"id"`
+	UserID           string    `json:"userId"`
+	DaytonaSandboxID string    `json:"daytonaSandboxId"`
+	Name             string    `json:"name"`
+	State            string    `json:"state"`
+	PreviewURL       string    `json:"previewUrl,omitempty"`
+	SignedPreviewURL string    `json:"signedPreviewUrl,omitempty"`
+	ActivePort       int       `json:"activePort"`
+	IsDefault        bool      `json:"isDefault"`
+	CreatedAt        time.Time `json:"createdAt"`
+}
+
+type RegisterRequest struct {
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	Name             string `json:"name,omitempty"`
+	DaytonaApiKey    string `json:"daytonaApiKey,omitempty"`
+	DaytonaServerUrl string `json:"daytonaServerUrl,omitempty"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AuthResponse struct {
+	Token         string       `json:"token"`
+	User          *User        `json:"user"`
+	ActiveSandbox *UserSandbox `json:"activeSandbox,omitempty"`
+}
+
+type UpdateSettingsRequest struct {
+	ApiKey        string `json:"apiKey,omitempty"`
+	ServerUrl     string `json:"serverUrl,omitempty"`
+	ActivePort    int    `json:"activePort,omitempty"`
+	OAuthClientId string `json:"oauthClientId,omitempty"`
+	GoogleApiKey  string `json:"googleApiKey,omitempty"`
+}
+
+type ChatMessageDTO struct {
+	ID        string                   `json:"id"`
+	Sender    string                   `json:"sender"`
+	Text      string                   `json:"text"`
+	Thoughts  []string                 `json:"thoughts,omitempty"`
+	Tools     []map[string]interface{} `json:"tools,omitempty"`
+	IsError   bool                     `json:"isError,omitempty"`
+	Timestamp int64                    `json:"timestamp"`
+}
+
 // API Request/Response DTOs
 type VerifyDaytonaRequest struct {
 	ApiKey    string `json:"apiKey"`

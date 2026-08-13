@@ -307,15 +307,17 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     }
   }, [sandboxId, apiKey, serverUrl]);
 
-  // Auto-poll when terminal tab is active
+  // Auto-poll when terminal tab is active and document is visible
   useEffect(() => {
     if (activeTab !== "terminal") return;
 
-    // Fetch immediately
     fetchLiveLogs();
 
-    // Poll every 5 seconds
-    const interval = setInterval(fetchLiveLogs, 5000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        fetchLiveLogs();
+      }
+    }, 5000);
     return () => clearInterval(interval);
   }, [activeTab, fetchLiveLogs]);
 

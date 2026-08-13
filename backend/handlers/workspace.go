@@ -89,8 +89,8 @@ func parseFindOutput(lines []string) []*models.FileNode {
 	return rootNodes
 }
 
-// CreateWorkspace provisions an isolated Daytona sandbox for coding session
-func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+// CreateWorkspace provisions an isolated Daytona sandbox for coding session and records in SQLite
+func CreateWorkspace(daytonaSvc *services.DaytonaService, userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.CreateWorkspaceRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -99,7 +99,11 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		if req.UserId == "" {
-			req.UserId = "default-user"
+			if u, exists := c.Get("userId"); exists {
+				req.UserId = u.(string)
+			} else {
+				req.UserId = "default-user"
+			}
 		}
 
 		// Provision or retrieve active sandbox
@@ -107,6 +111,11 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create sandbox: " + err.Error()})
 			return
+		}
+
+		previewUrl := daytonaSvc.GetPreviewURL(sb.ID, 3000, req.ServerUrl)
+		if userSvc != nil {
+			userSvc.SaveUserSandbox(req.UserId, sb.ID, previewUrl, 3000)
 		}
 
 		c.JSON(http.StatusOK, models.CreateWorkspaceResponse{
@@ -187,8 +196,9 @@ func SaveFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		})
 	}
 }
+
 // SendPrompt triggers agy agent prompt execution asynchronously and streams over WebSockets
-func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService, hub *Hub) gin.HandlerFunc {
+func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService, userSvc *services.UserService, hub *Hub) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.SendPromptRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -199,6 +209,14 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		if req.Prompt == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Prompt cannot be empty"})
 			return
+		}
+
+		if req.UserId == "" {
+			if u, exists := c.Get("userId"); exists {
+				req.UserId = u.(string)
+			} else {
+				req.UserId = "default-user"
+			}
 		}
 
 		// If sandbox ID is missing, demo, or fallback, ensure a real Daytona sandbox is created
@@ -214,6 +232,15 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				return
 			}
 			req.SandboxID = sb.ID
+			if userSvc != nil {
+				previewUrl := daytonaSvc.GetPreviewURL(sb.ID, 3000, req.ServerUrl)
+				userSvc.SaveUserSandbox(req.UserId, sb.ID, previewUrl, 3000)
+			}
+		}
+
+		// Persist user prompt in SQLite
+		if userSvc != nil {
+			userSvc.SaveChatMessage(req.UserId, req.SandboxID, "user", req.Prompt, nil, nil, false)
 		}
 
 		// Cancel existing prompt for this sandbox if any
@@ -233,6 +260,11 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				delete(activePromptCancel, req.SandboxID)
 				activePromptMu.Unlock()
 			}()
+
+			var accumulatedResponse strings.Builder
+			var thoughts []string
+			var tools []map[string]interface{}
+
 			err := agySvc.StreamPromptExec(
 				ctx,
 				req.ApiKey,
@@ -241,6 +273,15 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				req.Prompt,
 				func(event models.StreamEvent) {
 					hub.BroadcastEvent(event)
+					if event.Type == "token" {
+						accumulatedResponse.WriteString(event.Content)
+					} else if event.Type == "thought" {
+						thoughts = append(thoughts, event.Content)
+					} else if event.Type == "tool_start" {
+						if m, ok := event.Metadata.(map[string]interface{}); ok {
+							tools = append(tools, m)
+						}
+					}
 				},
 			)
 			if err != nil {
@@ -257,6 +298,11 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 						SandboxID: req.SandboxID,
 					})
 				}
+			}
+
+			// Persist AGY response to SQLite
+			if userSvc != nil && accumulatedResponse.Len() > 0 {
+				userSvc.SaveChatMessage(req.UserId, req.SandboxID, "agy", accumulatedResponse.String(), thoughts, tools, err != nil && ctx.Err() != context.Canceled)
 			}
 		}()
 
