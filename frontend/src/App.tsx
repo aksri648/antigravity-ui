@@ -5,9 +5,11 @@ import { HeaderBar } from "./components/workspace/HeaderBar";
 import { ChatPane } from "./components/workspace/ChatPane";
 import type { ChatMessage } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
+import { SettingsModal } from "./components/workspace/SettingsModal";
 
 export function App() {
   const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem("daytona_api_key"));
+  const [serverUrl, setServerUrl] = useState<string>(() => localStorage.getItem("daytona_server_url") || "https://app.daytona.io/api");
   const [userId, setUserId] = useState<string>(() => localStorage.getItem("daytona_user_id") || `user-${Math.random().toString(36).substring(2, 8)}`);
   
   // App Navigation View: "marketing" (Home Page) | "setup" (Setup Wizard) | "workspace" (Coding View)
@@ -21,6 +23,7 @@ export function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [activePort, setActivePort] = useState<number>(3000);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -90,6 +93,10 @@ export function App() {
         ];
       } else if (event.type === "token") {
         updatedMsg.text += event.content + "\n";
+      } else if (event.type === "error") {
+        updatedMsg.text = event.content || "An error occurred during execution.";
+        updatedMsg.isError = true;
+        setIsProcessing(false);
       } else if (event.type === "done") {
         setIsProcessing(false);
       }
@@ -112,13 +119,31 @@ export function App() {
     createWorkspace(key, uid);
   };
 
-  // Full reset app state & local storage
-  const handleResetApp = () => {
+  // Full reset app state & local storage — wipes Daytona volume + sandbox
+  const handleResetApp = async () => {
+    // Call backend to wipe Daytona volume data and delete sandbox
+    try {
+      await fetch("http://localhost:8080/api/workspace/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: apiKey || localStorage.getItem("daytona_api_key") || "",
+          userId: userId,
+          sandboxId: sandboxId || "",
+        }),
+      });
+    } catch (err) {
+      console.warn("Backend reset call failed (continuing local reset)", err);
+    }
+
+    // Clear all local state
     localStorage.clear();
     setApiKey(null);
+    setSandboxId(undefined);
     setMessages([]);
     setTerminalLogs([]);
     setPreviewUrl(null);
+    setIsProcessing(false);
     setCurrentView("marketing");
   };
 
@@ -182,6 +207,85 @@ export function App() {
     setTerminalLogs([]);
   };
 
+  // Stop generating / cancel active prompt
+  const handleStopGenerating = async () => {
+    try {
+      await fetch("http://localhost:8080/api/workspace/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sandboxId: sandboxId || "sb-daytona-demo" }),
+      });
+    } catch (err) {
+      console.warn("Failed to stop generation", err);
+    }
+    // Immediately reset UI so user isn't stuck
+    setIsProcessing(false);
+    setMessages((prev) => {
+      if (prev.length === 0) return prev;
+      const lastMsg = prev[prev.length - 1];
+      if (lastMsg.sender === "agy" && !lastMsg.text.trim()) {
+        const updated = { ...lastMsg, text: "Generation stopped by user." };
+        return [...prev.slice(0, -1), updated];
+      }
+      return prev;
+    });
+  };
+
+  // Update configuration from Settings Modal
+  const handleUpdateConfig = (newConfig: {
+    apiKey?: string;
+    serverUrl?: string;
+    userId?: string;
+    sandboxId?: string;
+    activePort?: number;
+  }) => {
+    if (newConfig.apiKey !== undefined) {
+      setApiKey(newConfig.apiKey);
+      localStorage.setItem("daytona_api_key", newConfig.apiKey);
+    }
+    if (newConfig.serverUrl !== undefined) {
+      setServerUrl(newConfig.serverUrl);
+      localStorage.setItem("daytona_server_url", newConfig.serverUrl);
+    }
+    if (newConfig.userId !== undefined) {
+      setUserId(newConfig.userId);
+      localStorage.setItem("daytona_user_id", newConfig.userId);
+    }
+    if (newConfig.sandboxId !== undefined) {
+      setSandboxId(newConfig.sandboxId);
+      if (newConfig.activePort || activePort) {
+        setPreviewUrl(`https://${newConfig.sandboxId}-${newConfig.activePort || activePort}.daytona.app`);
+      }
+    }
+    if (newConfig.activePort !== undefined) {
+      setActivePort(newConfig.activePort);
+      if (sandboxId || newConfig.sandboxId) {
+        setPreviewUrl(`https://${newConfig.sandboxId || sandboxId}-${newConfig.activePort}.daytona.app`);
+      }
+    }
+  };
+
+  // Recreate Sandbox Container (fresh VM attached to persistent volume)
+  const handleRecreateSandbox = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/workspace/recreate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: apiKey || "dev-key",
+          userId: userId,
+        }),
+      });
+      const data = await res.json();
+      if (data.sandboxId) {
+        setSandboxId(data.sandboxId);
+        setPreviewUrl(`https://${data.sandboxId}-${activePort}.daytona.app`);
+      }
+    } catch (err) {
+      console.warn("Failed to recreate sandbox", err);
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       {/* VIEW 1: MARKETING HOME PAGE */}
@@ -204,7 +308,7 @@ export function App() {
           <HeaderBar
             sandboxId={sandboxId}
             userId={userId}
-            onResetSetup={() => setCurrentView("setup")}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             onExitWorkspace={handleResetApp}
           />
 
@@ -217,6 +321,7 @@ export function App() {
                 onSendMessage={handleSendMessage}
                 isProcessing={isProcessing}
                 onClearChat={handleClearChat}
+                onStopGenerating={handleStopGenerating}
               />
             </div>
 
@@ -237,6 +342,23 @@ export function App() {
               />
             </div>
           </div>
+
+          {/* Workspace & Environment Settings Modal */}
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            apiKey={apiKey || ""}
+            serverUrl={serverUrl}
+            userId={userId}
+            sandboxId={sandboxId}
+            activePort={activePort}
+            onUpdateConfig={handleUpdateConfig}
+            onResetApp={() => {
+              setIsSettingsOpen(false);
+              handleResetApp();
+            }}
+            onRecreateSandbox={handleRecreateSandbox}
+          />
         </>
       )}
     </div>

@@ -1,16 +1,21 @@
 import React from "react";
-import { Sparkles, Cpu, ShieldCheck, RefreshCw, Layers, LogOut } from "lucide-react";
+import { Sparkles, Cpu, ShieldCheck, Settings, Layers, LogOut, RefreshCw } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
 interface HeaderBarProps {
   sandboxId?: string;
   userId: string;
-  onResetSetup: () => void;
+  onOpenSettings: () => void;
   onExitWorkspace: () => void;
 }
 
-export const HeaderBar: React.FC<HeaderBarProps> = ({ sandboxId, userId, onResetSetup, onExitWorkspace }) => {
+export const HeaderBar: React.FC<HeaderBarProps> = ({
+  sandboxId,
+  userId,
+  onOpenSettings,
+  onExitWorkspace,
+}) => {
   return (
     <header className="h-13 border-b border-border bg-card px-4 flex items-center justify-between">
       {/* Brand & Title */}
@@ -29,9 +34,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sandboxId, userId, onReset
         </div>
       </div>
 
-      {/* Status Badges */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2">
+      {/* Status Badges & Controls */}
+      <div className="flex items-center gap-2.5">
+        <div className="hidden md:flex items-center gap-2">
           <Badge variant="success" className="gap-1 text-[11px] py-0.5">
             <Cpu className="h-3 w-3" /> Sandbox: {sandboxId ? sandboxId.substring(0, 14) : "Initializing..."}
           </Badge>
@@ -43,15 +48,15 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sandboxId, userId, onReset
           </Badge>
         </div>
 
-        {/* Reset Config */}
+        {/* Settings Button */}
         <Button
           variant="outline"
           size="sm"
-          onClick={onResetSetup}
-          className="h-8 gap-1.5 text-xs border-border hover:bg-accent"
-          title="Reconfigure Daytona API key or Google Auth"
+          onClick={onOpenSettings}
+          className="h-8 gap-1.5 text-xs border-border hover:bg-accent text-white font-medium"
+          title="Open Workspace Settings & Environment Configuration"
         >
-          <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" /> Config
+          <Settings className="h-3.5 w-3.5 text-blue-400" /> Settings
         </Button>
 
         {/* Exit Workspace */}
@@ -68,3 +73,4 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ sandboxId, userId, onReset
     </header>
   );
 };
+

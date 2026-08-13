@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -97,6 +98,7 @@ func (s *AGYService) SubmitAuthCode(apiKey string, serverUrl string, sandboxId s
 
 // StreamPromptExec runs agy inside Daytona sandbox and streams real events to frontend
 func (s *AGYService) StreamPromptExec(
+	ctx context.Context,
 	apiKey string,
 	serverUrl string,
 	sandboxId string,
@@ -109,6 +111,13 @@ func (s *AGYService) StreamPromptExec(
 		SandboxID: sandboxId,
 		Timestamp: time.Now().UnixMilli(),
 	})
+
+	// Check if cancelled before starting execution
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
 
 	// 1. Run agy command directly inside the Daytona sandbox
 	cmdStr := fmt.Sprintf("agy --print %s --output-format stream-json --dangerously-skip-permissions", strconv.Quote(prompt))
@@ -168,6 +177,11 @@ func (s *AGYService) StreamPromptExec(
 	// 4. Stream real agy output lines to frontend
 	lines := strings.Split(out, "\n")
 	for _, line := range lines {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 		if strings.TrimSpace(line) == "" {
 			continue
 		}

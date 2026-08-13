@@ -53,6 +53,12 @@ func main() {
 		api.GET("/workspace/file-content", handlers.GetFileContent(daytonaSvc))
 		api.POST("/workspace/file-save", handlers.SaveFileContent(daytonaSvc))
 		api.POST("/workspace/prompt", handlers.SendPrompt(daytonaSvc, agySvc, wsHub))
+		api.POST("/workspace/stop", handlers.StopPrompt())
+		api.GET("/workspace/logs", handlers.FetchSandboxLogs(daytonaSvc))
+		api.POST("/workspace/reset", handlers.ResetApp(daytonaSvc))
+		api.GET("/workspace/env", handlers.GetEnvVars(daytonaSvc))
+		api.POST("/workspace/env", handlers.SaveEnvVars(daytonaSvc))
+		api.POST("/workspace/recreate", handlers.RecreateWorkspace(daytonaSvc))
 	}
 
 	// WebSocket Endpoint for Real-time Streaming

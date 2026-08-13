@@ -132,3 +132,18 @@ type ToolExecutionMetadata struct {
 	Path string                 `json:"path,omitempty"`
 	Args map[string]interface{} `json:"args,omitempty"`
 }
+
+type EnvVarsRequest struct {
+	ApiKey    string            `json:"apiKey"`
+	SandboxID string            `json:"sandboxId"`
+	Env       map[string]string `json:"env"`
+	RawEnv    string            `json:"rawEnv,omitempty"`
+}
+
+type EnvVarsResponse struct {
+	Success bool              `json:"success"`
+	Env     map[string]string `json:"env"`
+	RawEnv  string            `json:"rawEnv"`
+	Message string            `json:"message,omitempty"`
+}
+

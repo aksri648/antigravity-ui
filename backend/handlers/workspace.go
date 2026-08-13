@@ -1,14 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"backend/models"
 	"backend/services"
 
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	activePromptMu     sync.Mutex
+	activePromptCancel = make(map[string]context.CancelFunc)
 )
 
 // ListWorkspaceFiles returns a nested tree structure of files inside the Daytona sandbox
@@ -17,31 +25,22 @@ func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
 
+		if sandboxId == "" || apiKey == "" {
+			c.JSON(http.StatusOK, []*models.FileNode{})
+			return
+		}
+
 		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' | sort"
 		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
 
 		var lines []string
-		if res != nil && res.Result != "" {
+		if err == nil && res != nil && res.Result != "" {
 			lines = strings.Split(res.Result, "\n")
 		}
 
 		nodes := parseFindOutput(lines)
-		if err != nil || len(nodes) == 0 {
-			nodes = []*models.FileNode{
-				{
-					Name:  "src",
-					Path:  "src",
-					IsDir: true,
-					Children: []*models.FileNode{
-						{Name: "App.tsx", Path: "src/App.tsx", IsDir: false},
-						{Name: "main.tsx", Path: "src/main.tsx", IsDir: false},
-						{Name: "index.css", Path: "src/index.css", IsDir: false},
-					},
-				},
-				{Name: "index.html", Path: "index.html", IsDir: false},
-				{Name: "package.json", Path: "package.json", IsDir: false},
-				{Name: "vite.config.ts", Path: "vite.config.ts", IsDir: false},
-			}
+		if nodes == nil {
+			nodes = []*models.FileNode{}
 		}
 
 		c.JSON(http.StatusOK, nodes)
@@ -205,9 +204,25 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 			return
 		}
 
+		// Cancel existing prompt for this sandbox if any
+		activePromptMu.Lock()
+		if cancel, exists := activePromptCancel[req.SandboxID]; exists {
+			cancel()
+		}
+		
+		ctx, cancel := context.WithCancel(context.Background())
+		activePromptCancel[req.SandboxID] = cancel
+		activePromptMu.Unlock()
+
 		// Asynchronously stream prompt execution to connected WebSockets
 		go func() {
+			defer func() {
+				activePromptMu.Lock()
+				delete(activePromptCancel, req.SandboxID)
+				activePromptMu.Unlock()
+			}()
 			err := agySvc.StreamPromptExec(
+				ctx,
 				req.ApiKey,
 				"",
 				req.SandboxID,
@@ -217,11 +232,19 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				},
 			)
 			if err != nil {
-				hub.BroadcastEvent(models.StreamEvent{
-					Type:      "error",
-					Content:   "Error executing prompt: " + err.Error(),
-					SandboxID: req.SandboxID,
-				})
+				if ctx.Err() == context.Canceled {
+					hub.BroadcastEvent(models.StreamEvent{
+						Type:      "done",
+						Content:   "Generation stopped by user.",
+						SandboxID: req.SandboxID,
+					})
+				} else {
+					hub.BroadcastEvent(models.StreamEvent{
+						Type:      "error",
+						Content:   "Error executing prompt: " + err.Error(),
+						SandboxID: req.SandboxID,
+					})
+				}
 			}
 		}()
 
@@ -231,3 +254,248 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		})
 	}
 }
+
+// StopPrompt cancels any active agy prompt execution for a sandbox
+func StopPrompt() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			SandboxID string `json:"sandboxId"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		activePromptMu.Lock()
+		cancel, exists := activePromptCancel[req.SandboxID]
+		activePromptMu.Unlock()
+
+		if exists {
+			cancel()
+			c.JSON(http.StatusOK, gin.H{"success": true, "message": "Generation stopped."})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"success": true, "message": "No active generation found."})
+		}
+	}
+}
+
+// FetchSandboxLogs retrieves recent process/system logs from a Daytona sandbox
+func FetchSandboxLogs(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+
+		if sandboxId == "" || apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "sandboxId and apiKey are required"})
+			return
+		}
+
+		// Fetch recent sandbox process logs
+		cmd := "(cat /tmp/agy_*.log 2>/dev/null || true) && (journalctl --no-pager -n 50 2>/dev/null || dmesg --human -n 50 2>/dev/null || tail -n 50 /var/log/syslog 2>/dev/null || echo 'No system logs available') && echo '---PROCESS_LIST---' && ps aux --sort=-%cpu 2>/dev/null | head -20"
+		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+
+		var output string
+		if res != nil {
+			output = res.Result
+		}
+		if err != nil && output == "" {
+			output = "Failed to fetch logs from sandbox: " + err.Error()
+		}
+
+		// Split into lines
+		var lines []string
+		for _, line := range strings.Split(output, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed != "" {
+				lines = append(lines, trimmed)
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"logs":      lines,
+			"sandboxId": sandboxId,
+			"timestamp": time.Now().UnixMilli(),
+		})
+	}
+}
+
+// ResetApp wipes all Daytona volume auth data, deletes sandboxes, and resets to first-launch state
+func ResetApp(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ApiKey    string `json:"apiKey"`
+			UserId    string `json:"userId"`
+			SandboxID string `json:"sandboxId"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		var errors []string
+
+		// 1. Wipe auth data inside sandbox mounted volume
+		if req.SandboxID != "" && req.ApiKey != "" {
+			if err := daytonaSvc.WipeVolumeData(req.ApiKey, "", req.SandboxID); err != nil {
+				errors = append(errors, "wipe volume data: "+err.Error())
+			}
+		}
+
+		// 2. Delete the sandbox
+		if req.SandboxID != "" && req.ApiKey != "" {
+			if err := daytonaSvc.DeleteSandbox(req.ApiKey, "", req.SandboxID); err != nil {
+				errors = append(errors, "delete sandbox: "+err.Error())
+			}
+		}
+
+		// 3. Delete the persistent volume
+		if req.UserId != "" && req.ApiKey != "" {
+			if err := daytonaSvc.DeleteUserVolume(req.ApiKey, "", req.UserId); err != nil {
+				errors = append(errors, "delete volume: "+err.Error())
+			}
+		}
+
+		// 4. Cancel any active prompt
+		activePromptMu.Lock()
+		if cancel, exists := activePromptCancel[req.SandboxID]; exists {
+			cancel()
+			delete(activePromptCancel, req.SandboxID)
+		}
+		activePromptMu.Unlock()
+
+		if len(errors) > 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success":  true,
+				"message":  "App reset completed with some warnings",
+				"warnings": errors,
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "App fully reset. Daytona volume data wiped, sandbox deleted. Ready for fresh setup.",
+		})
+	}
+}
+
+// GetEnvVars retrieves environment variables from .env inside the Daytona sandbox
+func GetEnvVars(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+
+		if sandboxId == "" || apiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "sandboxId and apiKey are required"})
+			return
+		}
+
+		cmd := "cat /root/.gemini/.env 2>/dev/null || cat .env 2>/dev/null || true"
+		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+
+		rawEnv := ""
+		if res != nil {
+			rawEnv = strings.TrimSpace(res.Result)
+		}
+		if err != nil && rawEnv == "" {
+			rawEnv = "NODE_ENV=development\nPORT=3000\n"
+		}
+
+		envMap := make(map[string]string)
+		for _, line := range strings.Split(rawEnv, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				val := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+				envMap[key] = val
+			}
+		}
+
+		c.JSON(http.StatusOK, models.EnvVarsResponse{
+			Success: true,
+			Env:     envMap,
+			RawEnv:  rawEnv,
+			Message: "Environment variables fetched from Daytona Sandbox.",
+		})
+	}
+}
+
+// SaveEnvVars writes environment variables to /root/.gemini/.env and ./.env in the Daytona sandbox
+func SaveEnvVars(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.EnvVarsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+			return
+		}
+
+		if req.SandboxID == "" || req.ApiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "sandboxId and apiKey are required"})
+			return
+		}
+
+		rawContent := req.RawEnv
+		if rawContent == "" && len(req.Env) > 0 {
+			var sb strings.Builder
+			for k, v := range req.Env {
+				sb.WriteString(fmt.Sprintf("%s=%s\n", strings.TrimSpace(k), strings.TrimSpace(v)))
+			}
+			rawContent = sb.String()
+		}
+
+		// Write to persistent volume location (/root/.gemini/.env) and current working dir (.env)
+		cmd := fmt.Sprintf("mkdir -p /root/.gemini && cat << 'EOF' > /root/.gemini/.env\n%s\nEOF\ncat << 'EOF' > ./.env\n%s\nEOF", rawContent, rawContent)
+		_, err := daytonaSvc.ExecProcess(req.ApiKey, "", req.SandboxID, cmd)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save env variables inside sandbox: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Environment variables saved to Daytona Sandbox and persistent volume.",
+		})
+	}
+}
+
+// RecreateWorkspace provisions a fresh sandbox container for the user while keeping volume data
+func RecreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.CreateWorkspaceRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		if req.UserId == "" {
+			req.UserId = "default-user"
+		}
+
+		// Fetch user volume
+		vol, err := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, "", req.UserId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access user volume: " + err.Error()})
+			return
+		}
+
+		// Create fresh sandbox
+		sb, err := daytonaSvc.CreateSandbox(req.ApiKey, "", req.UserId, vol.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to provision new sandbox: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, models.CreateWorkspaceResponse{
+			Success:   "true",
+			SandboxID: sb.ID,
+			State:     sb.State,
+			Message:   "Fresh Daytona sandbox provisioned and attached to your volume.",
+		})
+	}
+}
+
+

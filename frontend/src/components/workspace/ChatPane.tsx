@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Brain, Wrench, Sparkles, Trash2, Loader2, Code2 } from "lucide-react";
+import { Send, Bot, User, Brain, Wrench, Sparkles, Trash2, Loader2, Code2, Square, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 
@@ -9,6 +9,7 @@ export type ChatMessage = {
   text: string;
   thoughts?: string[];
   tools?: { name: string; path?: string; status?: "running" | "done" }[];
+  isError?: boolean;
   timestamp: number;
 };
 
@@ -17,6 +18,7 @@ interface ChatPaneProps {
   onSendMessage: (prompt: string) => void;
   isProcessing: boolean;
   onClearChat: () => void;
+  onStopGenerating?: () => void;
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -24,6 +26,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onSendMessage,
   isProcessing,
   onClearChat,
+  onStopGenerating,
 }) => {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -151,23 +154,46 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
               )}
 
               {/* Message Bubble Content */}
-              <div
-                className={`rounded-lg px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%] whitespace-pre-wrap font-mono ${
-                  msg.sender === "user"
-                    ? "bg-blue-600 text-white rounded-br-none shadow-md"
-                    : "bg-black/60 border border-border text-gray-200 rounded-bl-none shadow"
-                }`}
-              >
-                {msg.text}
-              </div>
+              {msg.isError ? (
+                <div className="rounded-lg px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%] whitespace-pre-wrap font-mono bg-red-950/40 border border-red-500/30 text-red-300 rounded-bl-none shadow">
+                  <div className="flex items-center gap-1.5 mb-1 text-red-400 font-semibold">
+                    <AlertCircle className="h-3.5 w-3.5" /> Error
+                  </div>
+                  {msg.text}
+                </div>
+              ) : (
+                <div
+                  className={`rounded-lg px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%] whitespace-pre-wrap font-mono ${
+                    msg.sender === "user"
+                      ? "bg-blue-600 text-white rounded-br-none shadow-md"
+                      : "bg-black/60 border border-border text-gray-200 rounded-bl-none shadow"
+                  }`}
+                >
+                  {msg.text || (msg.sender === "agy" && isProcessing ? "" : msg.text)}
+                </div>
+              )}
             </div>
           ))
         )}
 
         {isProcessing && (
-          <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-950/20 border border-blue-500/30 rounded-md p-2.5 animate-pulse">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>AGY executing inside Daytona sandbox...</span>
+          <div className="flex items-center justify-between text-xs text-blue-400 bg-blue-950/20 border border-blue-500/30 rounded-md p-2.5">
+            <div className="flex items-center gap-2 animate-pulse">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>AGY executing inside Daytona sandbox...</span>
+            </div>
+            {onStopGenerating && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onStopGenerating}
+                className="h-7 gap-1.5 text-[11px] text-red-400 hover:text-red-300 hover:bg-red-950/30 border border-red-500/30"
+              >
+                <Square className="h-3 w-3 fill-current" />
+                Stop
+              </Button>
+            )}
           </div>
         )}
 
@@ -192,15 +218,27 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
             <Code2 className="h-3 w-3" /> Cmd+Enter to send
           </span>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!input.trim() || isProcessing}
-            className="gap-1.5 text-xs h-8 bg-blue-600 hover:bg-blue-500 text-white"
-          >
-            {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            Send Prompt
-          </Button>
+          {isProcessing ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onStopGenerating}
+              className="gap-1.5 text-xs h-8 bg-red-600 hover:bg-red-500 text-white"
+            >
+              <Square className="h-3 w-3 fill-current" />
+              Stop Generating
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!input.trim()}
+              className="gap-1.5 text-xs h-8 bg-blue-600 hover:bg-blue-500 text-white"
+            >
+              <Send className="h-3.5 w-3.5" />
+              Send Prompt
+            </Button>
+          )}
         </div>
       </form>
     </div>

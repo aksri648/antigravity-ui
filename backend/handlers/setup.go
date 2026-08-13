@@ -30,7 +30,7 @@ func VerifyDaytonaKey(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		profile, err := daytonaSvc.VerifyApiKey(req.ApiKey, req.ServerUrl)
+		profile, err := daytonaSvc.VerifyDaytonaKey(req.ApiKey, req.ServerUrl)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, models.VerifyDaytonaResponse{
 				Valid:   false,
