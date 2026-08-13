@@ -101,6 +101,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [savingGeminiKey, setSavingGeminiKey] = useState(false);
   const [geminiKeySuccess, setGeminiKeySuccess] = useState(false);
 
+  // Google AI Pro Quota Sync States
+  const [syncingPro, setSyncingPro] = useState(false);
+  const [syncProSuccess, setSyncProSuccess] = useState<string | null>(null);
+  const [syncProError, setSyncProError] = useState<string | null>(null);
+
+  // OAuth JSON Import State
+  const [oauthJsonInput, setOauthJsonInput] = useState("");
+  const [importingJson, setImportingJson] = useState(false);
+  const [importJsonSuccess, setImportJsonSuccess] = useState(false);
+
   // Environment Variables States
   const [envPairs, setEnvPairs] = useState<EnvPair[]>([]);
   const [rawEnv, setRawEnv] = useState("");
@@ -272,6 +282,67 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       console.error("Failed to save Gemini API key", err);
     } finally {
       setSavingGeminiKey(false);
+    }
+  };
+
+  // Sync Google AI Pro session from host machine to Daytona Sandbox
+  const handleSyncGooglePro = async () => {
+    setSyncingPro(true);
+    setSyncProSuccess(null);
+    setSyncProError(null);
+    try {
+      const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
+      const res = await fetch(apiUrl("/api/setup/sync-google-pro"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: keyToUse,
+          serverUrl: currentServerUrl,
+          sandboxId: currentSandboxId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSyncProSuccess(data.email || "Google AI Pro User");
+        setTimeout(() => checkAuthStatus(), 1000);
+      } else {
+        setSyncProError(data.error || "Failed to sync session from host");
+      }
+    } catch (err: any) {
+      setSyncProError(err.message || "Failed to connect to backend");
+    } finally {
+      setSyncingPro(false);
+    }
+  };
+
+  // Import Google OAuth JSON into Daytona persistent volume
+  const handleImportOAuthJSON = async () => {
+    if (!oauthJsonInput.trim()) return;
+    setImportingJson(true);
+    setImportJsonSuccess(false);
+    try {
+      const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
+      const res = await fetch(apiUrl("/api/setup/import-google-creds"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          apiKey: keyToUse,
+          serverUrl: currentServerUrl,
+          sandboxId: currentSandboxId,
+          json: oauthJsonInput.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setImportJsonSuccess(true);
+        setOauthJsonInput("");
+        setTimeout(() => setImportJsonSuccess(false), 4000);
+        setTimeout(() => checkAuthStatus(), 1000);
+      }
+    } catch (err) {
+      console.error("Failed to import JSON", err);
+    } finally {
+      setImportingJson(false);
     }
   };
 
@@ -598,8 +669,104 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === "googleAuth" && (
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Google AI Account & AGY Quota</h3>
-                  <p className="text-xs text-muted-foreground">Authenticate your Google AI Studio quota or Google account inside the Daytona persistent sandbox</p>
+                  <h3 className="text-sm font-semibold text-white">Google AI Pro & Antigravity Quota</h3>
+                  <p className="text-xs text-muted-foreground">Manage your Google AI Pro subscription quota or API credentials inside your Daytona persistent volume</p>
+                </div>
+
+                {/* FEATURE 1: ONE-CLICK LOCAL GOOGLE AI PRO SYNC */}
+                <div className="rounded-xl border border-purple-500/40 bg-purple-950/20 p-4 space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <span className="text-xs font-semibold text-white">Sync Google AI Pro Session</span>
+                    </div>
+                    <Badge variant="default" className="text-[10px] bg-purple-600 text-white font-mono">
+                      Recommended
+                    </Badge>
+                  </div>
+
+                  <p className="text-[11px] text-purple-200/80">
+                    Sync your active Google AI Pro logged-in session (<code className="bg-black/50 px-1 py-0.5 rounded text-purple-300">~/.gemini/oauth_creds.json</code>) from this machine straight into your Daytona persistent volume.
+                  </p>
+
+                  <div className="pt-1 flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      onClick={handleSyncGooglePro}
+                      disabled={syncingPro}
+                      className="gap-1.5 text-xs bg-purple-600 hover:bg-purple-500 text-white font-medium shadow-md cursor-pointer px-4"
+                    >
+                      {syncingPro ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      Sync Google AI Pro Quota
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={checkAuthStatus}
+                      disabled={checkingAuth}
+                      className="gap-1.5 text-xs border-border cursor-pointer"
+                    >
+                      {checkingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      Check Status
+                    </Button>
+                  </div>
+
+                  {syncProSuccess && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>Google AI Pro session for <b>{syncProSuccess}</b> successfully synced to Daytona sandbox volume!</span>
+                    </div>
+                  )}
+
+                  {syncProError && (
+                    <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/30 p-2.5 text-xs text-red-300">
+                      <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+                      <span>{syncProError}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* FEATURE 2: IMPORT GOOGLE OAUTH CREDENTIALS JSON */}
+                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Key className="h-4 w-4 text-blue-400" />
+                      <span className="text-xs font-semibold text-white">Import Google OAuth Credentials JSON</span>
+                    </div>
+                    <Badge variant="outline" className="text-blue-400 border-blue-500/40 font-mono text-[10px]">
+                      Manual Import
+                    </Badge>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Paste the contents of your <code className="bg-black/50 px-1 py-0.5 rounded text-gray-300">oauth_creds.json</code> to import your Google AI Pro session manually.
+                  </p>
+
+                  <div className="space-y-2">
+                    <textarea
+                      placeholder='{"access_token": "...", "refresh_token": "...", "scope": "..."}'
+                      value={oauthJsonInput}
+                      onChange={(e) => setOauthJsonInput(e.target.value)}
+                      rows={3}
+                      className="w-full font-mono text-[11px] p-2 rounded-lg bg-black/60 border border-border text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleImportOAuthJSON}
+                      disabled={importingJson || !oauthJsonInput.trim()}
+                      className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white shrink-0 cursor-pointer"
+                    >
+                      {importingJson ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      Import Credentials JSON
+                    </Button>
+                  </div>
+
+                  {importJsonSuccess && (
+                    <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>OAuth credentials JSON imported into Daytona persistent volume!</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Option A: Google Gemini AI Studio API Key */}

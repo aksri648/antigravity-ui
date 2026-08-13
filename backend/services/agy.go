@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -19,6 +21,99 @@ type AGYService struct {
 
 func NewAGYService(daytonaSvc *DaytonaService) *AGYService {
 	return &AGYService{daytonaSvc: daytonaSvc}
+}
+
+// SyncLocalGoogleCredentials syncs the host machine's active Google AI Pro session (~/.gemini/oauth_creds.json) to Daytona Sandbox
+func (s *AGYService) SyncLocalGoogleCredentials(apiKey string, serverUrl string, sandboxId string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get host user home directory: %w", err)
+	}
+
+	oauthCredsPath := filepath.Join(homeDir, ".gemini", "oauth_creds.json")
+	accountsPath := filepath.Join(homeDir, ".gemini", "google_accounts.json")
+
+	oauthData, err := os.ReadFile(oauthCredsPath)
+	if err != nil {
+		return "", fmt.Errorf("no host Google OAuth credentials found at %s: %w", oauthCredsPath, err)
+	}
+
+	accountsData, _ := os.ReadFile(accountsPath)
+	if len(accountsData) == 0 {
+		accountsData = []byte(`{"active":"user@google.com","old":[]}`)
+	}
+
+	// Extract active email from google_accounts.json if possible
+	var acc struct {
+		Active string `json:"active"`
+	}
+	_ = json.Unmarshal(accountsData, &acc)
+	activeEmail := acc.Active
+	if activeEmail == "" {
+		activeEmail = "Google AI Pro User"
+	}
+
+	syncCmd := fmt.Sprintf(`#!/usr/bin/env bash
+mkdir -p /home/daytona/persist/gemini /root/persist/gemini /root/.gemini /home/daytona/.gemini /root/.gemini/antigravity-cli /home/daytona/persist/gemini/antigravity-cli
+
+cat << 'EOF' > /home/daytona/persist/gemini/oauth_creds.json
+%s
+EOF
+
+cat << 'EOF' > /home/daytona/persist/gemini/google_accounts.json
+%s
+EOF
+
+cp /home/daytona/persist/gemini/oauth_creds.json /root/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /root/.gemini/google_accounts.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/oauth_creds.json /home/daytona/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /home/daytona/.gemini/google_accounts.json 2>/dev/null || true
+
+echo "SYNC_CREDENTIALS_OK"
+`, string(oauthData), string(accountsData))
+
+	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, syncCmd)
+	if err != nil {
+		return "", fmt.Errorf("failed executing sync command in sandbox: %w", err)
+	}
+
+	log.Printf("Google AI Pro session synced to Daytona sandbox %s (%s): %v", sandboxId, activeEmail, res)
+	return activeEmail, nil
+}
+
+// ImportGoogleOAuthJSON writes pasted Google OAuth credentials JSON into Daytona sandbox persistent volume
+func (s *AGYService) ImportGoogleOAuthJSON(apiKey string, serverUrl string, sandboxId string, jsonContent string, email string) error {
+	if strings.TrimSpace(jsonContent) == "" {
+		return fmt.Errorf("OAuth credentials JSON cannot be empty")
+	}
+
+	if email == "" {
+		email = "user@google.com"
+	}
+
+	accountsJSON := fmt.Sprintf(`{"active":"%s","old":[]}`, email)
+
+	importCmd := fmt.Sprintf(`#!/usr/bin/env bash
+mkdir -p /home/daytona/persist/gemini /root/persist/gemini /root/.gemini /home/daytona/.gemini /root/.gemini/antigravity-cli /home/daytona/persist/gemini/antigravity-cli
+
+cat << 'EOF' > /home/daytona/persist/gemini/oauth_creds.json
+%s
+EOF
+
+cat << 'EOF' > /home/daytona/persist/gemini/google_accounts.json
+%s
+EOF
+
+cp /home/daytona/persist/gemini/oauth_creds.json /root/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /root/.gemini/google_accounts.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/oauth_creds.json /home/daytona/.gemini/oauth_creds.json 2>/dev/null || true
+cp /home/daytona/persist/gemini/google_accounts.json /home/daytona/.gemini/google_accounts.json 2>/dev/null || true
+
+echo "IMPORT_CREDENTIALS_OK"
+`, jsonContent, accountsJSON)
+
+	_, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, importCmd)
+	return err
 }
 
 // BootstrapSandbox executes the idempotent bootstrap routine (dbus, gnome-keyring, symlinks to /home/daytona/persist)
@@ -79,6 +174,10 @@ echo "BOOTSTRAP_OK"
 `, keyringPassphrase)
 
 	_, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, bootstrapCmd)
+
+	// Automatically attempt syncing local Google AI Pro session to sandbox volume
+	_, _ = s.SyncLocalGoogleCredentials(apiKey, serverUrl, sandboxId)
+
 	return err
 }
 
@@ -91,7 +190,7 @@ func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId 
 		serverUrl = "https://app.daytona.io/api"
 	}
 
-	clientId := "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com"
+	clientId := "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
 	if oauthClientId != "" {
 		clientId = oauthClientId
 	}
@@ -110,7 +209,7 @@ func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId 
 		sbID = sb.ID
 	}
 
-	// 3. Ensure bootstrap is executed inside Daytona Sandbox
+	// 3. Ensure bootstrap & local session sync is executed inside Daytona Sandbox
 	s.BootstrapSandbox(apiKey, serverUrl, sbID, "user-keyring-pass-"+userId)
 
 	// 4. Try running agy auth command inside Daytona sandbox
@@ -146,11 +245,11 @@ func (s *AGYService) SubmitAuthCode(apiKey string, serverUrl string, sandboxId s
 		return nil, fmt.Errorf("authorization code cannot be empty")
 	}
 
-	clientId := "681255809395-oo8ft2oprdrnp9e3aqf6av3hmdib135j.apps.googleusercontent.com"
+	clientId := "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
 
 	// 1. Perform token exchange directly inside the Daytona sandbox container via curl to Google Token API
 	exchangeCmd := fmt.Sprintf(`
-mkdir -p /home/daytona/persist/gemini /root/.gemini /root/.gemini/antigravity-cli
+mkdir -p /home/daytona/persist/gemini /root/.gemini /root/.gemini/antigravity-cli /home/daytona/persist/gemini/antigravity-cli
 curl -s -X POST https://oauth2.googleapis.com/token \
   -d "client_id=%s" \
   -d "code=%s" \
@@ -180,7 +279,7 @@ fi
 
 	return &models.SubmitAuthCodeResponse{
 		Success: true,
-		Message: "Google Account AI quota successfully authenticated and saved to Daytona persistent volume!",
+		Message: "Google Account AI Pro quota successfully authenticated and saved to Daytona persistent volume!",
 	}, nil
 }
 
@@ -214,7 +313,7 @@ func (s *AGYService) StreamPromptExec(
 ) error {
 	eventCallback(models.StreamEvent{
 		Type:      "thought",
-		Content:   "Connecting to Daytona Sandbox & verifying Google Account AI quota...",
+		Content:   "Connecting to Daytona Sandbox & verifying Google Account AI Pro quota...",
 		SandboxID: sandboxId,
 		Timestamp: time.Now().UnixMilli(),
 	})
@@ -262,7 +361,7 @@ cd /home/daytona/persist/workspace 2>/dev/null || cd /root/workspace
 		
 		eventCallback(models.StreamEvent{
 			Type:      "error",
-			Content:   "🚫 Google Account Unauthenticated in Daytona Sandbox! Please open Settings > Google AI & AGY to authenticate or provide a Google Gemini API Key.",
+			Content:   "🚫 Google Account Unauthenticated in Daytona Sandbox! Please open Settings > Google AI & AGY to sync or authenticate your Google AI Pro account.",
 			SandboxID: sandboxId,
 			Timestamp: time.Now().UnixMilli(),
 		})
