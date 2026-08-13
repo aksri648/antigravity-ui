@@ -581,4 +581,20 @@ func GetVNCStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	}
 }
 
+// GetTelemetryHandler returns OpenTelemetry metrics and traces for the sandbox
+func GetTelemetryHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+
+		data, err := daytonaSvc.GetSandboxTelemetry(apiKey, "", sandboxId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, data)
+	}
+}
+
 

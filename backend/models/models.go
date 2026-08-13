@@ -165,3 +165,52 @@ type VNCActionRequest struct {
 	Action    string `json:"action"` // "start" | "stop" | "status"
 }
 
+// OpenTelemetry & Observability Models (https://www.daytona.io/docs/en/observability/otel-collection/)
+type SandboxTelemetryData struct {
+	SandboxID      string              `json:"sandboxId"`
+	Timestamp      int64               `json:"timestamp"`
+	CPU            CPUTelemetry        `json:"cpu"`
+	Memory         MemoryTelemetry     `json:"memory"`
+	Filesystem     FilesystemTelemetry `json:"filesystem"`
+	Uptime         string              `json:"uptime"`
+	ProcessCount   int                 `json:"processCount"`
+	ResourceLabels map[string]string   `json:"resourceLabels"`
+	OTelSpans      []OTelSpan          `json:"otelSpans"`
+	MetricsList    map[string]float64  `json:"metricsList"`
+}
+
+type CPUTelemetry struct {
+	UtilizationPct float64 `json:"utilizationPct"` // daytona.sandbox.cpu.utilization (0-100%)
+	LimitCores     int     `json:"limitCores"`     // daytona.sandbox.cpu.limit
+	Model          string  `json:"model,omitempty"`
+	LoadAvg        string  `json:"loadAvg,omitempty"`
+}
+
+type MemoryTelemetry struct {
+	UtilizationPct float64 `json:"utilizationPct"` // daytona.sandbox.memory.utilization (0-100%)
+	UsageBytes     int64   `json:"usageBytes"`     // daytona.sandbox.memory.usage
+	LimitBytes     int64   `json:"limitBytes"`     // daytona.sandbox.memory.limit
+	UsageFormatted string  `json:"usageFormatted"`
+	LimitFormatted string  `json:"limitFormatted"`
+}
+
+type FilesystemTelemetry struct {
+	UtilizationPct float64 `json:"utilizationPct"` // daytona.sandbox.filesystem.utilization (0-100%)
+	UsageBytes     int64   `json:"usageBytes"`     // daytona.sandbox.filesystem.usage
+	AvailableBytes int64   `json:"availableBytes"` // daytona.sandbox.filesystem.available
+	TotalBytes     int64   `json:"totalBytes"`     // daytona.sandbox.filesystem.total
+	UsageFormatted string  `json:"usageFormatted"`
+	TotalFormatted string  `json:"totalFormatted"`
+}
+
+type OTelSpan struct {
+	TraceID    string `json:"traceId"`
+	SpanID     string `json:"spanId"`
+	Name       string `json:"name"` // "daytona.process.execute", "daytona.sandbox.create", "http.request"
+	Kind       string `json:"kind"` // "INTERNAL", "SERVER", "CLIENT"
+	DurationMs int64  `json:"durationMs"`
+	StatusCode int    `json:"statusCode"`
+	Status     string `json:"status"` // "OK", "ERROR"
+	Timestamp  int64  `json:"timestamp"`
+}
+

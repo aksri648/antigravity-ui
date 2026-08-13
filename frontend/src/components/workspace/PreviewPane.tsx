@@ -18,12 +18,14 @@ import {
   Play,
   Square,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { FileTree } from "./FileTree";
 import type { FileNode } from "./FileTree";
+import { TelemetryView } from "./TelemetryView";
 
 interface PreviewPaneProps {
   sandboxId?: string;
@@ -42,7 +44,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   terminalLogs,
   onPortChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal" | "telemetry">("preview");
   const [iframeKey, setIframeKey] = useState(0);
 
   // Signed Preview URL State (Direct Daytona Auth embedded URL for iframes)
@@ -382,6 +384,14 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             className="h-7 text-xs gap-1.5 px-2.5 font-medium"
           >
             <Terminal className="h-3.5 w-3.5 text-amber-400" /> Daytona Terminal
+          </Button>
+          <Button
+            variant={activeTab === "telemetry" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("telemetry")}
+            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
+          >
+            <Activity className="h-3.5 w-3.5 text-cyan-400" /> Telemetry & OTEL
           </Button>
         </div>
 
@@ -834,6 +844,11 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               <span className="font-mono">{allLogs.length} lines</span>
             </div>
           </div>
+        )}
+
+        {/* MODE 4: OPEN TELEMETRY OBSERVABILITY DASHBOARD */}
+        {activeTab === "telemetry" && (
+          <TelemetryView sandboxId={sandboxId} apiKey={apiKey} />
         )}
       </div>
     </div>

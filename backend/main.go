@@ -63,6 +63,7 @@ func main() {
 		api.POST("/workspace/vnc/start", handlers.StartVNCHandler(daytonaSvc))
 		api.POST("/workspace/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/vnc/status", handlers.GetVNCStatusHandler(daytonaSvc))
+		api.GET("/workspace/telemetry", handlers.GetTelemetryHandler(daytonaSvc))
 	}
 
 	// WebSocket Endpoint for Real-time Streaming
