@@ -100,15 +100,8 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			req.UserId = "default-user"
 		}
 
-		// Ensure persistent volume exists for user's Google auth
-		vol, err := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, "", req.UserId)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access user volume: " + err.Error()})
-			return
-		}
-
-		// Provision sandbox
-		sb, err := daytonaSvc.CreateSandbox(req.ApiKey, "", req.UserId, vol.ID)
+		// Provision or retrieve active sandbox
+		sb, err := daytonaSvc.GetActiveSandbox(req.ApiKey, "", req.UserId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create sandbox: " + err.Error()})
 			return
@@ -202,6 +195,21 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		if req.Prompt == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Prompt cannot be empty"})
 			return
+		}
+
+		// If sandbox ID is missing, demo, or fallback, ensure a real Daytona sandbox is created
+		if req.SandboxID == "" || req.SandboxID == "sb-daytona-demo" || strings.HasPrefix(req.SandboxID, "sb-daytona-demo") {
+			vol, _ := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, "", req.UserId)
+			volID := ""
+			if vol != nil {
+				volID = vol.ID
+			}
+			sb, err := daytonaSvc.CreateSandbox(req.ApiKey, "", req.UserId, volID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Daytona sandbox: " + err.Error()})
+				return
+			}
+			req.SandboxID = sb.ID
 		}
 
 		// Cancel existing prompt for this sandbox if any

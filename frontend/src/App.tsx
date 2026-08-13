@@ -17,7 +17,7 @@ export function App() {
     return localStorage.getItem("daytona_api_key") ? "workspace" : "marketing";
   });
 
-  const [sandboxId, setSandboxId] = useState<string | undefined>("sb-daytona-demo");
+  const [sandboxId, setSandboxId] = useState<string | undefined>(() => localStorage.getItem("daytona_sandbox_id") || undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,6 +26,13 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Auto-provision or verify real Daytona sandbox when entering workspace
+  useEffect(() => {
+    if (apiKey && currentView === "workspace" && (!sandboxId || sandboxId === "sb-daytona-demo")) {
+      createWorkspace(apiKey, userId);
+    }
+  }, [apiKey, currentView, sandboxId, userId]);
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
@@ -108,15 +115,20 @@ export function App() {
   };
 
   // Complete setup wizard
-  const handleSetupComplete = (key: string, uid: string) => {
+  const handleSetupComplete = (key: string, uid: string, initialSandboxId?: string) => {
     localStorage.setItem("daytona_api_key", key);
     localStorage.setItem("daytona_user_id", uid);
     setApiKey(key);
     setUserId(uid);
     setCurrentView("workspace");
 
-    // Trigger workspace creation
-    createWorkspace(key, uid);
+    if (initialSandboxId) {
+      setSandboxId(initialSandboxId);
+      localStorage.setItem("daytona_sandbox_id", initialSandboxId);
+      setPreviewUrl(`https://${initialSandboxId}-${activePort}.daytona.app`);
+    } else {
+      createWorkspace(key, uid);
+    }
   };
 
   // Full reset app state & local storage — wipes Daytona volume + sandbox
@@ -158,14 +170,36 @@ export function App() {
       const data = await res.json();
       if (data.sandboxId) {
         setSandboxId(data.sandboxId);
+        localStorage.setItem("daytona_sandbox_id", data.sandboxId);
+        setPreviewUrl(`https://${data.sandboxId}-${activePort}.daytona.app`);
       }
     } catch (err) {
-      console.warn("Using default sandbox fallback", err);
+      console.warn("Failed to provision Daytona sandbox", err);
     }
   };
 
   // Send Prompt to AGY via Go Backend
   const handleSendMessage = async (promptText: string) => {
+    let currentSandbox = sandboxId;
+    if (!currentSandbox || currentSandbox === "sb-daytona-demo") {
+      try {
+        const res = await fetch("http://localhost:8080/api/workspace/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ apiKey: apiKey || "", userId }),
+        });
+        const data = await res.json();
+        if (data.sandboxId) {
+          currentSandbox = data.sandboxId;
+          setSandboxId(data.sandboxId);
+          localStorage.setItem("daytona_sandbox_id", data.sandboxId);
+          setPreviewUrl(`https://${data.sandboxId}-${activePort}.daytona.app`);
+        }
+      } catch (e) {
+        console.warn("Failed to auto-provision sandbox", e);
+      }
+    }
+
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: "user",
@@ -190,9 +224,9 @@ export function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: apiKey || "dev-key",
+          apiKey: apiKey || "",
           userId,
-          sandboxId: sandboxId || "sb-daytona-demo",
+          sandboxId: currentSandbox || "",
           prompt: promptText,
         }),
       });

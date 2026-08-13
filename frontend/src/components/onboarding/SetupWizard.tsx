@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 
 interface SetupWizardProps {
-  onComplete: (apiKey: string, userId: string) => void;
+  onComplete: (apiKey: string, userId: string, sandboxId?: string) => void;
 }
 
 export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
@@ -105,7 +105,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       if (res.ok && data.success) {
         setIsAuthVerified(true);
         setTimeout(() => {
-          onComplete(apiKey, userId);
+          onComplete(apiKey, userId, sandboxId || undefined);
         }, 600);
       } else {
         setError(data.error || "Failed to submit code to agy inside Daytona");
@@ -274,7 +274,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
               </Button>
             ) : (
               <Button
-                onClick={() => onComplete(apiKey, userId)}
+                onClick={() => onComplete(apiKey, userId, sandboxId || undefined)}
                 className="w-full gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 <CheckCircle2 className="h-4 w-4" /> Start Workspace
