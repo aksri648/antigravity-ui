@@ -624,18 +624,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-blue-400" />
                         <span className="text-xs font-bold text-white uppercase tracking-wider">
-                          Google OAuth Device Authentication
+                          Google Account Authentication
                         </span>
                       </div>
                       <Badge variant="default" className="text-[10px] bg-blue-600 text-white font-mono">
-                        Antigravity CLI Flow
+                        Google AI Developer Quota
                       </Badge>
                     </div>
 
                     {/* Step 1: Open URL */}
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-blue-200 flex items-center justify-between">
-                        <span>Step 1: Open Google Authorization URL</span>
+                        <span>Step 1: Open Google Sign-In & Authorize Quota</span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(authUrl, "authUrl")}
@@ -650,53 +650,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           type="text"
                           readOnly
                           value={authUrl}
-                          className="text-xs font-mono bg-black/60 border-blue-500/30 text-blue-300"
+                          className="text-xs font-mono bg-black/60 border-blue-500/30 text-blue-300 truncate"
                         />
                         <a
                           href={authUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-3.5 py-1.5 text-xs font-medium text-white shadow-md transition-all shrink-0 cursor-pointer"
+                          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-1.5 text-xs font-medium text-white shadow-md transition-all shrink-0 cursor-pointer"
                         >
-                          Open Link <ExternalLink className="h-3.5 w-3.5" />
+                          Open Google Sign-In <ExternalLink className="h-3.5 w-3.5" />
                         </a>
                       </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Sign in with your Google account, click <b>Allow</b>, and Google will display your authorization token on the screen.
+                      </p>
                     </div>
 
-                    {/* Step 2: One-Time Device Code */}
-                    {deviceCode && (
-                      <div className="space-y-1.5 rounded-lg bg-black/60 border border-blue-500/30 p-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-gray-200">Step 2: Enter One-Time Code</span>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(deviceCode, "deviceCode")}
-                            className="text-[11px] text-blue-400 hover:text-blue-300 flex items-center gap-1 font-mono cursor-pointer"
-                          >
-                            {copiedField === "deviceCode" ? <CheckCheck className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                            {copiedField === "deviceCode" ? "Copied Code!" : "Copy Code"}
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-xl font-bold font-mono tracking-widest text-amber-300 bg-amber-500/10 px-3 py-1 rounded border border-amber-500/30">
-                            {deviceCode}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground max-w-xs text-right">
-                            Enter this code on the Google authorization page when prompted.
-                          </span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Step 3: Paste Response Code */}
-                    <div className="space-y-1.5 pt-1">
+                    {/* Step 2: Paste Response Token */}
+                    <div className="space-y-1.5 pt-2 border-t border-blue-500/20">
                       <label className="text-xs font-semibold text-gray-200">
-                        Step 3: Paste Google Authorization Response Code:
+                        Step 2: Paste Google Authorization Token:
                       </label>
                       <div className="flex gap-2">
                         <Input
                           type="text"
-                          placeholder="Paste authorization token from Google..."
+                          placeholder="Paste authorization token from Google (e.g. 4/0AQ...)..."
                           value={pastedAuthCode}
                           onChange={(e) => setPastedAuthCode(e.target.value)}
                           className="font-mono text-xs bg-black/60 border-blue-500/40 text-emerald-300"
@@ -705,7 +683,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           size="sm"
                           onClick={handleSubmitAuthCode}
                           disabled={submittingAuth || !pastedAuthCode}
-                          className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white shrink-0 cursor-pointer"
+                          className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white shrink-0 cursor-pointer px-4"
                         >
                           {submittingAuth ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                           Complete Authentication
@@ -716,7 +694,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {authSuccess && (
                       <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300">
                         <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-                        <span>Google OAuth Credentials successfully saved to Daytona volume!</span>
+                        <span>Google OAuth Credentials successfully saved to Daytona persistent volume!</span>
                       </div>
                     )}
                   </div>
