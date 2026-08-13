@@ -106,6 +106,13 @@ type SendPromptRequest struct {
 	Prompt    string `json:"prompt"`
 }
 
+type FileNode struct {
+	Name     string      `json:"name"`
+	Path     string      `json:"path"`
+	IsDir    bool        `json:"isDir"`
+	Children []*FileNode `json:"children,omitempty"`
+}
+
 // Real-Time WebSocket Streaming Payload
 type StreamEvent struct {
 	Type      string      `json:"type"`      // "thought", "tool_start", "tool_end", "token", "port_detected", "error", "done"

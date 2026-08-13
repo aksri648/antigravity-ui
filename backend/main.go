@@ -49,6 +49,7 @@ func main() {
 		// Workspace & Agent Execution Endpoints
 		api.POST("/workspace/create", handlers.CreateWorkspace(daytonaSvc))
 		api.GET("/workspace/status/:sandboxId", handlers.GetWorkspaceStatus(daytonaSvc))
+		api.GET("/workspace/files", handlers.ListWorkspaceFiles(daytonaSvc))
 		api.GET("/workspace/file-content", handlers.GetFileContent(daytonaSvc))
 		api.POST("/workspace/file-save", handlers.SaveFileContent(daytonaSvc))
 		api.POST("/workspace/prompt", handlers.SendPrompt(daytonaSvc, agySvc, wsHub))

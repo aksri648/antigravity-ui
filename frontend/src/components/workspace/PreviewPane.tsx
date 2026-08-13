@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { RotateCw, ExternalLink, Code, Terminal, Globe, MonitorCheck, FileCode, Save, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { RotateCw, ExternalLink, Code, Terminal, Globe, MonitorCheck, FileCode, Save, CheckCircle2, Loader2, RefreshCw, X } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { FileTree } from "./FileTree";
+import type { FileNode } from "./FileTree";
 
 interface PreviewPaneProps {
   sandboxId?: string;
@@ -13,12 +15,20 @@ interface PreviewPaneProps {
   onPortChange: (port: number) => void;
 }
 
-const DEFAULT_FILES = [
-  { path: "src/App.tsx", lang: "typescript" },
-  { path: "src/main.tsx", lang: "typescript" },
-  { path: "index.html", lang: "html" },
-  { path: "package.json", lang: "json" },
-  { path: "vite.config.ts", lang: "typescript" },
+const DEFAULT_TREE: FileNode[] = [
+  {
+    name: "src",
+    path: "src",
+    isDir: true,
+    children: [
+      { name: "App.tsx", path: "src/App.tsx", isDir: false },
+      { name: "main.tsx", path: "src/main.tsx", isDir: false },
+      { name: "index.css", path: "src/index.css", isDir: false },
+    ],
+  },
+  { name: "index.html", path: "index.html", isDir: false },
+  { name: "package.json", path: "package.json", isDir: false },
+  { name: "vite.config.ts", path: "vite.config.ts", IsDir: false } as any,
 ];
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
@@ -33,6 +43,8 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const [iframeKey, setIframeKey] = useState(0);
 
   // VS Code Code View State
+  const [fileTree, setFileTree] = useState<FileNode[]>(DEFAULT_TREE);
+  const [openTabs, setOpenTabs] = useState<string[]>(["src/App.tsx"]);
   const [selectedFile, setSelectedFile] = useState("src/App.tsx");
   const [fileContent, setFileContent] = useState<string>("// Loading file from Daytona sandbox...");
   const [loadingFile, setLoadingFile] = useState(false);
@@ -42,9 +54,28 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   // Daytona Sandbox Preview URL (https://<sandboxId>-<port>.daytona.app)
   const daytonaPreviewUrl = previewUrl || `https://${sandboxId}-${activePort}.daytona.app`;
 
-  // Fetch File Content from Daytona Sandbox
+  // Fetch Directory File Tree from Daytona Sandbox
   useEffect(() => {
     if (activeTab === "code") {
+      fetchFileTree();
+    }
+  }, [sandboxId, apiKey, activeTab]);
+
+  const fetchFileTree = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/workspace/files?sandboxId=${sandboxId}&apiKey=${apiKey}`);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setFileTree(data);
+      }
+    } catch (e) {
+      console.warn("Using fallback file tree", e);
+    }
+  };
+
+  // Fetch Selected File Content from Daytona Sandbox
+  useEffect(() => {
+    if (activeTab === "code" && selectedFile) {
       fetchSandboxFile(selectedFile);
     }
   }, [selectedFile, activeTab]);
@@ -57,12 +88,29 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
       if (data.content) {
         setFileContent(data.content);
       } else {
-        setFileContent(`// ${path}\n// File ready in Daytona Sandbox`);
+        setFileContent(`// ${path}\n// File content in Daytona Sandbox`);
       }
     } catch (e) {
       setFileContent(`// ${path}\n// Daytona Sandbox Code View`);
     } finally {
       setLoadingFile(false);
+    }
+  };
+
+  // Handle Opening File Tabs
+  const handleSelectFile = (path: string) => {
+    if (!openTabs.includes(path)) {
+      setOpenTabs((prev) => [...prev, path]);
+    }
+    setSelectedFile(path);
+  };
+
+  const handleCloseTab = (e: React.MouseEvent, path: string) => {
+    e.stopPropagation();
+    const filtered = openTabs.filter((t) => t !== path);
+    setOpenTabs(filtered);
+    if (selectedFile === path && filtered.length > 0) {
+      setSelectedFile(filtered[filtered.length - 1]);
     }
   };
 
@@ -94,6 +142,17 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
   const handleRefreshPreview = () => {
     setIframeKey((prev) => prev + 1);
+  };
+
+  // Detect editor language from extension
+  const getLanguage = (path: string) => {
+    const ext = path.split(".").pop()?.toLowerCase();
+    if (ext === "tsx" || ext === "ts") return "typescript";
+    if (ext === "jsx" || ext === "js") return "javascript";
+    if (ext === "json") return "json";
+    if (ext === "html") return "html";
+    if (ext === "css") return "css";
+    return "plaintext";
   };
 
   return (
@@ -227,54 +286,68 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         {/* MODE 2: VS CODE-LIKE IDE CODE EDITOR */}
         {activeTab === "code" && (
           <div className="h-full w-full flex bg-[#1e1e1e] text-gray-300">
-            {/* VS Code Left File Explorer Sidebar */}
-            <div className="w-56 border-r border-[#2b2b2b] bg-[#252526] flex flex-col">
+            {/* VS Code Left Nested File Explorer Sidebar */}
+            <div className="w-64 border-r border-[#2b2b2b] bg-[#252526] flex flex-col shrink-0">
               <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-gray-400 border-b border-[#2b2b2b] flex items-center justify-between">
                 <span>Explorer</span>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => fetchSandboxFile(selectedFile)}
+                  onClick={fetchFileTree}
                   className="h-5 w-5 text-gray-400 hover:text-white"
-                  title="Reload File from Daytona Sandbox"
+                  title="Reload File Tree from Daytona Sandbox"
                 >
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               </div>
 
-              <div className="p-2 space-y-0.5 flex-1 overflow-y-auto text-xs">
-                <div className="px-2 py-1 text-[10px] text-gray-500 font-semibold uppercase">Daytona Workspace Root</div>
-                {DEFAULT_FILES.map((file) => (
-                  <button
-                    key={file.path}
-                    onClick={() => setSelectedFile(file.path)}
-                    className={`w-full text-left px-2 py-1.5 rounded flex items-center gap-2 font-mono text-xs transition-colors ${
-                      selectedFile === file.path
-                        ? "bg-[#37373d] text-white font-semibold"
-                        : "hover:bg-[#2a2d2e] text-gray-400 hover:text-gray-200"
-                    }`}
-                  >
-                    <FileCode className="h-3.5 w-3.5 text-blue-400" />
-                    <span>{file.path}</span>
-                  </button>
-                ))}
+              <div className="p-1 flex-1 overflow-y-auto overflow-x-hidden text-xs">
+                <div className="px-2 py-1 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  Daytona Sandbox File System
+                </div>
+                <FileTree
+                  nodes={fileTree}
+                  selectedPath={selectedFile}
+                  onSelectFile={handleSelectFile}
+                />
               </div>
             </div>
 
             {/* VS Code Main Editor Area */}
-            <div className="flex-1 flex flex-col bg-[#1e1e1e]">
+            <div className="flex-1 flex flex-col bg-[#1e1e1e] min-w-0">
               {/* File Tab Bar & Save Button */}
-              <div className="h-9 bg-[#2d2d2d] border-b border-[#2b2b2b] px-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 bg-[#1e1e1e] px-3 py-1.5 rounded-t text-xs font-mono text-white border-t-2 border-blue-500">
-                  <FileCode className="h-3.5 w-3.5 text-blue-400" />
-                  <span>{selectedFile}</span>
+              <div className="h-9 bg-[#2d2d2d] border-b border-[#2b2b2b] flex items-center justify-between px-2 overflow-x-auto">
+                {/* File Tabs */}
+                <div className="flex items-center gap-1 overflow-x-auto py-1">
+                  {openTabs.map((tabPath) => (
+                    <div
+                      key={tabPath}
+                      onClick={() => setSelectedFile(tabPath)}
+                      className={`group flex items-center gap-2 px-3 py-1 text-xs font-mono rounded-t cursor-pointer border-t-2 select-none transition-colors ${
+                        selectedFile === tabPath
+                          ? "bg-[#1e1e1e] text-white border-blue-500 font-semibold"
+                          : "bg-[#2d2d2d] text-gray-400 hover:bg-[#252526] hover:text-gray-200 border-transparent"
+                      }`}
+                    >
+                      <FileCode className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                      <span className="truncate max-w-[140px]">{tabPath.split("/").pop()}</span>
+                      {openTabs.length > 1 && (
+                        <button
+                          onClick={(e) => handleCloseTab(e, tabPath)}
+                          className="h-4 w-4 rounded hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 <Button
                   size="sm"
                   onClick={handleSaveFile}
                   disabled={savingFile}
-                  className="h-7 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium"
+                  className="h-7 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium shrink-0 ml-2"
                 >
                   {savingFile ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -298,7 +371,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                     height="100%"
                     theme="vs-dark"
                     path={selectedFile}
-                    defaultLanguage="typescript"
+                    language={getLanguage(selectedFile)}
                     value={fileContent}
                     onChange={(val) => setFileContent(val || "")}
                     options={{

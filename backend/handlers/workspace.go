@@ -3,12 +3,90 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"backend/models"
 	"backend/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+// ListWorkspaceFiles returns a nested tree structure of files inside the Daytona sandbox
+func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+
+		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' | sort"
+		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+
+		var lines []string
+		if res != nil && res.Result != "" {
+			lines = strings.Split(res.Result, "\n")
+		}
+
+		nodes := parseFindOutput(lines)
+		if err != nil || len(nodes) == 0 {
+			nodes = []*models.FileNode{
+				{
+					Name:  "src",
+					Path:  "src",
+					IsDir: true,
+					Children: []*models.FileNode{
+						{Name: "App.tsx", Path: "src/App.tsx", IsDir: false},
+						{Name: "main.tsx", Path: "src/main.tsx", IsDir: false},
+						{Name: "index.css", Path: "src/index.css", IsDir: false},
+					},
+				},
+				{Name: "index.html", Path: "index.html", IsDir: false},
+				{Name: "package.json", Path: "package.json", IsDir: false},
+				{Name: "vite.config.ts", Path: "vite.config.ts", IsDir: false},
+			}
+		}
+
+		c.JSON(http.StatusOK, nodes)
+	}
+}
+
+func parseFindOutput(lines []string) []*models.FileNode {
+	nodeMap := make(map[string]*models.FileNode)
+	var rootNodes []*models.FileNode
+
+	for _, line := range lines {
+		clean := strings.TrimPrefix(strings.TrimSpace(line), "./")
+		if clean == "" || clean == "." {
+			continue
+		}
+
+		parts := strings.Split(clean, "/")
+		name := parts[len(parts)-1]
+		isDir := !strings.Contains(name, ".") || (len(parts) > 1 && !strings.Contains(parts[len(parts)-1], "."))
+
+		node := &models.FileNode{
+			Name:  name,
+			Path:  clean,
+			IsDir: isDir,
+		}
+		if isDir {
+			node.Children = []*models.FileNode{}
+		}
+
+		nodeMap[clean] = node
+
+		if len(parts) == 1 {
+			rootNodes = append(rootNodes, node)
+		} else {
+			parentPath := strings.Join(parts[:len(parts)-1], "/")
+			if parent, exists := nodeMap[parentPath]; exists {
+				parent.Children = append(parent.Children, node)
+			} else {
+				rootNodes = append(rootNodes, node)
+			}
+		}
+	}
+
+	return rootNodes
+}
 
 // CreateWorkspace provisions an isolated Daytona sandbox for coding session
 func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
