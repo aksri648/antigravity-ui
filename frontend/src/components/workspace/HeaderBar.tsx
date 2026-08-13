@@ -5,21 +5,25 @@ import { Button } from "../ui/button";
 
 interface HeaderBarProps {
   sandboxId?: string;
+  isProvisioning?: boolean;
   userId: string;
   userEmail?: string;
   userName?: string;
   onOpenSettings: () => void;
   onOpenAuth?: (mode: "signin" | "signup") => void;
+  onStartSandbox?: () => void;
   onExitWorkspace: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   sandboxId,
+  isProvisioning,
   userId,
   userEmail,
   userName,
   onOpenSettings,
   onOpenAuth,
+  onStartSandbox,
   onExitWorkspace,
 }) => {
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : userId.substring(0, 8));
@@ -46,13 +50,37 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
       {/* Status Badges & SaaS Account Controls */}
       <div className="flex items-center gap-2.5">
         <div className="hidden md:flex items-center gap-2">
-          <Badge variant="success" className="gap-1 text-[11px] py-0.5">
-            <Cpu className="h-3 w-3" /> Sandbox: {sandboxId ? sandboxId.substring(0, 14) : "Initializing..."}
-          </Badge>
+          {/* Dynamic Sandbox Status / Start Button */}
+          {sandboxId ? (
+            <Badge variant="success" className="gap-1.5 text-[11px] py-0.5 bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <Cpu className="h-3 w-3 text-emerald-400" /> {sandboxId.substring(0, 14)}
+            </Badge>
+          ) : isProvisioning ? (
+            <Badge variant="default" className="gap-1.5 text-[11px] py-0.5 bg-blue-500/10 text-blue-300 border-blue-500/30 animate-pulse">
+              <Cpu className="h-3 w-3 text-blue-400 animate-spin" /> Provisioning Sandbox...
+            </Badge>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[11px] py-0.5 text-amber-300/80 border-amber-500/30 bg-amber-500/5">
+                <Cpu className="h-3 w-3 mr-1 text-amber-400" /> Sandbox: Stopped
+              </Badge>
+              {onStartSandbox && (
+                <Button
+                  size="sm"
+                  onClick={onStartSandbox}
+                  className="h-7 text-xs px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-1 shadow-sm shadow-emerald-600/20 cursor-pointer"
+                  title="Launch or provision your isolated Daytona sandbox microVM"
+                >
+                  <Sparkles className="h-3 w-3" /> Start Sandbox
+                </Button>
+              )}
+            </div>
+          )}
           
           {/* User Account / Profile Badge */}
           <div className="flex items-center gap-1.5 bg-muted/60 border border-border px-2.5 py-0.5 rounded-full text-[11px] text-white">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
             <User className="h-3 w-3 text-blue-400" />
             <span className="font-medium">{displayName}</span>
             {isGuest && (

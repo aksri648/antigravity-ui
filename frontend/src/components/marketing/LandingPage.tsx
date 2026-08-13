@@ -21,11 +21,12 @@ import { Badge } from "../ui/badge";
 
 interface LandingPageProps {
   onStartSetup: () => void;
+  onLaunchWorkspace: () => void;
   onOpenAuth: (mode: "signin" | "signup") => void;
   onResetApp: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onOpenAuth, onResetApp }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onLaunchWorkspace, onOpenAuth, onResetApp }) => {
   return (
     <div className="min-h-screen w-full bg-background text-foreground flex flex-col overflow-y-auto selection:bg-blue-500 selection:text-white">
       
@@ -44,12 +45,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onOpenAu
         </div>
 
         {/* Top Navbar Links & Auth Action Buttons */}
-        <div className="flex items-center gap-3">
-          <a href="#features" className="hidden sm:inline-block text-xs text-muted-foreground hover:text-white transition-colors">
+        <div className="flex items-center gap-2.5">
+          <a href="#features" className="hidden sm:inline-block text-xs text-muted-foreground hover:text-white transition-colors mr-2">
             Features
-          </a>
-          <a href="#architecture" className="hidden sm:inline-block text-xs text-muted-foreground hover:text-white transition-colors">
-            Architecture
           </a>
 
           <Button
@@ -62,18 +60,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onOpenAu
           </Button>
 
           <Button
+            variant="outline"
             size="sm"
             onClick={() => onOpenAuth("signup")}
-            className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 font-medium cursor-pointer"
+            className="h-8 text-xs gap-1.5 border-border text-white hover:bg-accent font-medium cursor-pointer"
           >
-            <UserPlus className="h-3.5 w-3.5" /> Sign Up Free
+            <UserPlus className="h-3.5 w-3.5 text-indigo-400" /> Sign Up
           </Button>
 
           <Button
-            variant="outline"
+            size="sm"
+            onClick={onLaunchWorkspace}
+            className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 font-medium cursor-pointer"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Launch Workspace
+          </Button>
+
+          <Button
+            variant="ghost"
             size="sm"
             onClick={onResetApp}
-            className="hidden md:inline-flex h-8 text-xs border-border text-muted-foreground hover:text-white"
+            className="hidden md:inline-flex h-8 text-xs text-muted-foreground hover:text-white"
             title="Reset cached configuration"
           >
             Reset
@@ -99,31 +106,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onOpenAu
         </p>
 
         {/* Primary Call-To-Action SaaS Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
           <Button
             size="lg"
-            onClick={() => onOpenAuth("signup")}
+            onClick={onLaunchWorkspace}
             className="h-12 px-8 text-sm gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-xl shadow-blue-600/25 transition-all hover:scale-105 cursor-pointer"
           >
-            <UserPlus className="h-4 w-4" /> Create Free Account <ArrowRight className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" /> Launch Cloud Workspace <ArrowRight className="h-4 w-4" />
           </Button>
 
           <Button
             variant="outline"
             size="lg"
-            onClick={() => onOpenAuth("signin")}
-            className="h-12 px-7 text-sm gap-2 border-border bg-card/70 text-white hover:bg-accent transition-all cursor-pointer"
+            onClick={() => onOpenAuth("signup")}
+            className="h-12 px-6 text-sm gap-2 border-border bg-card/70 text-white hover:bg-accent transition-all cursor-pointer"
           >
-            <LogIn className="h-4 w-4 text-blue-400" /> Sign In to Workspace
+            <UserPlus className="h-4 w-4 text-indigo-400" /> Create Account
           </Button>
 
           <Button
             variant="ghost"
             size="lg"
-            onClick={onStartSetup}
+            onClick={() => onOpenAuth("signin")}
             className="h-12 px-5 text-sm gap-1.5 text-muted-foreground hover:text-white"
           >
-            <Zap className="h-4 w-4 text-amber-400" /> Guest Setup
+            <LogIn className="h-4 w-4 text-blue-400" /> Log In
           </Button>
         </div>
 

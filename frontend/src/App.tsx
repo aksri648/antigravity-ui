@@ -18,15 +18,11 @@ export function App() {
   const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
   
   // App Navigation Views: "marketing" | "auth" | "setup" | "workspace"
-  const [currentView, setCurrentView] = useState<"marketing" | "auth" | "setup" | "workspace">(() => {
-    if (localStorage.getItem("daytona_api_key") || localStorage.getItem("auth_token")) {
-      return "workspace";
-    }
-    return "marketing";
-  });
+  const [currentView, setCurrentView] = useState<"marketing" | "auth" | "setup" | "workspace">("marketing");
 
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProvisioning, setIsProvisioning] = useState(false);
   const [sandboxId, setSandboxId] = useState<string | undefined>(() => localStorage.getItem("daytona_sandbox_id") || undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
@@ -105,13 +101,6 @@ export function App() {
       // Keep existing in-memory messages if fetch fails
     }
   };
-
-  // Auto-provision or verify real Daytona sandbox when entering workspace
-  useEffect(() => {
-    if (apiKey && currentView === "workspace" && (!sandboxId || sandboxId === "sb-daytona-demo")) {
-      createWorkspace(apiKey, userId);
-    }
-  }, [apiKey, currentView, sandboxId, userId]);
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
@@ -226,13 +215,7 @@ export function App() {
     }
 
     setIsAuthModalOpen(false);
-
-    // Check if onboarding setup is needed
-    if (!authData.user.daytonaApiKey) {
-      setCurrentView("setup");
-    } else {
-      setCurrentView("workspace");
-    }
+    setCurrentView("workspace");
   };
 
   // Complete setup wizard
@@ -254,14 +237,12 @@ export function App() {
 
   // Exit Workspace — Instant 0ms response to return to SaaS Home / Login
   const handleExitWorkspace = useCallback(() => {
-    // Instant UI state transition without any blocking network requests
     setCurrentView("marketing");
     setIsProcessing(false);
   }, []);
 
   // Full reset app state & local storage — wipes Daytona volume + sandbox
   const handleResetApp = async () => {
-    // 1. Immediately switch view and clear local state (Instant 0ms UI update)
     const currentKey = apiKey;
     const currentUid = userId;
     const currentSb = sandboxId;
@@ -278,7 +259,6 @@ export function App() {
     setIsProcessing(false);
     setCurrentView("marketing");
 
-    // 2. Perform backend cleanup asynchronously in background
     if (currentKey && currentSb) {
       fetch(apiUrl("/api/workspace/reset"), {
         method: "POST",
@@ -293,8 +273,9 @@ export function App() {
     }
   };
 
-  // Create Daytona Workspace via Go Backend
+  // Create or Provision Daytona Workspace via Go Backend
   const createWorkspace = async (key: string, uid: string) => {
+    setIsProvisioning(true);
     try {
       const res = await fetch(apiUrl("/api/workspace/create"), {
         method: "POST",
@@ -310,22 +291,49 @@ export function App() {
         setSandboxId(data.sandboxId);
         localStorage.setItem("daytona_sandbox_id", data.sandboxId);
         setPreviewUrl(`https://${data.sandboxId}-${activePort}.daytona.app`);
+      } else if (data.error) {
+        console.warn("Daytona provision error:", data.error);
+        if (data.error.toLowerCase().includes("key") || data.error.toLowerCase().includes("auth") || data.error.includes("401")) {
+          setIsSettingsOpen(true);
+        }
       }
     } catch (err) {
       console.warn("Failed to provision Daytona sandbox", err);
+    } finally {
+      setIsProvisioning(false);
     }
+  };
+
+  // Start Sandbox Handler — Triggered by "Start Sandbox" button in HeaderBar
+  const handleStartSandbox = async () => {
+    const currentKey = apiKey || localStorage.getItem("daytona_api_key");
+    if (!currentKey) {
+      // Credentials missing: Prompt user with settings modal to input Daytona API Key
+      setIsSettingsOpen(true);
+      return;
+    }
+
+    await createWorkspace(currentKey, userId);
   };
 
   // Send Prompt to AGY via Go Backend
   const handleSendMessage = async (promptText: string) => {
+    let currentKey = apiKey || localStorage.getItem("daytona_api_key");
+    if (!currentKey) {
+      // Prompt user to provide credentials before executing prompt
+      setIsSettingsOpen(true);
+      return;
+    }
+
     let currentSandbox = sandboxId;
     if (!currentSandbox || currentSandbox === "sb-daytona-demo") {
+      setIsProvisioning(true);
       try {
         const res = await fetch(apiUrl("/api/workspace/create"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            apiKey: apiKey || "",
+            apiKey: currentKey,
             serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
             userId,
           }),
@@ -339,6 +347,8 @@ export function App() {
         }
       } catch (e) {
         console.warn("Failed to auto-provision sandbox", e);
+      } finally {
+        setIsProvisioning(false);
       }
     }
 
@@ -366,7 +376,7 @@ export function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: apiKey || "",
+          apiKey: currentKey,
           serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId,
           sandboxId: currentSandbox || "",
@@ -382,7 +392,6 @@ export function App() {
   const handleClearChat = async () => {
     setMessages([]);
     setTerminalLogs([]);
-    // Delete in SQLite database
     try {
       fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }), {
         method: "DELETE",
@@ -401,7 +410,6 @@ export function App() {
     } catch (err) {
       console.warn("Failed to stop generation", err);
     }
-    // Immediately reset UI so user isn't stuck
     setIsProcessing(false);
     setMessages((prev) => {
       if (prev.length === 0) return prev;
@@ -425,6 +433,10 @@ export function App() {
     if (newConfig.apiKey !== undefined) {
       setApiKey(newConfig.apiKey);
       localStorage.setItem("daytona_api_key", newConfig.apiKey);
+      // Auto-start sandbox if user just configured their key
+      if (newConfig.apiKey.trim() && !sandboxId) {
+        createWorkspace(newConfig.apiKey, userId);
+      }
     }
     if (newConfig.serverUrl !== undefined) {
       setServerUrl(newConfig.serverUrl);
@@ -451,12 +463,18 @@ export function App() {
 
   // Recreate Sandbox Container (fresh VM attached to persistent volume)
   const handleRecreateSandbox = async () => {
+    const currentKey = apiKey || localStorage.getItem("daytona_api_key") || "";
+    if (!currentKey) {
+      setIsSettingsOpen(true);
+      return;
+    }
+    setIsProvisioning(true);
     try {
       const res = await fetch(apiUrl("/api/workspace/recreate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: apiKey || "",
+          apiKey: currentKey,
           serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId: userId,
         }),
@@ -469,6 +487,8 @@ export function App() {
       }
     } catch (err) {
       console.warn("Failed to recreate sandbox", err);
+    } finally {
+      setIsProvisioning(false);
     }
   };
 
@@ -480,6 +500,9 @@ export function App() {
           onStartSetup={() => {
             setAuthMode("signup");
             setCurrentView("auth");
+          }}
+          onLaunchWorkspace={() => {
+            setCurrentView("workspace");
           }}
           onOpenAuth={(mode) => {
             setAuthMode(mode);
@@ -494,7 +517,7 @@ export function App() {
         <AuthView
           initialMode={authMode}
           onAuthSuccess={handleAuthSuccess}
-          onContinueAsGuest={() => setCurrentView("setup")}
+          onContinueAsGuest={() => setCurrentView("workspace")}
           onClose={() => setCurrentView("marketing")}
         />
       )}
@@ -510,6 +533,7 @@ export function App() {
           {/* Main Workspace Navigation Header */}
           <HeaderBar
             sandboxId={sandboxId}
+            isProvisioning={isProvisioning}
             userId={userId}
             userEmail={userEmail}
             userName={userName}
@@ -518,6 +542,7 @@ export function App() {
               setAuthMode(mode);
               setIsAuthModalOpen(true);
             }}
+            onStartSandbox={handleStartSandbox}
             onExitWorkspace={handleExitWorkspace}
           />
 
