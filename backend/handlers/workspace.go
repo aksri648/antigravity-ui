@@ -108,10 +108,25 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService, userSvc *services.User
 			}
 		}
 
-		// Provision or retrieve active sandbox
+		// Fallback to stored API key in SQLite if not passed in body
+		if req.ApiKey == "" && userSvc != nil {
+			if user, err := userSvc.GetUserByID(req.UserId); err == nil && user != nil && user.DaytonaApiKey != "" {
+				req.ApiKey = user.DaytonaApiKey
+				if req.ServerUrl == "" && user.DaytonaServerUrl != "" {
+					req.ServerUrl = user.DaytonaServerUrl
+				}
+			}
+		}
+
+		if req.ApiKey == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Daytona API Key is required to create a workspace sandbox. Please configure your API key in Settings."})
+			return
+		}
+
+		// Provision or retrieve active sandbox from Daytona
 		sb, err := daytonaSvc.GetActiveSandbox(req.ApiKey, req.ServerUrl, req.UserId)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create sandbox: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create sandbox in Daytona: " + err.Error()})
 			return
 		}
 
@@ -124,7 +139,7 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService, userSvc *services.User
 			Success:   "true",
 			SandboxID: sb.ID,
 			State:     sb.State,
-			Message:   "Daytona workspace provisioned successfully with mounted Google AI quota volume.",
+			Message:   "Daytona workspace provisioned successfully with persistent volume.",
 		})
 	}
 }
