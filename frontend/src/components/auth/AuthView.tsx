@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Eye,
   EyeOff,
+  X,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -21,6 +22,7 @@ import { Badge } from "../ui/badge";
 import { apiUrl } from "../../config/api";
 
 interface AuthViewProps {
+  initialMode?: "signin" | "signup";
   onAuthSuccess: (authData: {
     token: string;
     user: {
@@ -38,10 +40,16 @@ interface AuthViewProps {
     };
   }) => void;
   onContinueAsGuest: () => void;
+  onClose?: () => void;
 }
 
-export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, onContinueAsGuest }) => {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+export const AuthView: React.FC<AuthViewProps> = ({
+  initialMode = "signin",
+  onAuthSuccess,
+  onContinueAsGuest,
+  onClose,
+}) => {
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -155,14 +163,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ onAuthSuccess, onContinueAsG
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-2xl space-y-6">
+      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-2xl space-y-6">
+        {/* Close Button */}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-white transition-colors"
+            title="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+
         {/* SaaS Header */}
         <div className="text-center space-y-2">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/25 mb-1">
             <Sparkles className="h-6 w-6" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-white">
-            {mode === "signin" ? "Welcome back to AGY Cloud" : "Create your SaaS Account"}
+            {mode === "signin" ? "Sign In to AGY Cloud" : "Create your SaaS Account"}
           </h2>
           <p className="text-xs text-muted-foreground">
             {mode === "signin"

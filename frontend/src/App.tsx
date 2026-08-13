@@ -25,6 +25,8 @@ export function App() {
     return "marketing";
   });
 
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [sandboxId, setSandboxId] = useState<string | undefined>(() => localStorage.getItem("daytona_sandbox_id") || undefined);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
@@ -222,6 +224,8 @@ export function App() {
         setPreviewUrl(authData.activeSandbox.previewUrl);
       }
     }
+
+    setIsAuthModalOpen(false);
 
     // Check if onboarding setup is needed
     if (!authData.user.daytonaApiKey) {
@@ -473,16 +477,25 @@ export function App() {
       {/* VIEW 1: MARKETING HOME PAGE */}
       {currentView === "marketing" && (
         <LandingPage
-          onStartSetup={() => setCurrentView("auth")}
+          onStartSetup={() => {
+            setAuthMode("signup");
+            setCurrentView("auth");
+          }}
+          onOpenAuth={(mode) => {
+            setAuthMode(mode);
+            setCurrentView("auth");
+          }}
           onResetApp={handleResetApp}
         />
       )}
 
-      {/* VIEW 2: MULTI-USER SAAS AUTHENTICATION */}
+      {/* VIEW 2: MULTI-USER SAAS AUTHENTICATION (FULL VIEW) */}
       {currentView === "auth" && (
         <AuthView
+          initialMode={authMode}
           onAuthSuccess={handleAuthSuccess}
           onContinueAsGuest={() => setCurrentView("setup")}
+          onClose={() => setCurrentView("marketing")}
         />
       )}
 
@@ -501,6 +514,10 @@ export function App() {
             userEmail={userEmail}
             userName={userName}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenAuth={(mode) => {
+              setAuthMode(mode);
+              setIsAuthModalOpen(true);
+            }}
             onExitWorkspace={handleExitWorkspace}
           />
 
@@ -552,6 +569,16 @@ export function App() {
             }}
             onRecreateSandbox={handleRecreateSandbox}
           />
+
+          {/* In-Workspace Auth Modal for switching accounts / logging in */}
+          {isAuthModalOpen && (
+            <AuthView
+              initialMode={authMode}
+              onAuthSuccess={handleAuthSuccess}
+              onContinueAsGuest={() => setIsAuthModalOpen(false)}
+              onClose={() => setIsAuthModalOpen(false)}
+            />
+          )}
         </>
       )}
     </div>
