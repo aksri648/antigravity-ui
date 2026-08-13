@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+backend/server
+*.exe
+*.out
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Auth Keys
+.env
+.env.local
+*.pem
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
