@@ -105,17 +105,50 @@ func migrateSchema(db *sql.DB) error {
 
 	CREATE TABLE IF NOT EXISTS user_environments (
 		id TEXT PRIMARY KEY,
-		user_id TEXT NOT NULL,
+		user_id TEXT NOT NULL UNIQUE,
 		sandbox_id TEXT NOT NULL,
+		daytona_volume_id TEXT,
+		daytona_sandbox_id TEXT,
+		sandbox_state TEXT DEFAULT 'none',
+		agy_authenticated INTEGER DEFAULT 0,
+		vnc_resolution TEXT DEFAULT '1280x800',
+		keyring_passphrase TEXT,
 		raw_env TEXT,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS agent_runs (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		agy_conversation_id TEXT,
+		title TEXT,
+		status TEXT DEFAULT 'idle',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS agent_messages (
+		id TEXT PRIMARY KEY,
+		run_id TEXT NOT NULL,
+		user_id TEXT,
+		role TEXT NOT NULL,
+		step_type TEXT,
+		tool_name TEXT,
+		content TEXT,
+		raw_event TEXT,
+		created_at INTEGER NOT NULL,
+		FOREIGN KEY (run_id) REFERENCES agent_runs(id) ON DELETE CASCADE
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 	CREATE INDEX IF NOT EXISTS idx_sandboxes_user_id ON sandboxes(user_id);
 	CREATE INDEX IF NOT EXISTS idx_chat_user_sandbox ON chat_messages(user_id, sandbox_id);
-	CREATE INDEX IF NOT EXISTS idx_user_env_user ON user_environments(user_id, sandbox_id);
+	CREATE INDEX IF NOT EXISTS idx_user_env_user ON user_environments(user_id);
+	CREATE INDEX IF NOT EXISTS idx_agent_runs_user ON agent_runs(user_id, created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_agent_messages_run ON agent_messages(run_id, created_at ASC);
 	`
 
 	_, err := db.Exec(schema)

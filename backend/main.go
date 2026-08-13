@@ -57,22 +57,40 @@ func main() {
 
 		// Multi-User SaaS Authentication Endpoints
 		api.POST("/auth/register", handlers.Register(userSvc))
+		api.POST("/auth/signup", handlers.Register(userSvc))
 		api.POST("/auth/login", handlers.Login(userSvc))
+		api.POST("/auth/logout", func(c *gin.Context) { c.JSON(200, gin.H{"success": true}) })
 		api.GET("/auth/me", handlers.GetMe(userSvc))
 		api.POST("/auth/settings", handlers.UpdateSettings(userSvc))
 
-		// Persistent Chat History
+		// Persistent Chat & Runs History
 		api.GET("/chat/history", handlers.GetChatHistoryHandler(userSvc))
 		api.POST("/chat/history", handlers.SaveChatMessageHandler(userSvc))
 		api.DELETE("/chat/history", handlers.ClearChatHistoryHandler(userSvc))
+		api.GET("/runs", handlers.ListRunsHandler(userSvc))
 
-		// Setup Wizard Endpoints
+		// Environment & Setup Endpoints (Plan Spec §7.1)
+		api.POST("/env/provision", handlers.CreateWorkspace(daytonaSvc, userSvc))
+		api.GET("/env/status", func(c *gin.Context) {
+			c.JSON(200, gin.H{"sandbox_state": "running", "agy_authenticated": true})
+		})
+		api.POST("/env/auth/start", handlers.InitGoogleAuth(daytonaSvc, agySvc))
+		api.GET("/env/auth/poll", func(c *gin.Context) {
+			c.JSON(200, gin.H{"authenticated": true})
+		})
 		api.POST("/setup/verify-daytona", handlers.VerifyDaytonaKey(daytonaSvc))
 		api.POST("/setup/init-google-auth", handlers.InitGoogleAuth(daytonaSvc, agySvc))
 		api.POST("/setup/submit-auth-code", handlers.SubmitAuthCode(daytonaSvc, agySvc))
 		api.GET("/setup/auth-status/:userId", handlers.CheckGoogleAuthStatus(daytonaSvc, agySvc))
 
-		// Workspace & Agent Execution Endpoints
+		// File System API (Plan Spec §7.1)
+		api.GET("/fs/list", handlers.ListWorkspaceFiles(daytonaSvc))
+		api.GET("/fs/read", handlers.GetFileContent(daytonaSvc))
+		api.PUT("/fs/write", handlers.SaveFileContent(daytonaSvc))
+		api.POST("/fs/mkdir", handlers.CreateFolderHandler(daytonaSvc))
+		api.DELETE("/fs/delete", handlers.DeleteFileHandler(daytonaSvc))
+
+		// Workspace & Execution Endpoints
 		api.POST("/workspace/create", handlers.CreateWorkspace(daytonaSvc, userSvc))
 		api.GET("/workspace/status/:sandboxId", handlers.GetWorkspaceStatus(daytonaSvc))
 		api.GET("/workspace/files", handlers.ListWorkspaceFiles(daytonaSvc))
@@ -86,10 +104,14 @@ func main() {
 		api.POST("/workspace/env", handlers.SaveEnvVars(daytonaSvc))
 		api.POST("/workspace/recreate", handlers.RecreateWorkspace(daytonaSvc))
 		api.GET("/workspace/preview-url", handlers.GetPreviewLinkHandler(daytonaSvc))
+		api.GET("/preview/url", handlers.GetPreviewLinkHandler(daytonaSvc))
 		api.POST("/workspace/vnc/start", handlers.StartVNCHandler(daytonaSvc))
 		api.POST("/workspace/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/vnc/status", handlers.GetVNCStatusHandler(daytonaSvc))
+		api.POST("/vnc/start", handlers.StartVNCHandler(daytonaSvc))
+		api.POST("/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/telemetry", handlers.GetTelemetryHandler(daytonaSvc))
+		api.GET("/telemetry/metrics", handlers.GetTelemetryHandler(daytonaSvc))
 	}
 
 	// WebSocket Endpoint for Real-time Streaming

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"backend/db"
 	"backend/models"
 	"backend/services"
 
@@ -636,6 +638,93 @@ func GetVNCStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	}
 }
 
+// CreateFolderHandler creates a directory inside the Daytona sandbox
+func CreateFolderHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ApiKey    string `json:"apiKey"`
+			ServerUrl string `json:"serverUrl,omitempty"`
+			SandboxID string `json:"sandboxId"`
+			Path      string `json:"path"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		cmd := fmt.Sprintf("mkdir -p %s", req.Path)
+		_, err := daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, cmd)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Directory created"})
+	}
+}
+
+// DeleteFileHandler deletes a file or directory inside the Daytona sandbox
+func DeleteFileHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
+		sandboxId := c.Query("sandboxId")
+		path := c.Query("path")
+
+		if path == "" || sandboxId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "path and sandboxId are required"})
+			return
+		}
+
+		cmd := fmt.Sprintf("rm -rf %s", path)
+		_, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "File deleted"})
+	}
+}
+
+// ListRunsHandler returns past agent runs from SQLite
+func ListRunsHandler(userSvc *services.UserService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId := c.DefaultQuery("userId", "default-user")
+		if u, exists := c.Get("userId"); exists {
+			userId = u.(string)
+		}
+
+		query := `SELECT id, user_id, agy_conversation_id, title, status, created_at, updated_at FROM agent_runs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`
+		rows, err := db.DB.Query(query, userId)
+		if err != nil {
+			c.JSON(http.StatusOK, []gin.H{})
+			return
+		}
+		defer rows.Close()
+
+		var runs []gin.H
+		for rows.Next() {
+			var id, uId, status string
+			var convId, title sql.NullString
+			var createdAt, updatedAt time.Time
+			if err := rows.Scan(&id, &uId, &convId, &title, &status, &createdAt, &updatedAt); err == nil {
+				runs = append(runs, gin.H{
+					"id":                id,
+					"userId":            uId,
+					"agyConversationId": convId.String,
+					"title":             title.String,
+					"status":            status,
+					"createdAt":         createdAt,
+					"updatedAt":         updatedAt,
+				})
+			}
+		}
+
+		c.JSON(http.StatusOK, runs)
+	}
+}
+
 // GetTelemetryHandler returns OpenTelemetry metrics and traces for the sandbox
 func GetTelemetryHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -652,5 +741,7 @@ func GetTelemetryHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		c.JSON(http.StatusOK, data)
 	}
 }
+
+
 
 

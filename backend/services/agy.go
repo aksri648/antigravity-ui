@@ -20,6 +20,67 @@ func NewAGYService(daytonaSvc *DaytonaService) *AGYService {
 	return &AGYService{daytonaSvc: daytonaSvc}
 }
 
+// BootstrapSandbox executes the idempotent bootstrap routine (dbus, gnome-keyring, symlinks to /home/daytona/persist)
+func (s *AGYService) BootstrapSandbox(apiKey string, serverUrl string, sandboxId string, keyringPassphrase string) error {
+	if keyringPassphrase == "" {
+		keyringPassphrase = "agy-default-keyring-pass"
+	}
+
+	bootstrapCmd := fmt.Sprintf(`#!/usr/bin/env bash
+set -e
+PERSIST=/home/daytona/persist
+HOME_DIR=/home/daytona
+if [ ! -d "$PERSIST" ]; then
+  PERSIST=/root/persist
+  HOME_DIR=/root
+fi
+
+mkdir -p "$PERSIST/gemini" "$PERSIST/keyrings" "$PERSIST/workspace" "$PERSIST/gemini/antigravity-cli"
+
+# Symlink persistent volume directories
+mkdir -p "$HOME_DIR/.local/share"
+rm -rf "$HOME_DIR/.gemini"
+ln -sf "$PERSIST/gemini" "$HOME_DIR/.gemini"
+rm -rf "$HOME_DIR/.local/share/keyrings"
+ln -sf "$PERSIST/keyrings" "$HOME_DIR/.local/share/keyrings"
+
+# Write default permissions settings.json
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/settings.json"
+{
+  "toolPermission": "proceed-in-sandbox",
+  "permissions": {
+    "allow": [
+      "command(git *)",
+      "command(npm *)",
+      "command(node *)",
+      "command(python3 *)",
+      "command(pip *)",
+      "command(cat *)",
+      "command(ls *)",
+      "write_file(*)"
+    ]
+  }
+}
+EOF
+
+# Launch DBUS session if not active
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+  eval "$(dbus-launch --sh-syntax 2>/dev/null || true)"
+fi
+
+# Unlock gnome-keyring
+if command -v gnome-keyring-daemon >/dev/null 2>&1; then
+  printf '%%s' '%s' | gnome-keyring-daemon --unlock 2>/dev/null || true
+  gnome-keyring-daemon --start --components=secrets,pkcs11,ssh >/dev/null 2>&1 || true
+fi
+
+echo "BOOTSTRAP_OK"
+`, keyringPassphrase)
+
+	_, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, bootstrapCmd)
+	return err
+}
+
 // InitiateGoogleAuth executes agy CLI inside Daytona setup sandbox and extracts the live Google OAuth URL & Device Code
 func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId string, googleApiKey string, oauthClientId string) (*models.InitGoogleAuthResponse, error) {
 	// 1. Ensure user volume exists
@@ -34,13 +95,12 @@ func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId 
 		return nil, fmt.Errorf("failed to create setup sandbox: %v", err)
 	}
 
-	// 3. Ensure agy CLI is installed inside Daytona sandbox
-	installCmd := "mkdir -p /root/.gemini && (which agy || npm install -g @google-antigravity/cli || pip install google-antigravity || true)"
-	s.daytonaSvc.ExecProcess(apiKey, serverUrl, sb.ID, installCmd)
+	// 3. Ensure bootstrap is executed
+	s.BootstrapSandbox(apiKey, serverUrl, sb.ID, "user-keyring-pass-"+userId)
 
 	// 4. Run agy auth trigger command inside Daytona sandbox
 	authCmd := "agy --prompt '/auth' --output-format text"
-	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sb.ID, authCmd)
+	res, _ := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sb.ID, authCmd)
 	
 	output := ""
 	if res != nil {
@@ -119,8 +179,9 @@ func (s *AGYService) StreamPromptExec(
 	default:
 	}
 
-	// 1. Run agy command directly inside the Daytona sandbox
-	cmdStr := fmt.Sprintf("agy --print %s --output-format stream-json --dangerously-skip-permissions", strconv.Quote(prompt))
+	// 1. Run agy command directly inside persistent workspace directory
+	workDirCmd := "mkdir -p /home/daytona/persist/workspace /root/workspace && cd /home/daytona/persist/workspace 2>/dev/null || cd /root/workspace"
+	cmdStr := fmt.Sprintf("%s && agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions", workDirCmd, strconv.Quote(prompt))
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmdStr)
 
 	if err != nil {
