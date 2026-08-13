@@ -166,15 +166,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  // Check Google Auth Status
+  // Check Google Auth Status from Daytona Sandbox volume
   const checkAuthStatus = async () => {
     setCheckingAuth(true);
     try {
-      const res = await fetch(apiUrl(`/api/setup/auth-status/${currentUserId}`));
+      const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
+      const res = await fetch(
+        apiUrl(`/api/setup/auth-status/${currentUserId}`, {
+          sandboxId: currentSandboxId,
+          apiKey: keyToUse,
+          serverUrl: currentServerUrl,
+        })
+      );
       const data = await res.json();
       setAuthStatus(data);
     } catch {
-      setAuthStatus({ authenticated: true, email: "user@google-account.com" });
+      setAuthStatus({ authenticated: false, email: "" });
     } finally {
       setCheckingAuth(false);
     }
@@ -202,17 +209,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (data.authUrl) {
         setAuthUrl(data.authUrl);
       } else {
-        setAuthUrl("https://accounts.google.com/o/oauth2/device/usercode?client_id=google-antigravity-cli");
-      }
-      if (data.deviceCode) {
-        setDeviceCode(data.deviceCode);
-      } else {
-        setDeviceCode(`AGY-${Math.floor(1000 + Math.random() * 9000)}`);
+        setAuthUrl("https://accounts.google.com/o/oauth2/v2/auth?client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid%20https://www.googleapis.com/auth/cloud-platform&access_type=offline&prompt=consent");
       }
     } catch (err) {
-      console.error("Google Auth initiation failed, using fallback:", err);
-      setAuthUrl("https://accounts.google.com/o/oauth2/device/usercode?client_id=google-antigravity-cli");
-      setDeviceCode(`AGY-${Math.floor(1000 + Math.random() * 9000)}`);
+      console.error("Google Auth initiation error:", err);
+      setAuthUrl("https://accounts.google.com/o/oauth2/v2/auth?client_id=1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile%20https://www.googleapis.com/auth/userinfo.email%20openid%20https://www.googleapis.com/auth/cloud-platform&access_type=offline&prompt=consent");
     } finally {
       setInitiatingAuth(false);
     }

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 
 	"backend/models"
 	"backend/services"
@@ -93,13 +95,42 @@ func SubmitAuthCode(daytonaSvc *services.DaytonaService, agySvc *services.AGYSer
 func CheckGoogleAuthStatus(daytonaSvc *services.DaytonaService, agySvc *services.AGYService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.Param("userId")
-		if userId == "" {
-			userId = "default-user"
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
+
+		if sandboxId != "" && apiKey != "" {
+			cmd := `if [ -f /home/daytona/persist/gemini/oauth_creds.json ] || [ -f /root/.gemini/oauth_creds.json ]; then cat /home/daytona/persist/gemini/google_accounts.json 2>/dev/null || cat /root/.gemini/google_accounts.json 2>/dev/null || echo '{"active":"Google AI Pro User"}'; elif [ -f /home/daytona/persist/gemini/.env ] && grep -q "API_KEY" /home/daytona/persist/gemini/.env; then echo '{"active":"Gemini API Key Active"}'; else echo 'NOT_AUTH'; fi`
+			res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
+			if err == nil && res != nil && !strings.Contains(res.Result, "NOT_AUTH") && strings.TrimSpace(res.Result) != "" {
+				var acc struct {
+					Active string `json:"active"`
+				}
+				_ = json.Unmarshal([]byte(res.Result), &acc)
+				email := acc.Active
+				if email == "" {
+					email = "Google AI Pro User"
+				}
+				c.JSON(http.StatusOK, models.AuthStatusResponse{
+					Authenticated: true,
+					AccountEmail:  email,
+				})
+				return
+			}
+		}
+
+		if userId != "" && userId != "default-user" {
+			// If no sandbox specified, return unauthenticated so UI prompts for login
+			c.JSON(http.StatusOK, models.AuthStatusResponse{
+				Authenticated: false,
+				AccountEmail:  "",
+			})
+			return
 		}
 
 		c.JSON(http.StatusOK, models.AuthStatusResponse{
-			Authenticated: true,
-			AccountEmail:  "user@google-account.com",
+			Authenticated: false,
+			AccountEmail:  "",
 		})
 	}
 }
