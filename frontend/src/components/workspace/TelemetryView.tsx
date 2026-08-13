@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { apiUrl } from "../../config/api";
 
 interface TelemetryData {
   sandboxId: string;
@@ -63,12 +64,12 @@ interface TelemetryData {
 }
 
 const DEFAULT_TELEMETRY: TelemetryData = {
-  sandboxId: "sb-daytona-demo",
+  sandboxId: "",
   timestamp: Date.now(),
   cpu: {
     utilizationPct: 14.5,
     limitCores: 2,
-    model: "x86_64 Virtual CPU (KVM)",
+    model: "Daytona MicroVM vCPU (cgroup-v2 isolated)",
     loadAvg: "0.24, 0.18, 0.12",
   },
   memory: {
@@ -144,15 +145,17 @@ const DEFAULT_TELEMETRY: TelemetryData = {
 interface TelemetryViewProps {
   sandboxId?: string;
   apiKey?: string;
+  serverUrl?: string;
 }
 
 export const TelemetryView: React.FC<TelemetryViewProps> = ({
-  sandboxId = "sb-daytona-demo",
+  sandboxId = "",
   apiKey = "",
+  serverUrl = "",
 }) => {
   const [data, setData] = useState<TelemetryData>(() => ({
     ...DEFAULT_TELEMETRY,
-    sandboxId: sandboxId || "sb-daytona-demo",
+    sandboxId: sandboxId || "",
   }));
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -163,7 +166,7 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
     setLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/workspace/telemetry?sandboxId=${sandboxId}&apiKey=${apiKey}`
+        apiUrl("/api/workspace/telemetry", { sandboxId, apiKey, serverUrl })
       );
       if (res.ok) {
         const json = await res.json();
@@ -177,7 +180,7 @@ export const TelemetryView: React.FC<TelemetryViewProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [sandboxId, apiKey]);
+  }, [sandboxId, apiKey, serverUrl]);
 
   useEffect(() => {
     fetchTelemetry();

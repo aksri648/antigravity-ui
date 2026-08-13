@@ -26,9 +26,31 @@ func NewDaytonaService() *DaytonaService {
 
 func (s *DaytonaService) getBaseURL(customServerUrl string) string {
 	if customServerUrl != "" {
-		return strings.TrimSuffix(customServerUrl, "/")
+		trimmed := strings.TrimSuffix(customServerUrl, "/")
+		if !strings.HasSuffix(trimmed, "/api") && !strings.Contains(trimmed, "/api/") {
+			return trimmed + "/api"
+		}
+		return trimmed
 	}
 	return "https://app.daytona.io/api"
+}
+
+func (s *DaytonaService) getProxyURL(customServerUrl string) string {
+	if customServerUrl != "" {
+		trimmed := strings.TrimSuffix(customServerUrl, "/")
+		trimmed = strings.TrimSuffix(trimmed, "/api")
+		return trimmed
+	}
+	return "https://proxy.app.daytona.io"
+}
+
+func (s *DaytonaService) getDashboardURL(customServerUrl string) string {
+	if customServerUrl != "" {
+		trimmed := strings.TrimSuffix(customServerUrl, "/")
+		trimmed = strings.TrimSuffix(trimmed, "/api")
+		return trimmed
+	}
+	return "https://app.daytona.io"
 }
 
 // VerifyDaytonaKey checks if the API key is valid against Daytona REST API
@@ -204,10 +226,11 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 
 	// 2. Direct REST API execution inside Daytona Sandbox Toolbox
 	endpoints := []string{
-		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/process/execute", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/process/execute", s.getProxyURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/toolbox/%s/process/execute", s.getBaseURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/sandbox/%s/process/execute", s.getBaseURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/sandbox/%s/command", s.getBaseURL(serverUrl), sandboxId),
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/process/execute", sandboxId),
 	}
 
 	payload := map[string]interface{}{
@@ -276,7 +299,17 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 
 
 // GetPreviewURL generates the live preview URL for a given port running inside Daytona
-func (s *DaytonaService) GetPreviewURL(sandboxId string, port int) string {
+func (s *DaytonaService) GetPreviewURL(sandboxId string, port int, customServerUrl ...string) string {
+	if len(customServerUrl) > 0 && customServerUrl[0] != "" {
+		srv := customServerUrl[0]
+		srv = strings.TrimPrefix(srv, "https://")
+		srv = strings.TrimPrefix(srv, "http://")
+		srv = strings.TrimSuffix(srv, "/api")
+		srv = strings.TrimSuffix(srv, "/")
+		if srv != "app.daytona.io" && !strings.Contains(srv, "localhost") {
+			return fmt.Sprintf("https://%d-%s.%s", port, sandboxId, srv)
+		}
+	}
 	return fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId)
 }
 
@@ -284,7 +317,7 @@ func (s *DaytonaService) GetPreviewURL(sandboxId string, port int) string {
 func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, sandboxId string, port int) (*models.SignedPreviewResponse, error) {
 	if apiKey == "" || sandboxId == "" {
 		return &models.SignedPreviewResponse{
-			URL: fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId),
+			URL: s.GetPreviewURL(sandboxId, port, serverUrl),
 		}, nil
 	}
 
@@ -336,7 +369,7 @@ func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, s
 
 	// 3. Fallback standard format
 	return &models.SignedPreviewResponse{
-		URL: fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId),
+		URL: s.GetPreviewURL(sandboxId, port, serverUrl),
 	}, nil
 }
 
@@ -348,8 +381,9 @@ func (s *DaytonaService) StartVNC(apiKey string, serverUrl string, sandboxId str
 
 	// Call Daytona Toolbox Computer Use start endpoint
 	endpoints := []string{
-		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/start", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/start", s.getProxyURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/toolbox/%s/computeruse/start", s.getBaseURL(serverUrl), sandboxId),
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/start", sandboxId),
 	}
 
 	for _, endpoint := range endpoints {
@@ -381,8 +415,9 @@ func (s *DaytonaService) StopVNC(apiKey string, serverUrl string, sandboxId stri
 	}
 
 	endpoints := []string{
-		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/stop", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/stop", s.getProxyURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/toolbox/%s/computeruse/stop", s.getBaseURL(serverUrl), sandboxId),
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/stop", sandboxId),
 	}
 
 	for _, endpoint := range endpoints {
@@ -409,8 +444,9 @@ func (s *DaytonaService) GetVNCStatus(apiKey string, serverUrl string, sandboxId
 	}
 
 	endpoints := []string{
-		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/status", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/status", s.getProxyURL(serverUrl), sandboxId),
 		fmt.Sprintf("%s/toolbox/%s/computeruse/status", s.getBaseURL(serverUrl), sandboxId),
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/status", sandboxId),
 	}
 
 	for _, endpoint := range endpoints {
@@ -432,7 +468,7 @@ func (s *DaytonaService) GetVNCStatus(apiKey string, serverUrl string, sandboxId
 					return &models.VNCStatusResponse{
 						Running: isRunning,
 						Status:  res.Status,
-						URL:     fmt.Sprintf("https://app.daytona.io/dashboard/sandboxes/%s/vnc", sandboxId),
+						URL:     fmt.Sprintf("%s/dashboard/sandboxes/%s/vnc", s.getDashboardURL(serverUrl), sandboxId),
 						Message: res.Message,
 					}, nil
 				}
@@ -443,7 +479,7 @@ func (s *DaytonaService) GetVNCStatus(apiKey string, serverUrl string, sandboxId
 	return &models.VNCStatusResponse{
 		Running: false,
 		Status:  "stopped",
-		URL:     fmt.Sprintf("https://app.daytona.io/dashboard/sandboxes/%s/vnc", sandboxId),
+		URL:     fmt.Sprintf("%s/dashboard/sandboxes/%s/vnc", s.getDashboardURL(serverUrl), sandboxId),
 	}, nil
 }
 

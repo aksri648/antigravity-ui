@@ -160,7 +160,7 @@ func (s *AGYService) StreamPromptExec(
 	portRegex := regexp.MustCompile(`(?:Local|Running at|http://localhost:)(\d{4,5})`)
 	if match := portRegex.FindStringSubmatch(out); len(match) > 1 {
 		if portNum, err := strconv.Atoi(match[1]); err == nil {
-			previewURL := s.daytonaSvc.GetPreviewURL(sandboxId, portNum)
+			previewURL := s.daytonaSvc.GetPreviewURL(sandboxId, portNum, serverUrl)
 			eventCallback(models.StreamEvent{
 				Type:      "port_detected",
 				Content:   fmt.Sprintf("Live App Preview active on port %d", portNum),

@@ -55,6 +55,7 @@ type VerifyDaytonaResponse struct {
 
 type InitGoogleAuthRequest struct {
 	ApiKey        string `json:"apiKey"`
+	ServerUrl     string `json:"serverUrl,omitempty"`
 	UserId        string `json:"userId"`
 	GoogleApiKey  string `json:"googleApiKey,omitempty"`
 	OAuthClientId string `json:"oauthClientId,omitempty"`
@@ -70,6 +71,7 @@ type InitGoogleAuthResponse struct {
 
 type SubmitAuthCodeRequest struct {
 	ApiKey    string `json:"apiKey"`
+	ServerUrl string `json:"serverUrl,omitempty"`
 	UserId    string `json:"userId"`
 	SandboxID string `json:"sandboxId"`
 	AuthCode  string `json:"authCode"`
@@ -87,6 +89,7 @@ type AuthStatusResponse struct {
 
 type CreateWorkspaceRequest struct {
 	ApiKey    string `json:"apiKey"`
+	ServerUrl string `json:"serverUrl,omitempty"`
 	UserId    string `json:"userId"`
 	RepoURL   string `json:"repoUrl,omitempty"`
 	ProjectID string `json:"projectId,omitempty"`
@@ -101,6 +104,7 @@ type CreateWorkspaceResponse struct {
 
 type SendPromptRequest struct {
 	ApiKey    string `json:"apiKey"`
+	ServerUrl string `json:"serverUrl,omitempty"`
 	UserId    string `json:"userId"`
 	SandboxID string `json:"sandboxId"`
 	Prompt    string `json:"prompt"`
@@ -135,6 +139,7 @@ type ToolExecutionMetadata struct {
 
 type EnvVarsRequest struct {
 	ApiKey    string            `json:"apiKey"`
+	ServerUrl string            `json:"serverUrl,omitempty"`
 	SandboxID string            `json:"sandboxId"`
 	Env       map[string]string `json:"env"`
 	RawEnv    string            `json:"rawEnv,omitempty"`
@@ -161,6 +166,7 @@ type VNCStatusResponse struct {
 
 type VNCActionRequest struct {
 	ApiKey    string `json:"apiKey"`
+	ServerUrl string `json:"serverUrl,omitempty"`
 	SandboxID string `json:"sandboxId"`
 	Action    string `json:"action"` // "start" | "stop" | "status"
 }

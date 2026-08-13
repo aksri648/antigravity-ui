@@ -3,6 +3,7 @@ import { Key, ShieldCheck, ExternalLink, CheckCircle2, ArrowRight, Loader2, Spar
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import { apiUrl } from "../../config/api";
 
 interface SetupWizardProps {
   onComplete: (apiKey: string, userId: string, sandboxId?: string) => void;
@@ -11,8 +12,8 @@ interface SetupWizardProps {
 export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [apiKey, setApiKey] = useState("");
-  const [serverUrl, setServerUrl] = useState("https://app.daytona.io/api");
-  const [userId] = useState(() => `user-${Math.random().toString(36).substring(2, 9)}`);
+  const [serverUrl, setServerUrl] = useState(() => localStorage.getItem("daytona_server_url") || "https://app.daytona.io/api");
+  const [userId] = useState(() => localStorage.getItem("daytona_user_id") || `user-${Math.random().toString(36).substring(2, 9)}`);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +37,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:8080/api/setup/verify-daytona", {
+      const res = await fetch(apiUrl("/api/setup/verify-daytona"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey, serverUrl }),
@@ -45,6 +46,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       const data = await res.json();
 
       if (res.ok && data.valid) {
+        localStorage.setItem("daytona_server_url", serverUrl);
         // Proceed to Step 2 (Google Auth Setup)
         initiateGoogleAuth(apiKey);
       } else {
@@ -61,10 +63,10 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const initiateGoogleAuth = async (validKey: string) => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/setup/init-google-auth", {
+      const res = await fetch(apiUrl("/api/setup/init-google-auth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: validKey, userId }),
+        body: JSON.stringify({ apiKey: validKey, serverUrl, userId }),
       });
 
       const data = await res.json();
@@ -90,13 +92,14 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:8080/api/setup/submit-auth-code", {
+      const res = await fetch(apiUrl("/api/setup/submit-auth-code"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey,
+          serverUrl,
           userId,
-          sandboxId: sandboxId || "sb-daytona-demo",
+          sandboxId: sandboxId || "",
           authCode: userPastedCode.trim(),
         }),
       });

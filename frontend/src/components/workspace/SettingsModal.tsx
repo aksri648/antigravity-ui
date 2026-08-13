@@ -30,6 +30,7 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
+import { apiUrl } from "../../config/api";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -141,7 +142,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setVerifyingKey(true);
     setVerifyStatus(null);
     try {
-      const res = await fetch("http://localhost:8080/api/setup/verify-daytona", {
+      const res = await fetch(apiUrl("/api/setup/verify-daytona"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: currentApiKey, serverUrl: currentServerUrl }),
@@ -163,7 +164,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const checkAuthStatus = async () => {
     setCheckingAuth(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/setup/auth-status/${currentUserId}`);
+      const res = await fetch(apiUrl(`/api/setup/auth-status/${currentUserId}`));
       const data = await res.json();
       setAuthStatus(data);
     } catch {
@@ -181,10 +182,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setPastedAuthCode("");
     setAuthSuccess(false);
     try {
-      const res = await fetch("http://localhost:8080/api/setup/init-google-auth", {
+      const res = await fetch(apiUrl("/api/setup/init-google-auth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: currentApiKey, userId: currentUserId }),
+        body: JSON.stringify({ apiKey: currentApiKey, serverUrl: currentServerUrl, userId: currentUserId }),
       });
       const data = await res.json();
       if (data.authUrl) setAuthUrl(data.authUrl);
@@ -201,11 +202,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!pastedAuthCode.trim()) return;
     setSubmittingAuth(true);
     try {
-      const res = await fetch("http://localhost:8080/api/setup/submit-auth-code", {
+      const res = await fetch(apiUrl("/api/setup/submit-auth-code"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey: currentApiKey,
+          serverUrl: currentServerUrl,
           userId: currentUserId,
           sandboxId: currentSandboxId,
           authCode: pastedAuthCode.trim(),
@@ -229,7 +231,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setLoadingEnv(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/workspace/env?sandboxId=${currentSandboxId}&apiKey=${currentApiKey}`
+        apiUrl("/api/workspace/env", { sandboxId: currentSandboxId, apiKey: currentApiKey, serverUrl: currentServerUrl })
       );
       const data = await res.json();
       if (data.env) {
@@ -269,11 +271,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     try {
-      const res = await fetch("http://localhost:8080/api/workspace/env", {
+      const res = await fetch(apiUrl("/api/workspace/env"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey: currentApiKey,
+          serverUrl: currentServerUrl,
           sandboxId: currentSandboxId,
           rawEnv: contentToSave,
         }),
@@ -338,11 +341,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!confirm("Are you sure you want to wipe credentials from the persistent volume (/root/.gemini)? You will need to re-authenticate Google Account.")) return;
     setWipingVolume(true);
     try {
-      await fetch("http://localhost:8080/api/workspace/reset", {
+      await fetch(apiUrl("/api/workspace/reset"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey: currentApiKey,
+          serverUrl: currentServerUrl,
           userId: currentUserId,
           sandboxId: currentSandboxId,
         }),

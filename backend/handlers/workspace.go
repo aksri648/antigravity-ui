@@ -25,6 +25,7 @@ func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
 		if sandboxId == "" || apiKey == "" {
 			c.JSON(http.StatusOK, []*models.FileNode{})
@@ -32,7 +33,7 @@ func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' | sort"
-		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 
 		var lines []string
 		if err == nil && res != nil && res.Result != "" {
@@ -102,7 +103,7 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		// Provision or retrieve active sandbox
-		sb, err := daytonaSvc.GetActiveSandbox(req.ApiKey, "", req.UserId)
+		sb, err := daytonaSvc.GetActiveSandbox(req.ApiKey, req.ServerUrl, req.UserId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create sandbox: " + err.Error()})
 			return
@@ -121,10 +122,11 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 func GetWorkspaceStatus(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Param("sandboxId")
+		serverUrl := c.Query("serverUrl")
 		c.JSON(http.StatusOK, gin.H{
 			"sandboxId":  sandboxId,
 			"state":      "RUNNING",
-			"previewUrl": daytonaSvc.GetPreviewURL(sandboxId, 3000),
+			"previewUrl": daytonaSvc.GetPreviewURL(sandboxId, 3000, serverUrl),
 		})
 	}
 }
@@ -135,12 +137,13 @@ func GetFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		sandboxId := c.Query("sandboxId")
 		filePath := c.Query("path")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
 		if filePath == "" {
 			filePath = "src/App.tsx"
 		}
 
-		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, fmt.Sprintf("cat %s", filePath))
+		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, fmt.Sprintf("cat %s", filePath))
 		content := ""
 		if res != nil {
 			content = res.Result
@@ -161,6 +164,7 @@ func SaveFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			ApiKey    string `json:"apiKey"`
+			ServerUrl string `json:"serverUrl,omitempty"`
 			SandboxID string `json:"sandboxId"`
 			Path      string `json:"path"`
 			Content   string `json:"content"`
@@ -171,7 +175,7 @@ func SaveFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		cmd := fmt.Sprintf("mkdir -p $(dirname %s) && cat << 'EOF' > %s\n%s\nEOF", req.Path, req.Path, req.Content)
-		_, err := daytonaSvc.ExecProcess(req.ApiKey, "", req.SandboxID, cmd)
+		_, err := daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, cmd)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -183,7 +187,6 @@ func SaveFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		})
 	}
 }
-
 // SendPrompt triggers agy agent prompt execution asynchronously and streams over WebSockets
 func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService, hub *Hub) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -200,12 +203,12 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 
 		// If sandbox ID is missing, demo, or fallback, ensure a real Daytona sandbox is created
 		if req.SandboxID == "" || req.SandboxID == "sb-daytona-demo" || strings.HasPrefix(req.SandboxID, "sb-daytona-demo") {
-			vol, _ := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, "", req.UserId)
+			vol, _ := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, req.ServerUrl, req.UserId)
 			volID := ""
 			if vol != nil {
 				volID = vol.ID
 			}
-			sb, err := daytonaSvc.CreateSandbox(req.ApiKey, "", req.UserId, volID)
+			sb, err := daytonaSvc.CreateSandbox(req.ApiKey, req.ServerUrl, req.UserId, volID)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Daytona sandbox: " + err.Error()})
 				return
@@ -233,7 +236,7 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 			err := agySvc.StreamPromptExec(
 				ctx,
 				req.ApiKey,
-				"",
+				req.ServerUrl,
 				req.SandboxID,
 				req.Prompt,
 				func(event models.StreamEvent) {
@@ -258,8 +261,9 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		}()
 
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "processing",
-			"message": "Prompt submitted to agy agent inside Daytona sandbox.",
+			"status":    "processing",
+			"sandboxId": req.SandboxID,
+			"message":   "Prompt submitted to agy agent inside Daytona sandbox.",
 		})
 	}
 }
@@ -293,6 +297,7 @@ func FetchSandboxLogs(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
 		if sandboxId == "" || apiKey == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "sandboxId and apiKey are required"})
@@ -301,7 +306,7 @@ func FetchSandboxLogs(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 
 		// Fetch recent sandbox process logs
 		cmd := "(cat /tmp/agy_*.log 2>/dev/null || true) && (journalctl --no-pager -n 50 2>/dev/null || dmesg --human -n 50 2>/dev/null || tail -n 50 /var/log/syslog 2>/dev/null || echo 'No system logs available') && echo '---PROCESS_LIST---' && ps aux --sort=-%cpu 2>/dev/null | head -20"
-		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 
 		var output string
 		if res != nil {
@@ -333,6 +338,7 @@ func ResetApp(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
 			ApiKey    string `json:"apiKey"`
+			ServerUrl string `json:"serverUrl,omitempty"`
 			UserId    string `json:"userId"`
 			SandboxID string `json:"sandboxId"`
 		}
@@ -345,21 +351,21 @@ func ResetApp(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 
 		// 1. Wipe auth data inside sandbox mounted volume
 		if req.SandboxID != "" && req.ApiKey != "" {
-			if err := daytonaSvc.WipeVolumeData(req.ApiKey, "", req.SandboxID); err != nil {
+			if err := daytonaSvc.WipeVolumeData(req.ApiKey, req.ServerUrl, req.SandboxID); err != nil {
 				errors = append(errors, "wipe volume data: "+err.Error())
 			}
 		}
 
 		// 2. Delete the sandbox
 		if req.SandboxID != "" && req.ApiKey != "" {
-			if err := daytonaSvc.DeleteSandbox(req.ApiKey, "", req.SandboxID); err != nil {
+			if err := daytonaSvc.DeleteSandbox(req.ApiKey, req.ServerUrl, req.SandboxID); err != nil {
 				errors = append(errors, "delete sandbox: "+err.Error())
 			}
 		}
 
 		// 3. Delete the persistent volume
 		if req.UserId != "" && req.ApiKey != "" {
-			if err := daytonaSvc.DeleteUserVolume(req.ApiKey, "", req.UserId); err != nil {
+			if err := daytonaSvc.DeleteUserVolume(req.ApiKey, req.ServerUrl, req.UserId); err != nil {
 				errors = append(errors, "delete volume: "+err.Error())
 			}
 		}
@@ -393,6 +399,7 @@ func GetEnvVars(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
 		if sandboxId == "" || apiKey == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "sandboxId and apiKey are required"})
@@ -400,7 +407,7 @@ func GetEnvVars(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		cmd := "cat /root/.gemini/.env 2>/dev/null || cat .env 2>/dev/null || true"
-		res, err := daytonaSvc.ExecProcess(apiKey, "", sandboxId, cmd)
+		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 
 		rawEnv := ""
 		if res != nil {
@@ -458,7 +465,7 @@ func SaveEnvVars(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 
 		// Write to persistent volume location (/root/.gemini/.env) and current working dir (.env)
 		cmd := fmt.Sprintf("mkdir -p /root/.gemini && cat << 'EOF' > /root/.gemini/.env\n%s\nEOF\ncat << 'EOF' > ./.env\n%s\nEOF", rawContent, rawContent)
-		_, err := daytonaSvc.ExecProcess(req.ApiKey, "", req.SandboxID, cmd)
+		_, err := daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, cmd)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save env variables inside sandbox: " + err.Error()})
 			return
@@ -485,14 +492,14 @@ func RecreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		// Fetch user volume
-		vol, err := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, "", req.UserId)
+		vol, err := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, req.ServerUrl, req.UserId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access user volume: " + err.Error()})
 			return
 		}
 
 		// Create fresh sandbox
-		sb, err := daytonaSvc.CreateSandbox(req.ApiKey, "", req.UserId, vol.ID)
+		sb, err := daytonaSvc.CreateSandbox(req.ApiKey, req.ServerUrl, req.UserId, vol.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to provision new sandbox: " + err.Error()})
 			return
@@ -512,13 +519,14 @@ func GetPreviewLinkHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc 
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 		portStr := c.DefaultQuery("port", "3000")
 		port, _ := strconv.Atoi(portStr)
 		if port <= 0 {
 			port = 3000
 		}
 
-		res, err := daytonaSvc.GetSignedPreviewLink(apiKey, "", sandboxId, port)
+		res, err := daytonaSvc.GetSignedPreviewLink(apiKey, serverUrl, sandboxId, port)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -537,7 +545,7 @@ func StartVNCHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		res, err := daytonaSvc.StartVNC(req.ApiKey, "", req.SandboxID)
+		res, err := daytonaSvc.StartVNC(req.ApiKey, req.ServerUrl, req.SandboxID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -556,7 +564,7 @@ func StopVNCHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		if err := daytonaSvc.StopVNC(req.ApiKey, "", req.SandboxID); err != nil {
+		if err := daytonaSvc.StopVNC(req.ApiKey, req.ServerUrl, req.SandboxID); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -570,8 +578,9 @@ func GetVNCStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
-		res, err := daytonaSvc.GetVNCStatus(apiKey, "", sandboxId)
+		res, err := daytonaSvc.GetVNCStatus(apiKey, serverUrl, sandboxId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -586,8 +595,9 @@ func GetTelemetryHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sandboxId := c.Query("sandboxId")
 		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
 
-		data, err := daytonaSvc.GetSandboxTelemetry(apiKey, "", sandboxId)
+		data, err := daytonaSvc.GetSandboxTelemetry(apiKey, serverUrl, sandboxId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

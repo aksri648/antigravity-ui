@@ -60,7 +60,7 @@ func InitGoogleAuth(daytonaSvc *services.DaytonaService, agySvc *services.AGYSer
 			req.UserId = "default-user"
 		}
 
-		resp, err := agySvc.InitiateGoogleAuth(req.ApiKey, "", req.UserId, req.GoogleApiKey, req.OAuthClientId)
+		resp, err := agySvc.InitiateGoogleAuth(req.ApiKey, req.ServerUrl, req.UserId, req.GoogleApiKey, req.OAuthClientId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -79,7 +79,7 @@ func SubmitAuthCode(daytonaSvc *services.DaytonaService, agySvc *services.AGYSer
 			return
 		}
 
-		resp, err := agySvc.SubmitAuthCode(req.ApiKey, "", req.SandboxID, req.AuthCode)
+		resp, err := agySvc.SubmitAuthCode(req.ApiKey, req.ServerUrl, req.SandboxID, req.AuthCode)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

@@ -26,10 +26,12 @@ import { Badge } from "../ui/badge";
 import { FileTree } from "./FileTree";
 import type { FileNode } from "./FileTree";
 import { TelemetryView } from "./TelemetryView";
+import { apiUrl } from "../../config/api";
 
 interface PreviewPaneProps {
   sandboxId?: string;
   apiKey?: string;
+  serverUrl?: string;
   previewUrl: string | null;
   activePort: number;
   terminalLogs: string[];
@@ -37,8 +39,9 @@ interface PreviewPaneProps {
 }
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
-  sandboxId = "sb-daytona-demo",
+  sandboxId = "",
   apiKey = "",
+  serverUrl = "",
   previewUrl,
   activePort,
   terminalLogs,
@@ -72,7 +75,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Effective live preview URL: signedUrl > passed previewUrl > standard format
-  const daytonaPreviewUrl = signedUrl || previewUrl || `https://${activePort}-${sandboxId}.daytona.app`;
+  const daytonaPreviewUrl = signedUrl || previewUrl || (sandboxId ? `https://${activePort}-${sandboxId}.daytona.app` : "");
 
   // Fetch Daytona Signed Preview URL (Eliminates header requirements for iframes)
   const fetchSignedPreviewUrl = useCallback(async () => {
@@ -80,7 +83,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     setFetchingSignedUrl(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/workspace/preview-url?sandboxId=${sandboxId}&port=${activePort}&apiKey=${apiKey}`
+        apiUrl("/api/workspace/preview-url", { sandboxId, port: activePort, apiKey, serverUrl })
       );
       const data = await res.json();
       if (data.url) {
@@ -91,7 +94,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     } finally {
       setFetchingSignedUrl(false);
     }
-  }, [sandboxId, apiKey, activePort]);
+  }, [sandboxId, apiKey, activePort, serverUrl]);
 
   useEffect(() => {
     fetchSignedPreviewUrl();
@@ -102,7 +105,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (!sandboxId || !apiKey || sandboxId === "sb-daytona-demo") return;
     try {
       const res = await fetch(
-        `http://localhost:8080/api/workspace/vnc/status?sandboxId=${sandboxId}&apiKey=${apiKey}`
+        apiUrl("/api/workspace/vnc/status", { sandboxId, apiKey, serverUrl })
       );
       const data = await res.json();
       setVncRunning(Boolean(data.running));
@@ -111,7 +114,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     } catch (e) {
       // Ignore
     }
-  }, [sandboxId, apiKey]);
+  }, [sandboxId, apiKey, serverUrl]);
 
   useEffect(() => {
     if (activeTab === "vnc") {
@@ -123,10 +126,10 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (!sandboxId || !apiKey) return;
     setVncLoading(true);
     try {
-      const res = await fetch("http://localhost:8080/api/workspace/vnc/start", {
+      const res = await fetch(apiUrl("/api/workspace/vnc/start"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey, sandboxId, action: "start" }),
+        body: JSON.stringify({ apiKey, serverUrl, sandboxId, action: "start" }),
       });
       const data = await res.json();
       setVncRunning(Boolean(data.running));
@@ -143,10 +146,10 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (!sandboxId || !apiKey) return;
     setVncLoading(true);
     try {
-      await fetch("http://localhost:8080/api/workspace/vnc/stop", {
+      await fetch(apiUrl("/api/workspace/vnc/stop"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey, sandboxId, action: "stop" }),
+        body: JSON.stringify({ apiKey, serverUrl, sandboxId, action: "stop" }),
       });
       setVncRunning(false);
       setVncStatus("stopped");
@@ -162,12 +165,12 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (activeTab === "code" && sandboxId && apiKey) {
       fetchFileTree();
     }
-  }, [sandboxId, apiKey, activeTab]);
+  }, [sandboxId, apiKey, serverUrl, activeTab]);
 
   const fetchFileTree = async () => {
     if (!sandboxId || !apiKey) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/workspace/files?sandboxId=${sandboxId}&apiKey=${apiKey}`);
+      const res = await fetch(apiUrl("/api/workspace/files", { sandboxId, apiKey, serverUrl }));
       const data = await res.json();
       if (Array.isArray(data)) {
         setFileTree(data);
@@ -200,13 +203,13 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     if (activeTab === "code" && selectedFile && sandboxId && apiKey) {
       fetchSandboxFile(selectedFile);
     }
-  }, [selectedFile, activeTab, sandboxId, apiKey]);
+  }, [selectedFile, activeTab, sandboxId, apiKey, serverUrl]);
 
   const fetchSandboxFile = async (path: string) => {
     if (!path || !sandboxId || !apiKey) return;
     setLoadingFile(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/workspace/file-content?sandboxId=${sandboxId}&path=${path}&apiKey=${apiKey}`);
+      const res = await fetch(apiUrl("/api/workspace/file-content", { sandboxId, path, apiKey, serverUrl }));
       const data = await res.json();
       if (data.content !== undefined) {
         setFileContent(data.content);
@@ -242,11 +245,12 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     setSavingFile(true);
     setSaveSuccess(false);
     try {
-      const res = await fetch("http://localhost:8080/api/workspace/file-save", {
+      const res = await fetch(apiUrl("/api/workspace/file-save"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey,
+          serverUrl,
           sandboxId,
           path: selectedFile,
           content: fileContent,
@@ -289,7 +293,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     setFetchingLogs(true);
     try {
       const res = await fetch(
-        `http://localhost:8080/api/workspace/logs?sandboxId=${sandboxId}&apiKey=${apiKey}`
+        apiUrl("/api/workspace/logs", { sandboxId, apiKey, serverUrl })
       );
       const data = await res.json();
       if (data.logs && Array.isArray(data.logs)) {
@@ -301,7 +305,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     } finally {
       setFetchingLogs(false);
     }
-  }, [sandboxId, apiKey]);
+  }, [sandboxId, apiKey, serverUrl]);
 
   // Auto-poll when terminal tab is active
   useEffect(() => {
@@ -848,7 +852,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
         {/* MODE 4: OPEN TELEMETRY OBSERVABILITY DASHBOARD */}
         {activeTab === "telemetry" && (
-          <TelemetryView sandboxId={sandboxId} apiKey={apiKey} />
+          <TelemetryView sandboxId={sandboxId} apiKey={apiKey} serverUrl={serverUrl} />
         )}
       </div>
     </div>

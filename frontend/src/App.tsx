@@ -6,6 +6,7 @@ import { ChatPane } from "./components/workspace/ChatPane";
 import type { ChatMessage } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
 import { SettingsModal } from "./components/workspace/SettingsModal";
+import { apiUrl, getWsUrl } from "./config/api";
 
 export function App() {
   const [apiKey, setApiKey] = useState<string | null>(() => localStorage.getItem("daytona_api_key"));
@@ -37,11 +38,12 @@ export function App() {
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
     const connectWS = () => {
-      const socket = new WebSocket("ws://localhost:8080/ws");
+      const wsEndpoint = getWsUrl();
+      const socket = new WebSocket(wsEndpoint);
       wsRef.current = socket;
 
       socket.onopen = () => {
-        console.log("Connected to AGY Cloud Go WebSocket");
+        console.log("Connected to AGY Cloud Go WebSocket:", wsEndpoint);
       };
 
       socket.onmessage = (event) => {
@@ -135,11 +137,12 @@ export function App() {
   const handleResetApp = async () => {
     // Call backend to wipe Daytona volume data and delete sandbox
     try {
-      await fetch("http://localhost:8080/api/workspace/reset", {
+      await fetch(apiUrl("/api/workspace/reset"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey: apiKey || localStorage.getItem("daytona_api_key") || "",
+          serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId: userId,
           sandboxId: sandboxId || "",
         }),
@@ -162,10 +165,14 @@ export function App() {
   // Create Daytona Workspace via Go Backend
   const createWorkspace = async (key: string, uid: string) => {
     try {
-      const res = await fetch("http://localhost:8080/api/workspace/create", {
+      const res = await fetch(apiUrl("/api/workspace/create"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey: key, userId: uid }),
+        body: JSON.stringify({
+          apiKey: key,
+          serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
+          userId: uid,
+        }),
       });
       const data = await res.json();
       if (data.sandboxId) {
@@ -183,10 +190,14 @@ export function App() {
     let currentSandbox = sandboxId;
     if (!currentSandbox || currentSandbox === "sb-daytona-demo") {
       try {
-        const res = await fetch("http://localhost:8080/api/workspace/create", {
+        const res = await fetch(apiUrl("/api/workspace/create"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ apiKey: apiKey || "", userId }),
+          body: JSON.stringify({
+            apiKey: apiKey || "",
+            serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
+            userId,
+          }),
         });
         const data = await res.json();
         if (data.sandboxId) {
@@ -220,11 +231,12 @@ export function App() {
     setIsProcessing(true);
 
     try {
-      await fetch("http://localhost:8080/api/workspace/prompt", {
+      await fetch(apiUrl("/api/workspace/prompt"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           apiKey: apiKey || "",
+          serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId,
           sandboxId: currentSandbox || "",
           prompt: promptText,
@@ -244,10 +256,10 @@ export function App() {
   // Stop generating / cancel active prompt
   const handleStopGenerating = async () => {
     try {
-      await fetch("http://localhost:8080/api/workspace/stop", {
+      await fetch(apiUrl("/api/workspace/stop"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sandboxId: sandboxId || "sb-daytona-demo" }),
+        body: JSON.stringify({ sandboxId: sandboxId || "" }),
       });
     } catch (err) {
       console.warn("Failed to stop generation", err);
@@ -287,6 +299,7 @@ export function App() {
     }
     if (newConfig.sandboxId !== undefined) {
       setSandboxId(newConfig.sandboxId);
+      localStorage.setItem("daytona_sandbox_id", newConfig.sandboxId);
       if (newConfig.activePort || activePort) {
         setPreviewUrl(`https://${newConfig.sandboxId}-${newConfig.activePort || activePort}.daytona.app`);
       }
@@ -302,17 +315,19 @@ export function App() {
   // Recreate Sandbox Container (fresh VM attached to persistent volume)
   const handleRecreateSandbox = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/workspace/recreate", {
+      const res = await fetch(apiUrl("/api/workspace/recreate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey: apiKey || "dev-key",
+          apiKey: apiKey || "",
+          serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId: userId,
         }),
       });
       const data = await res.json();
       if (data.sandboxId) {
         setSandboxId(data.sandboxId);
+        localStorage.setItem("daytona_sandbox_id", data.sandboxId);
         setPreviewUrl(`https://${data.sandboxId}-${activePort}.daytona.app`);
       }
     } catch (err) {
@@ -364,6 +379,7 @@ export function App() {
               <PreviewPane
                 sandboxId={sandboxId}
                 apiKey={apiKey || ""}
+                serverUrl={serverUrl}
                 previewUrl={previewUrl}
                 activePort={activePort}
                 terminalLogs={terminalLogs}
