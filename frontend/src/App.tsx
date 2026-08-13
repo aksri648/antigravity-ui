@@ -104,33 +104,67 @@ export function App() {
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
+    let isMounted = true;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+
     const connectWS = () => {
-      const wsEndpoint = getWsUrl();
-      const socket = new WebSocket(wsEndpoint);
-      wsRef.current = socket;
+      if (!isMounted) return;
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
 
-      socket.onopen = () => {
-        console.log("Connected to AGY Cloud Go WebSocket:", wsEndpoint);
-      };
+      try {
+        const wsEndpoint = getWsUrl();
+        const socket = new WebSocket(wsEndpoint);
+        wsRef.current = socket;
 
-      socket.onmessage = (event) => {
-        try {
-          const streamEvent = JSON.parse(event.data);
-          handleStreamEvent(streamEvent);
-        } catch (e) {
-          console.error("Failed to parse WS stream event", e);
+        socket.onopen = () => {
+          if (!isMounted) return;
+          console.log("Connected to AGY Cloud Go WebSocket:", wsEndpoint);
+        };
+
+        socket.onmessage = (event) => {
+          if (!isMounted) return;
+          try {
+            const streamEvent = JSON.parse(event.data);
+            handleStreamEvent(streamEvent);
+          } catch (e) {
+            console.error("Failed to parse WS stream event", e);
+          }
+        };
+
+        socket.onerror = () => {
+          // Handled gracefully without noisy cascade
+        };
+
+        socket.onclose = () => {
+          if (!isMounted) return;
+          if (reconnectTimeout) clearTimeout(reconnectTimeout);
+          reconnectTimeout = setTimeout(() => {
+            if (isMounted) connectWS();
+          }, 3000);
+        };
+      } catch (err) {
+        if (isMounted) {
+          if (reconnectTimeout) clearTimeout(reconnectTimeout);
+          reconnectTimeout = setTimeout(() => {
+            if (isMounted) connectWS();
+          }, 3000);
         }
-      };
-
-      socket.onclose = () => {
-        setTimeout(connectWS, 3000);
-      };
+      }
     };
 
     connectWS();
 
     return () => {
-      wsRef.current?.close();
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, []);
 

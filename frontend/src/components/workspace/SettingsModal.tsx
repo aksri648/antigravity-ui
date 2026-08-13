@@ -134,8 +134,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   }, [isOpen, apiKey, serverUrl, userId, sandboxId, activePort]);
 
-  if (!isOpen) return null;
-
   const copyToClipboard = (text: string, fieldId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
@@ -425,6 +423,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setWipingVolume(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
