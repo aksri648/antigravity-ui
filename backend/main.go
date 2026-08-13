@@ -81,6 +81,7 @@ func main() {
 		api.POST("/setup/verify-daytona", handlers.VerifyDaytonaKey(daytonaSvc))
 		api.POST("/setup/init-google-auth", handlers.InitGoogleAuth(daytonaSvc, agySvc))
 		api.POST("/setup/submit-auth-code", handlers.SubmitAuthCode(daytonaSvc, agySvc))
+		api.POST("/setup/save-google-key", handlers.SaveGoogleApiKeyHandler(daytonaSvc, agySvc))
 		api.GET("/setup/auth-status/:userId", handlers.CheckGoogleAuthStatus(daytonaSvc, agySvc))
 
 		// File System API (Plan Spec §7.1)

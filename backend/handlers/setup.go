@@ -103,3 +103,29 @@ func CheckGoogleAuthStatus(daytonaSvc *services.DaytonaService, agySvc *services
 		})
 	}
 }
+
+// SaveGoogleApiKeyHandler stores Gemini API Key directly into Daytona persistent volume
+func SaveGoogleApiKeyHandler(daytonaSvc *services.DaytonaService, agySvc *services.AGYService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			ApiKey       string `json:"apiKey"`
+			ServerUrl    string `json:"serverUrl,omitempty"`
+			SandboxID    string `json:"sandboxId"`
+			GoogleApiKey string `json:"googleApiKey"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+			return
+		}
+
+		if err := agySvc.SaveGoogleApiKey(req.ApiKey, req.ServerUrl, req.SandboxID, req.GoogleApiKey); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save Google API key inside Daytona sandbox: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "Google Gemini API key saved into Daytona persistent volume (.env).",
+		})
+	}
+}

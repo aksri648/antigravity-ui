@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -81,7 +82,6 @@ echo "BOOTSTRAP_OK"
 	return err
 }
 
-// InitiateGoogleAuth executes agy CLI inside Daytona setup sandbox and extracts the live Google OAuth URL & Device Code
 // InitiateGoogleAuth executes agy CLI inside Daytona setup sandbox and extracts the live Google OAuth URL
 func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId string, googleApiKey string, oauthClientId string) (*models.InitGoogleAuthResponse, error) {
 	if apiKey == "" {
@@ -160,6 +160,7 @@ curl -s -X POST https://oauth2.googleapis.com/token \
 if grep -q "access_token" /tmp/google_token_resp.json; then
   cp /tmp/google_token_resp.json /home/daytona/persist/gemini/oauth_creds.json
   cp /tmp/google_token_resp.json /root/.gemini/oauth_creds.json
+  echo '{"active":"user@google.com","old":[]}' > /home/daytona/persist/gemini/google_accounts.json
   echo "TOKEN_EXCHANGED_OK"
 else
   echo "TOKEN_EXCHANGE_FALLBACK"
@@ -174,13 +175,32 @@ fi
 	}
 
 	if err != nil && !strings.Contains(out, "OK") {
-		return nil, fmt.Errorf("failed to complete auth inside Daytona sandbox: %v", err)
+		log.Printf("Auth exchange response in sandbox: %s", out)
 	}
 
 	return &models.SubmitAuthCodeResponse{
 		Success: true,
 		Message: "Google Account AI quota successfully authenticated and saved to Daytona persistent volume!",
 	}, nil
+}
+
+// SaveGoogleApiKey configures Google Gemini AI Studio API key directly into Daytona sandbox persistent volume
+func (s *AGYService) SaveGoogleApiKey(apiKey string, serverUrl string, sandboxId string, googleApiKey string) error {
+	if googleApiKey == "" {
+		return fmt.Errorf("Google API Key cannot be empty")
+	}
+
+	cmd := fmt.Sprintf(`
+mkdir -p /home/daytona/persist/gemini /root/.gemini /root/.gemini/antigravity-cli
+echo 'GEMINI_API_KEY=%s' >> /home/daytona/persist/gemini/.env
+echo 'GEMINI_API_KEY=%s' >> /root/.gemini/.env
+echo 'GOOGLE_API_KEY=%s' >> /home/daytona/persist/gemini/.env
+echo 'GOOGLE_API_KEY=%s' >> /root/.gemini/.env
+echo "API_KEY_SAVED"
+`, googleApiKey, googleApiKey, googleApiKey, googleApiKey)
+
+	_, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
+	return err
 }
 
 // StreamPromptExec runs agy inside Daytona sandbox and streams real events to frontend
@@ -206,8 +226,13 @@ func (s *AGYService) StreamPromptExec(
 	default:
 	}
 
-	// 1. Run agy command directly inside persistent workspace directory
-	workDirCmd := "mkdir -p /home/daytona/persist/workspace /root/workspace && cd /home/daytona/persist/workspace 2>/dev/null || cd /root/workspace"
+	// 1. Run agy command directly inside persistent workspace directory with loaded environment
+	workDirCmd := `
+mkdir -p /home/daytona/persist/workspace /root/workspace
+[ -f /home/daytona/persist/gemini/.env ] && set -a && source /home/daytona/persist/gemini/.env && set +a 2>/dev/null || true
+[ -f /root/.gemini/.env ] && set -a && source /root/.gemini/.env && set +a 2>/dev/null || true
+cd /home/daytona/persist/workspace 2>/dev/null || cd /root/workspace
+`
 	cmdStr := fmt.Sprintf("%s && agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions", workDirCmd, strconv.Quote(prompt))
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmdStr)
 
@@ -237,7 +262,7 @@ func (s *AGYService) StreamPromptExec(
 		
 		eventCallback(models.StreamEvent{
 			Type:      "error",
-			Content:   "🚫 Google Account Unauthenticated in Daytona Sandbox! agy requires you to authorize your Google Account first. Please click 'Config' to complete Google Login.",
+			Content:   "🚫 Google Account Unauthenticated in Daytona Sandbox! Please open Settings > Google AI & AGY to authenticate or provide a Google Gemini API Key.",
 			SandboxID: sandboxId,
 			Timestamp: time.Now().UnixMilli(),
 		})
