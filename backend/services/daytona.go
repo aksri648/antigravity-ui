@@ -276,7 +276,174 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 
 // GetPreviewURL generates the live preview URL for a given port running inside Daytona
 func (s *DaytonaService) GetPreviewURL(sandboxId string, port int) string {
-	return fmt.Sprintf("https://%s-%d.daytona.app", sandboxId, port)
+	return fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId)
+}
+
+// GetSignedPreviewLink fetches or creates a signed preview URL with embedded authentication token
+func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, sandboxId string, port int) (*models.SignedPreviewResponse, error) {
+	if apiKey == "" || sandboxId == "" {
+		return &models.SignedPreviewResponse{
+			URL: fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId),
+		}, nil
+	}
+
+	// 1. Try Daytona Signed Preview URL API (embeds token in URL for iframes)
+	url := fmt.Sprintf("%s/sandbox/%s/ports/%d/signed-preview-url?expiresInSeconds=86400", s.getBaseURL(serverUrl), sandboxId, port)
+	req, err := http.NewRequest("GET", url, nil)
+	if err == nil {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		resp, doErr := s.client.Do(req)
+		if doErr == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+				var signedResp struct {
+					URL   string `json:"url"`
+					Token string `json:"token"`
+				}
+				if err := json.NewDecoder(resp.Body).Decode(&signedResp); err == nil && signedResp.URL != "" {
+					return &models.SignedPreviewResponse{
+						URL:   signedResp.URL,
+						Token: signedResp.Token,
+					}, nil
+				}
+			}
+		}
+	}
+
+	// 2. Try Daytona Standard Preview URL API
+	stdUrl := fmt.Sprintf("%s/sandbox/%s/ports/%d/preview-url", s.getBaseURL(serverUrl), sandboxId, port)
+	req2, err2 := http.NewRequest("GET", stdUrl, nil)
+	if err2 == nil {
+		req2.Header.Set("Authorization", "Bearer "+apiKey)
+		resp2, doErr2 := s.client.Do(req2)
+		if doErr2 == nil {
+			defer resp2.Body.Close()
+			if resp2.StatusCode == http.StatusOK || resp2.StatusCode == http.StatusCreated {
+				var stdResp struct {
+					URL   string `json:"url"`
+					Token string `json:"token"`
+				}
+				if err := json.NewDecoder(resp2.Body).Decode(&stdResp); err == nil && stdResp.URL != "" {
+					return &models.SignedPreviewResponse{
+						URL:   stdResp.URL,
+						Token: stdResp.Token,
+					}, nil
+				}
+			}
+		}
+	}
+
+	// 3. Fallback standard format
+	return &models.SignedPreviewResponse{
+		URL: fmt.Sprintf("https://%d-%s.daytona.app", port, sandboxId),
+	}, nil
+}
+
+// StartVNC starts all VNC processes (Xvfb, xfce4, x11vnc, novnc) inside the sandbox container
+func (s *DaytonaService) StartVNC(apiKey string, serverUrl string, sandboxId string) (*models.VNCStatusResponse, error) {
+	if apiKey == "" || sandboxId == "" {
+		return nil, fmt.Errorf("API key and Sandbox ID required")
+	}
+
+	// Call Daytona Toolbox Computer Use start endpoint
+	endpoints := []string{
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/start", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/start", s.getBaseURL(serverUrl), sandboxId),
+	}
+
+	for _, endpoint := range endpoints {
+		req, err := http.NewRequest("POST", endpoint, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		resp, err := s.client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+				break
+			}
+		}
+	}
+
+	// In-container fallback check for desktop processes
+	cmd := "which novnc_server || which x11vnc || which xfce4-session"
+	_, _ = s.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
+
+	return s.GetVNCStatus(apiKey, serverUrl, sandboxId)
+}
+
+// StopVNC stops all VNC processes inside the sandbox container
+func (s *DaytonaService) StopVNC(apiKey string, serverUrl string, sandboxId string) error {
+	if apiKey == "" || sandboxId == "" {
+		return fmt.Errorf("API key and Sandbox ID required")
+	}
+
+	endpoints := []string{
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/stop", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/stop", s.getBaseURL(serverUrl), sandboxId),
+	}
+
+	for _, endpoint := range endpoints {
+		req, err := http.NewRequest("POST", endpoint, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		resp, err := s.client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+// GetVNCStatus returns current VNC / Computer Use running status
+func (s *DaytonaService) GetVNCStatus(apiKey string, serverUrl string, sandboxId string) (*models.VNCStatusResponse, error) {
+	if apiKey == "" || sandboxId == "" {
+		return &models.VNCStatusResponse{Running: false, Status: "offline"}, nil
+	}
+
+	endpoints := []string{
+		fmt.Sprintf("https://proxy.app.daytona.io/toolbox/%s/computeruse/status", sandboxId),
+		fmt.Sprintf("%s/toolbox/%s/computeruse/status", s.getBaseURL(serverUrl), sandboxId),
+	}
+
+	for _, endpoint := range endpoints {
+		req, err := http.NewRequest("GET", endpoint, nil)
+		if err != nil {
+			continue
+		}
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		resp, err := s.client.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				var res struct {
+					Status  string `json:"status"`
+					Message string `json:"message"`
+				}
+				if jsonErr := json.NewDecoder(resp.Body).Decode(&res); jsonErr == nil {
+					isRunning := strings.EqualFold(res.Status, "running") || strings.EqualFold(res.Status, "active") || strings.Contains(strings.ToLower(res.Message), "running")
+					return &models.VNCStatusResponse{
+						Running: isRunning,
+						Status:  res.Status,
+						URL:     fmt.Sprintf("https://app.daytona.io/dashboard/sandboxes/%s/vnc", sandboxId),
+						Message: res.Message,
+					}, nil
+				}
+			}
+		}
+	}
+
+	return &models.VNCStatusResponse{
+		Running: false,
+		Status:  "stopped",
+		URL:     fmt.Sprintf("https://app.daytona.io/dashboard/sandboxes/%s/vnc", sandboxId),
+	}, nil
 }
 
 // DeleteUserVolume removes the persistent volume for a user's auth data

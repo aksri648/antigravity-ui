@@ -14,6 +14,10 @@ import {
   X,
   ChevronRight,
   Folder,
+  Monitor,
+  Play,
+  Square,
+  Sparkles,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
@@ -38,8 +42,18 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   terminalLogs,
   onPortChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "code" | "terminal">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal">("preview");
   const [iframeKey, setIframeKey] = useState(0);
+
+  // Signed Preview URL State (Direct Daytona Auth embedded URL for iframes)
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [fetchingSignedUrl, setFetchingSignedUrl] = useState(false);
+
+  // VNC Desktop State (Daytona Computer Use & Graphical XFCE)
+  const [vncRunning, setVncRunning] = useState(false);
+  const [vncStatus, setVncStatus] = useState<string>("stopped");
+  const [vncLoading, setVncLoading] = useState(false);
+  const [vncUrl, setVncUrl] = useState<string | null>(null);
 
   // VS Code Code View State (Strictly loaded from Daytona Sandbox)
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
@@ -55,8 +69,91 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const [fetchingLogs, setFetchingLogs] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
-  // Daytona Sandbox Preview URL (https://<sandboxId>-<port>.daytona.app)
-  const daytonaPreviewUrl = previewUrl || `https://${sandboxId}-${activePort}.daytona.app`;
+  // Effective live preview URL: signedUrl > passed previewUrl > standard format
+  const daytonaPreviewUrl = signedUrl || previewUrl || `https://${activePort}-${sandboxId}.daytona.app`;
+
+  // Fetch Daytona Signed Preview URL (Eliminates header requirements for iframes)
+  const fetchSignedPreviewUrl = useCallback(async () => {
+    if (!sandboxId || !apiKey || sandboxId === "sb-daytona-demo") return;
+    setFetchingSignedUrl(true);
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/workspace/preview-url?sandboxId=${sandboxId}&port=${activePort}&apiKey=${apiKey}`
+      );
+      const data = await res.json();
+      if (data.url) {
+        setSignedUrl(data.url);
+      }
+    } catch (e) {
+      console.warn("Failed to get signed preview URL, using standard preview URL", e);
+    } finally {
+      setFetchingSignedUrl(false);
+    }
+  }, [sandboxId, apiKey, activePort]);
+
+  useEffect(() => {
+    fetchSignedPreviewUrl();
+  }, [fetchSignedPreviewUrl]);
+
+  // VNC Process Management
+  const fetchVNCStatus = useCallback(async () => {
+    if (!sandboxId || !apiKey || sandboxId === "sb-daytona-demo") return;
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/workspace/vnc/status?sandboxId=${sandboxId}&apiKey=${apiKey}`
+      );
+      const data = await res.json();
+      setVncRunning(Boolean(data.running));
+      setVncStatus(data.status || "stopped");
+      if (data.url) setVncUrl(data.url);
+    } catch (e) {
+      // Ignore
+    }
+  }, [sandboxId, apiKey]);
+
+  useEffect(() => {
+    if (activeTab === "vnc") {
+      fetchVNCStatus();
+    }
+  }, [activeTab, fetchVNCStatus]);
+
+  const handleStartVNC = async () => {
+    if (!sandboxId || !apiKey) return;
+    setVncLoading(true);
+    try {
+      const res = await fetch("http://localhost:8080/api/workspace/vnc/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey, sandboxId, action: "start" }),
+      });
+      const data = await res.json();
+      setVncRunning(Boolean(data.running));
+      setVncStatus(data.status || "running");
+      if (data.url) setVncUrl(data.url);
+    } catch (e) {
+      console.error("Failed to start VNC", e);
+    } finally {
+      setVncLoading(false);
+    }
+  };
+
+  const handleStopVNC = async () => {
+    if (!sandboxId || !apiKey) return;
+    setVncLoading(true);
+    try {
+      await fetch("http://localhost:8080/api/workspace/vnc/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey, sandboxId, action: "stop" }),
+      });
+      setVncRunning(false);
+      setVncStatus("stopped");
+    } catch (e) {
+      console.error("Failed to stop VNC", e);
+    } finally {
+      setVncLoading(false);
+    }
+  };
 
   // Fetch Directory File Tree from Daytona Sandbox
   useEffect(() => {
@@ -263,6 +360,14 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             <Globe className="h-3.5 w-3.5 text-blue-400" /> Live Preview
           </Button>
           <Button
+            variant={activeTab === "vnc" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("vnc")}
+            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
+          >
+            <Monitor className="h-3.5 w-3.5 text-purple-400" /> VNC Desktop
+          </Button>
+          <Button
             variant={activeTab === "code" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setActiveTab("code")}
@@ -282,35 +387,37 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
         {/* Address Bar & Sandbox Port Controls */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs">
-            <span className="text-muted-foreground text-[11px]">Port:</span>
-            <select
-              value={activePort}
-              onChange={(e) => onPortChange(Number(e.target.value))}
-              className="bg-black/60 border border-border text-white text-xs rounded px-1.5 py-0.5 font-mono focus:outline-none"
-            >
-              <option value={3000}>:3000 (React/Next)</option>
-              <option value={5173}>:5173 (Vite)</option>
-              <option value={8080}>:8080 (Backend)</option>
-            </select>
-          </div>
+          {activeTab === "preview" && (
+            <div className="flex items-center gap-1 text-xs">
+              <span className="text-muted-foreground text-[11px]">Port:</span>
+              <select
+                value={activePort}
+                onChange={(e) => onPortChange(Number(e.target.value))}
+                className="bg-black/60 border border-border text-white text-xs rounded px-1.5 py-0.5 font-mono focus:outline-none"
+              >
+                <option value={3000}>:3000 (React/Next)</option>
+                <option value={5173}>:5173 (Vite)</option>
+                <option value={8080}>:8080 (Backend)</option>
+              </select>
+            </div>
+          )}
 
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleRefreshPreview}
+            onClick={activeTab === "vnc" ? fetchVNCStatus : handleRefreshPreview}
             className="h-7 w-7 text-muted-foreground hover:text-white"
-            title="Refresh Daytona Preview"
+            title="Refresh View"
           >
             <RotateCw className="h-3.5 w-3.5" />
           </Button>
 
           <a
-            href={daytonaPreviewUrl}
+            href={activeTab === "vnc" ? (vncUrl || `https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`) : daytonaPreviewUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-7 items-center gap-1 rounded border border-border bg-black/40 px-2 text-[11px] text-muted-foreground hover:text-white hover:bg-accent font-mono"
-            title="Open Daytona preview URL in new tab"
+            title="Open in new browser tab"
           >
             <ExternalLink className="h-3 w-3 text-blue-400" /> Open External
           </a>
@@ -326,20 +433,27 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             {/* Live Daytona URL Bar */}
             <div className="h-8 bg-[#1a1a2e] border-b border-border/60 px-3 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
               <div className="flex items-center gap-2 overflow-hidden text-ellipsis flex-1 min-w-0">
-                <span className={`h-2 w-2 rounded-full shrink-0 ${previewUrl ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                <span className={`h-2 w-2 rounded-full shrink-0 ${signedUrl || previewUrl ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                 <div className="flex items-center gap-1.5 bg-black/40 rounded px-2 py-0.5 flex-1 min-w-0 border border-border/40">
                   <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="text-gray-300 truncate">{daytonaPreviewUrl}</span>
                 </div>
               </div>
-              <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-400 ml-2 shrink-0">
-                <MonitorCheck className="h-3 w-3 mr-1" /> Port :{activePort}
-              </Badge>
+              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                {signedUrl && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-purple-500/30 text-purple-300">
+                    <Sparkles className="h-2.5 w-2.5 mr-1" /> Signed URL
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-400">
+                  <MonitorCheck className="h-3 w-3 mr-1" /> Port :{activePort}
+                </Badge>
+              </div>
             </div>
 
             {/* Live Sandbox Preview Iframe */}
             <div className="flex-1 w-full relative">
-              {previewUrl ? (
+              {signedUrl || previewUrl ? (
                 <iframe
                   key={iframeKey}
                   src={daytonaPreviewUrl}
@@ -354,6 +468,131 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                   className="h-full w-full border-0"
                   title="Waiting for Daytona Preview"
                 />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODE 2: DAYTONA VNC DESKTOP GUI ACCESS */}
+        {activeTab === "vnc" && (
+          <div className="h-full w-full flex flex-col bg-[#12121c] text-white">
+            {/* VNC Desktop Controls Bar */}
+            <div className="h-9 bg-[#1a1a2e] border-b border-border/60 px-4 flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-2">
+                <Monitor className="h-4 w-4 text-purple-400" />
+                <span className="font-semibold text-gray-200">Daytona VNC Desktop</span>
+                <span className="text-gray-500">·</span>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] py-0 px-1.5 ${
+                    vncRunning ? "border-emerald-500/40 text-emerald-400" : "border-gray-600 text-gray-400"
+                  }`}
+                >
+                  {vncRunning ? "● Running (Xvfb / XFCE4 / noVNC)" : "○ Stopped"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {vncRunning ? (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleStopVNC}
+                    disabled={vncLoading}
+                    className="h-6 text-[11px] gap-1 px-2 font-medium"
+                  >
+                    {vncLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Square className="h-3 w-3" />}
+                    Stop VNC
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleStartVNC}
+                    disabled={vncLoading}
+                    className="h-6 text-[11px] gap-1 px-2.5 bg-purple-600 hover:bg-purple-500 text-white font-medium"
+                  >
+                    {vncLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+                    Start VNC Desktop
+                  </Button>
+                )}
+
+                <a
+                  href={`https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-6 items-center gap-1 rounded border border-purple-500/30 bg-purple-500/10 px-2 text-[11px] text-purple-300 hover:bg-purple-500/20"
+                >
+                  <ExternalLink className="h-3 w-3" /> Dashboard VNC
+                </a>
+              </div>
+            </div>
+
+            {/* VNC Desktop Canvas / Viewer Area */}
+            <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+              {vncRunning ? (
+                <div className="w-full h-full flex flex-col rounded-xl border border-purple-500/20 bg-black/60 overflow-hidden shadow-2xl">
+                  <div className="h-8 bg-[#1e1e2f] border-b border-border/40 px-3 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Display :0 (X11 Virtual Framebuffer)</span>
+                    </div>
+                    <span className="text-[10px] text-purple-400">Resolution: 1920x1080 (VNC_RESOLUTION)</span>
+                  </div>
+                  <div className="flex-1 w-full bg-slate-950 flex flex-col items-center justify-center text-center p-8 space-y-4">
+                    <div className="p-4 rounded-2xl bg-purple-600/10 border border-purple-500/20 text-purple-400">
+                      <Monitor className="h-12 w-12 mx-auto" />
+                    </div>
+                    <div className="max-w-md space-y-2">
+                      <h3 className="text-base font-semibold text-white">VNC Desktop Session Active</h3>
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        Graphical XFCE desktop and noVNC processes (Xvfb, x11vnc, novnc) are running inside Daytona sandbox <span className="font-mono text-purple-300">{sandboxId}</span>.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 pt-2">
+                      <a
+                        href={`https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all"
+                      >
+                        <ExternalLink className="h-4 w-4" /> Open Interactive VNC Viewer
+                      </a>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRefreshPreview}
+                        className="h-8 text-xs border-border"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Reconnect
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-md w-full text-center space-y-5 bg-card/60 border border-border/80 p-8 rounded-2xl shadow-xl">
+                  <div className="inline-flex p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                    <Monitor className="h-8 w-8" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="text-base font-bold text-white">Daytona VNC Graphical Desktop</h3>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Interact with GUI applications and observe AI agents performing automated desktop tasks (Computer Use) in real-time.
+                    </p>
+                  </div>
+                  <div className="bg-black/40 rounded-xl p-3.5 text-left font-mono text-[11px] space-y-1.5 border border-border/40 text-gray-300">
+                    <div className="flex justify-between"><span className="text-gray-500">Target Sandbox:</span><span className="text-blue-400">{sandboxId}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">Desktop Env:</span><span className="text-purple-300">XFCE4 / Xvfb</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500">VNC Status:</span><span className="text-amber-400">Stopped</span></div>
+                  </div>
+                  <Button
+                    onClick={handleStartVNC}
+                    disabled={vncLoading}
+                    className="w-full gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs py-2 shadow-lg shadow-purple-600/25"
+                  >
+                    {vncLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                    Start VNC Session
+                  </Button>
+                </div>
               )}
             </div>
           </div>

@@ -59,6 +59,10 @@ func main() {
 		api.GET("/workspace/env", handlers.GetEnvVars(daytonaSvc))
 		api.POST("/workspace/env", handlers.SaveEnvVars(daytonaSvc))
 		api.POST("/workspace/recreate", handlers.RecreateWorkspace(daytonaSvc))
+		api.GET("/workspace/preview-url", handlers.GetPreviewLinkHandler(daytonaSvc))
+		api.POST("/workspace/vnc/start", handlers.StartVNCHandler(daytonaSvc))
+		api.POST("/workspace/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
+		api.GET("/workspace/vnc/status", handlers.GetVNCStatusHandler(daytonaSvc))
 	}
 
 	// WebSocket Endpoint for Real-time Streaming

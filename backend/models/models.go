@@ -147,3 +147,21 @@ type EnvVarsResponse struct {
 	Message string            `json:"message,omitempty"`
 }
 
+type SignedPreviewResponse struct {
+	URL   string `json:"url"`
+	Token string `json:"token,omitempty"`
+}
+
+type VNCStatusResponse struct {
+	Running bool   `json:"running"`
+	Status  string `json:"status"`
+	URL     string `json:"url,omitempty"`
+	Message string `json:"message,omitempty"`
+}
+
+type VNCActionRequest struct {
+	ApiKey    string `json:"apiKey"`
+	SandboxID string `json:"sandboxId"`
+	Action    string `json:"action"` // "start" | "stop" | "status"
+}
+

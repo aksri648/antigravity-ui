@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -503,6 +504,80 @@ func RecreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			State:     sb.State,
 			Message:   "Fresh Daytona sandbox provisioned and attached to your volume.",
 		})
+	}
+}
+
+// GetPreviewLinkHandler returns the signed preview URL for embedding in an iframe
+func GetPreviewLinkHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+		portStr := c.DefaultQuery("port", "3000")
+		port, _ := strconv.Atoi(portStr)
+		if port <= 0 {
+			port = 3000
+		}
+
+		res, err := daytonaSvc.GetSignedPreviewLink(apiKey, "", sandboxId, port)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// StartVNCHandler triggers VNC desktop environment inside the sandbox
+func StartVNCHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.VNCActionRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		res, err := daytonaSvc.StartVNC(req.ApiKey, "", req.SandboxID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
+	}
+}
+
+// StopVNCHandler terminates VNC processes
+func StopVNCHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req models.VNCActionRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+
+		if err := daytonaSvc.StopVNC(req.ApiKey, "", req.SandboxID); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "VNC processes stopped"})
+	}
+}
+
+// GetVNCStatusHandler returns current VNC process status
+func GetVNCStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Query("sandboxId")
+		apiKey := c.Query("apiKey")
+
+		res, err := daytonaSvc.GetVNCStatus(apiKey, "", sandboxId)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, res)
 	}
 }
 
