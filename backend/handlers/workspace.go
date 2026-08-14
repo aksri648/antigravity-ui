@@ -37,7 +37,15 @@ func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' -printf '%y %p\\n' | sort -k2"
+		folderPath := c.Query("folder")
+		if folderPath == "" {
+			folderPath = c.Query("projectFolder")
+		}
+		if folderPath == "" {
+			folderPath = "."
+		}
+
+		cmd := fmt.Sprintf("mkdir -p %s && cd %s && find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' -printf '%%y %%p\\n' | sort -k2", folderPath, folderPath)
 		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 
 		var lines []string
@@ -270,9 +278,17 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 			}
 		}
 
-		// Persist user prompt in SQLite
+		// Ensure project folder is ready in sandbox if projectId specified
+		if req.ProjectID != "" && userSvc != nil {
+			if proj, err := userSvc.GetProject(req.UserId, req.ProjectID); err == nil && proj != nil {
+				mkdirCmd := fmt.Sprintf("mkdir -p %s", proj.FolderPath)
+				_, _ = daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, mkdirCmd)
+			}
+		}
+
+		// Persist user prompt in SQLite with conversation and project context
 		if userSvc != nil {
-			userSvc.SaveChatMessage(req.UserId, req.SandboxID, "user", req.Prompt, nil, nil, false)
+			_ = userSvc.SaveChatMessageWithContext(req.UserId, req.SandboxID, req.ConversationID, req.ProjectID, "user", req.Prompt, nil, nil, false)
 		}
 
 		// Cancel existing prompt for this sandbox if any
@@ -343,9 +359,9 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				}
 			}
 
-			// Persist AGY response to SQLite
+			// Persist AGY response to SQLite with conversation and project context
 			if userSvc != nil && accumulatedResponse.Len() > 0 {
-				userSvc.SaveChatMessage(req.UserId, req.SandboxID, "agy", accumulatedResponse.String(), thoughts, tools, err != nil && ctx.Err() != context.Canceled)
+				_ = userSvc.SaveChatMessageWithContext(req.UserId, req.SandboxID, req.ConversationID, req.ProjectID, "agy", accumulatedResponse.String(), thoughts, tools, err != nil && ctx.Err() != context.Canceled)
 			}
 		}()
 

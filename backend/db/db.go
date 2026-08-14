@@ -150,6 +150,33 @@ func migrateSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_agent_runs_user ON agent_runs(user_id, created_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_agent_messages_run ON agent_messages(run_id, created_at ASC);
 
+	CREATE TABLE IF NOT EXISTS projects (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		slug TEXT NOT NULL,
+		description TEXT,
+		folder_path TEXT NOT NULL,
+		is_default INTEGER DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
+
+	CREATE TABLE IF NOT EXISTS conversations (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		project_id TEXT NOT NULL,
+		sandbox_id TEXT,
+		title TEXT NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_conversations_user_proj ON conversations(user_id, project_id);
+
 	CREATE TABLE IF NOT EXISTS cloud_secrets (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id TEXT NOT NULL,
@@ -172,6 +199,9 @@ func migrateSchema(db *sql.DB) error {
 	_, _ = db.Exec("ALTER TABLE users ADD COLUMN google_credentials_json TEXT;")
 	_, _ = db.Exec("ALTER TABLE user_environments ADD COLUMN google_account_email TEXT;")
 	_, _ = db.Exec("ALTER TABLE user_environments ADD COLUMN google_credentials_json TEXT;")
+	_, _ = db.Exec("ALTER TABLE chat_messages ADD COLUMN conversation_id TEXT;")
+	_, _ = db.Exec("ALTER TABLE chat_messages ADD COLUMN project_id TEXT;")
+	_, _ = db.Exec("CREATE INDEX IF NOT EXISTS idx_chat_conv ON chat_messages(conversation_id);")
 
 	return nil
 }

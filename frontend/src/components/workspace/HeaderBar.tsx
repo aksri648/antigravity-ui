@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Cpu, Settings, Layers, LogOut, User, LogIn, UserPlus } from "lucide-react";
+import { Sparkles, Cpu, Settings, Layers, LogOut, User, LogIn, UserPlus, PanelLeft, PanelLeftClose, FolderGit2 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
@@ -9,6 +9,9 @@ interface HeaderBarProps {
   userId: string;
   userEmail?: string;
   userName?: string;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+  activeProjectName?: string;
   onOpenSettings: () => void;
   onOpenAuth?: (mode: "signin" | "signup") => void;
   onStartSandbox?: () => void;
@@ -21,6 +24,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   userId,
   userEmail,
   userName,
+  isSidebarOpen = true,
+  onToggleSidebar,
+  activeProjectName,
   onOpenSettings,
   onOpenAuth,
   onStartSandbox,
@@ -30,9 +36,21 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const isGuest = !userEmail && !userName;
 
   return (
-    <header className="h-14 border-b border-white/10 bg-[#121216] px-4 sm:px-6 flex items-center justify-between">
-      {/* Brand & Title */}
+    <header className="h-14 border-b border-white/10 bg-[#121216] px-3 sm:px-5 flex items-center justify-between">
+      {/* Brand & Sidebar Toggle */}
       <div className="flex items-center gap-3">
+        {onToggleSidebar && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleSidebar}
+            className="h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 cursor-pointer"
+            title={isSidebarOpen ? "Collapse Projects & Chats Sidebar" : "Expand Projects & Chats Sidebar"}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+          </Button>
+        )}
+
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-md shadow-emerald-500/20">
           <Sparkles className="h-4 w-4" />
         </div>
@@ -42,6 +60,11 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             <Badge variant="outline" className="text-[10px] py-0 px-2 border-emerald-500/40 text-emerald-400 font-mono">
               SaaS IDE
             </Badge>
+            {activeProjectName && (
+              <Badge variant="outline" className="hidden sm:flex items-center gap-1 text-[10px] py-0 px-2 border-white/15 bg-white/5 text-gray-300">
+                <FolderGit2 className="h-3 w-3 text-emerald-400" /> {activeProjectName}
+              </Badge>
+            )}
           </div>
           <p className="text-[10px] text-gray-400">Autonomous Code Agents • Daytona MicroVMs</p>
         </div>

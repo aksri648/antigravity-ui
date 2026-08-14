@@ -19,6 +19,7 @@ import {
   FolderGit2,
   Activity,
   Zap,
+  Plus,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -56,6 +57,9 @@ interface ChatPaneProps {
   onAgentModeChange?: (mode: AgentMode) => void;
   cliEngine?: CliEngine;
   onCliEngineChange?: (engine: CliEngine) => void;
+  activeConversationTitle?: string;
+  activeProjectName?: string;
+  onNewChat?: () => void;
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -68,6 +72,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onAgentModeChange,
   cliEngine = "agy",
   onCliEngineChange,
+  activeConversationTitle,
+  activeProjectName,
+  onNewChat,
 }) => {
   const [input, setInput] = useState("");
   const [selectedMode, setSelectedMode] = useState<AgentMode>(currentAgentMode);
@@ -128,17 +135,38 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   return (
     <div className="flex h-full flex-col bg-[#0f0f12] border-r border-white/10">
-      {/* Top Header with CLI Switcher */}
-      <div className="h-12 px-3.5 border-b border-white/10 flex items-center justify-between bg-[#141418]">
-        <div className="flex items-center gap-2 text-xs font-bold text-white font-mono">
-          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+      {/* Top Header with Conversation Title & CLI Switcher */}
+      <div className="h-12 px-3 border-b border-white/10 flex items-center justify-between bg-[#141418] gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
             <Bot className="h-3.5 w-3.5" />
           </div>
-          <span>AGY AGENT</span>
+          <div className="min-w-0 flex items-center gap-2">
+            <span className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px]" title={activeConversationTitle || "New Chat"}>
+              {activeConversationTitle || "New Chat"}
+            </span>
+            {activeProjectName && (
+              <Badge variant="outline" className="hidden sm:inline-flex text-[9px] py-0 px-1.5 border-white/15 bg-white/5 text-gray-400 font-mono truncate max-w-[120px]">
+                {activeProjectName}
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {/* Switch CLI Button / Selector */}
-        <div className="flex items-center gap-1.5">
+        {/* Action Controls: New Chat, Switch CLI, Clear Chat */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {onNewChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNewChat}
+              className="h-7 text-xs px-2 border-white/15 bg-white/5 hover:bg-white/10 text-gray-200 cursor-pointer hidden md:flex items-center gap-1"
+              title="Start a new chat thread"
+            >
+              <Plus className="h-3 w-3 text-emerald-400" /> New Chat
+            </Button>
+          )}
+
           <div className="flex items-center bg-black/60 border border-white/15 rounded-lg p-0.5 text-[10px]">
             <button
               type="button"

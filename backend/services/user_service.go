@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -375,8 +376,362 @@ func (s *UserService) GetActiveUserSandbox(userId string) (*models.UserSandbox, 
 	return &sb, nil
 }
 
-// SaveChatMessage records message history in SQLite
+func slugify(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	reg := regexp.MustCompile("[^a-z0-9]+")
+	s = reg.ReplaceAllString(s, "-")
+	s = strings.Trim(s, "-")
+	if s == "" {
+		s = "project"
+	}
+	return s
+}
+
+// ----------------------------------------------------
+// Multi-Project Management
+// ----------------------------------------------------
+
+func (s *UserService) GetOrCreateDefaultProject(userId string) (*models.Project, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	var p models.Project
+	var desc sql.NullString
+	var isDef int
+
+	query := `
+		SELECT id, user_id, name, slug, description, folder_path, is_default, created_at, updated_at
+		FROM projects
+		WHERE user_id = ?
+		ORDER BY is_default DESC, created_at ASC
+		LIMIT 1
+	`
+	err := db.DB.QueryRow(query, userId).Scan(&p.ID, &p.UserID, &p.Name, &p.Slug, &desc, &p.FolderPath, &isDef, &p.CreatedAt, &p.UpdatedAt)
+	if err == nil {
+		p.Description = desc.String
+		p.IsDefault = isDef == 1
+		return &p, nil
+	}
+
+	// Create default workspace project
+	projId := "proj_" + uuid.New().String()[:12]
+	name := "Default Workspace"
+	slug := "default"
+	folderPath := "/home/daytona/persist/projects/default"
+
+	insertQuery := `
+		INSERT INTO projects (id, user_id, name, slug, description, folder_path, is_default, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`
+	_, err = db.DB.Exec(insertQuery, projId, userId, name, slug, "Default root workspace project", folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Project{
+		ID:          projId,
+		UserID:      userId,
+		Name:        name,
+		Slug:        slug,
+		Description: "Default root workspace project",
+		FolderPath:  folderPath,
+		IsDefault:   true,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}, nil
+}
+
+func (s *UserService) ListProjects(userId string) ([]models.Project, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	// Ensure at least 1 default project exists
+	_, _ = s.GetOrCreateDefaultProject(userId)
+
+	query := `
+		SELECT id, user_id, name, slug, description, folder_path, is_default, created_at, updated_at
+		FROM projects
+		WHERE user_id = ?
+		ORDER BY is_default DESC, updated_at DESC
+	`
+	rows, err := db.DB.Query(query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var projects []models.Project
+	for rows.Next() {
+		var p models.Project
+		var desc sql.NullString
+		var isDef int
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Name, &p.Slug, &desc, &p.FolderPath, &isDef, &p.CreatedAt, &p.UpdatedAt); err == nil {
+			p.Description = desc.String
+			p.IsDefault = isDef == 1
+			projects = append(projects, p)
+		}
+	}
+
+	return projects, nil
+}
+
+func (s *UserService) CreateProject(userId string, name string, description string, apiKey string, serverUrl string, sandboxId string) (*models.Project, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("project name is required")
+	}
+
+	slug := slugify(name)
+	projId := "proj_" + uuid.New().String()[:12]
+	folderPath := fmt.Sprintf("/home/daytona/persist/projects/%s", slug)
+
+	// Ensure physical project folder in Daytona Sandbox if sandbox is active
+	if apiKey != "" && sandboxId != "" && s.daytonaSvc != nil {
+		mkdirCmd := fmt.Sprintf("mkdir -p %s", folderPath)
+		_, _ = s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, mkdirCmd)
+	}
+
+	query := `
+		INSERT INTO projects (id, user_id, name, slug, description, folder_path, is_default, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`
+	_, err := db.DB.Exec(query, projId, userId, name, slug, description, folderPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Auto-create initial conversation for the new project
+	_, _ = s.CreateConversation(userId, projId, sandboxId, "Initial Conversation")
+
+	return &models.Project{
+		ID:          projId,
+		UserID:      userId,
+		Name:        name,
+		Slug:        slug,
+		Description: description,
+		FolderPath:  folderPath,
+		IsDefault:   false,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}, nil
+}
+
+func (s *UserService) GetProject(userId string, projectId string) (*models.Project, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	var p models.Project
+	var desc sql.NullString
+	var isDef int
+
+	query := `
+		SELECT id, user_id, name, slug, description, folder_path, is_default, created_at, updated_at
+		FROM projects
+		WHERE user_id = ? AND id = ?
+		LIMIT 1
+	`
+	err := db.DB.QueryRow(query, userId, projectId).Scan(&p.ID, &p.UserID, &p.Name, &p.Slug, &desc, &p.FolderPath, &isDef, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	p.Description = desc.String
+	p.IsDefault = isDef == 1
+	return &p, nil
+}
+
+func (s *UserService) UpdateProject(userId string, projectId string, name string, description string) error {
+	if db.DB == nil {
+		return errors.New("database not initialized")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("project name is required")
+	}
+
+	query := `
+		UPDATE projects
+		SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = ? AND id = ?
+	`
+	_, err := db.DB.Exec(query, name, description, userId, projectId)
+	return err
+}
+
+func (s *UserService) DeleteProject(userId string, projectId string) error {
+	if db.DB == nil {
+		return errors.New("database not initialized")
+	}
+
+	// Prevent deleting the default project
+	var isDef int
+	_ = db.DB.QueryRow("SELECT is_default FROM projects WHERE id = ? AND user_id = ?", projectId, userId).Scan(&isDef)
+	if isDef == 1 {
+		return errors.New("cannot delete the default workspace project")
+	}
+
+	// Cascade delete messages and conversations
+	_, _ = db.DB.Exec("DELETE FROM chat_messages WHERE project_id = ? AND user_id = ?", projectId, userId)
+	_, _ = db.DB.Exec("DELETE FROM conversations WHERE project_id = ? AND user_id = ?", projectId, userId)
+	_, err := db.DB.Exec("DELETE FROM projects WHERE id = ? AND user_id = ?", projectId, userId)
+	return err
+}
+
+// ----------------------------------------------------
+// Multi-Chat Conversations Management
+// ----------------------------------------------------
+
+func (s *UserService) ListConversations(userId string, projectId string) ([]models.Conversation, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	var rows *sql.Rows
+	var err error
+
+	if projectId != "" {
+		query := `
+			SELECT c.id, c.user_id, c.project_id, c.sandbox_id, c.title, c.created_at, c.updated_at,
+			       (SELECT COUNT(1) FROM chat_messages m WHERE m.conversation_id = c.id) as msg_count
+			FROM conversations c
+			WHERE c.user_id = ? AND c.project_id = ?
+			ORDER BY c.updated_at DESC
+		`
+		rows, err = db.DB.Query(query, userId, projectId)
+	} else {
+		query := `
+			SELECT c.id, c.user_id, c.project_id, c.sandbox_id, c.title, c.created_at, c.updated_at,
+			       (SELECT COUNT(1) FROM chat_messages m WHERE m.conversation_id = c.id) as msg_count
+			FROM conversations c
+			WHERE c.user_id = ?
+			ORDER BY c.updated_at DESC
+		`
+		rows, err = db.DB.Query(query, userId)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var convs []models.Conversation
+	for rows.Next() {
+		var c models.Conversation
+		var sbId sql.NullString
+		if err := rows.Scan(&c.ID, &c.UserID, &c.ProjectID, &sbId, &c.Title, &c.CreatedAt, &c.UpdatedAt, &c.MessageCount); err == nil {
+			c.SandboxID = sbId.String
+			convs = append(convs, c)
+		}
+	}
+
+	return convs, nil
+}
+
+func (s *UserService) CreateConversation(userId string, projectId string, sandboxId string, title string) (*models.Conversation, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	if projectId == "" {
+		defProj, err := s.GetOrCreateDefaultProject(userId)
+		if err != nil {
+			return nil, err
+		}
+		projectId = defProj.ID
+	}
+
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "New Chat"
+	}
+
+	convId := "conv_" + uuid.New().String()[:12]
+	query := `
+		INSERT INTO conversations (id, user_id, project_id, sandbox_id, title, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+	`
+	_, err := db.DB.Exec(query, convId, userId, projectId, sandboxId, title)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.Conversation{
+		ID:           convId,
+		UserID:       userId,
+		ProjectID:    projectId,
+		SandboxID:    sandboxId,
+		Title:        title,
+		MessageCount: 0,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}, nil
+}
+
+func (s *UserService) GetConversation(userId string, convId string) (*models.Conversation, error) {
+	if db.DB == nil {
+		return nil, errors.New("database not initialized")
+	}
+
+	var c models.Conversation
+	var sbId sql.NullString
+	query := `
+		SELECT c.id, c.user_id, c.project_id, c.sandbox_id, c.title, c.created_at, c.updated_at,
+		       (SELECT COUNT(1) FROM chat_messages m WHERE m.conversation_id = c.id) as msg_count
+		FROM conversations c
+		WHERE c.user_id = ? AND c.id = ?
+		LIMIT 1
+	`
+	err := db.DB.QueryRow(query, userId, convId).Scan(&c.ID, &c.UserID, &c.ProjectID, &sbId, &c.Title, &c.CreatedAt, &c.UpdatedAt, &c.MessageCount)
+	if err != nil {
+		return nil, err
+	}
+	c.SandboxID = sbId.String
+	return &c, nil
+}
+
+func (s *UserService) UpdateConversationTitle(userId string, convId string, title string) error {
+	if db.DB == nil {
+		return errors.New("database not initialized")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return errors.New("title cannot be empty")
+	}
+
+	query := `
+		UPDATE conversations
+		SET title = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE user_id = ? AND id = ?
+	`
+	_, err := db.DB.Exec(query, title, userId, convId)
+	return err
+}
+
+func (s *UserService) DeleteConversation(userId string, convId string) error {
+	if db.DB == nil {
+		return errors.New("database not initialized")
+	}
+
+	_, _ = db.DB.Exec("DELETE FROM chat_messages WHERE conversation_id = ? AND user_id = ?", convId, userId)
+	_, err := db.DB.Exec("DELETE FROM conversations WHERE id = ? AND user_id = ?", convId, userId)
+	return err
+}
+
+// ----------------------------------------------------
+// Chat History with Multi-Project & Multi-Chat Context
+// ----------------------------------------------------
+
 func (s *UserService) SaveChatMessage(userId string, sandboxId string, sender string, text string, thoughts []string, tools []map[string]interface{}, isError bool) error {
+	return s.SaveChatMessageWithContext(userId, sandboxId, "", "", sender, text, thoughts, tools, isError)
+}
+
+func (s *UserService) SaveChatMessageWithContext(userId string, sandboxId string, conversationId string, projectId string, sender string, text string, thoughts []string, tools []map[string]interface{}, isError bool) error {
 	msgId := "msg_" + uuid.New().String()[:12]
 	thoughtsJson, _ := json.Marshal(thoughts)
 	toolsJson, _ := json.Marshal(tools)
@@ -386,24 +741,90 @@ func (s *UserService) SaveChatMessage(userId string, sandboxId string, sender st
 		errVal = 1
 	}
 
+	// Auto-resolve project & conversation if not provided
+	if projectId == "" {
+		if defProj, err := s.GetOrCreateDefaultProject(userId); err == nil && defProj != nil {
+			projectId = defProj.ID
+		}
+	}
+	if conversationId == "" {
+		convs, err := s.ListConversations(userId, projectId)
+		if err == nil && len(convs) > 0 {
+			conversationId = convs[0].ID
+		} else {
+			if newConv, err := s.CreateConversation(userId, projectId, sandboxId, "New Chat"); err == nil && newConv != nil {
+				conversationId = newConv.ID
+			}
+		}
+	}
+
 	query := `
-		INSERT INTO chat_messages (id, user_id, sandbox_id, sender, text, thoughts_json, tools_json, is_error, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO chat_messages (id, user_id, sandbox_id, conversation_id, project_id, sender, text, thoughts_json, tools_json, is_error, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	_, err := db.DB.Exec(query, msgId, userId, sandboxId, sender, text, string(thoughtsJson), string(toolsJson), errVal, time.Now().UnixMilli())
+	_, err := db.DB.Exec(query, msgId, userId, sandboxId, conversationId, projectId, sender, text, string(thoughtsJson), string(toolsJson), errVal, time.Now().UnixMilli())
+
+	// Update conversation timestamp and auto-title if it's the first prompt
+	if conversationId != "" {
+		_, _ = db.DB.Exec("UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", conversationId)
+
+		if sender == "user" {
+			var currentTitle string
+			if scanErr := db.DB.QueryRow("SELECT title FROM conversations WHERE id = ?", conversationId).Scan(&currentTitle); scanErr == nil {
+				if currentTitle == "New Chat" || currentTitle == "Initial Conversation" {
+					newTitle := strings.TrimSpace(text)
+					if len(newTitle) > 40 {
+						newTitle = newTitle[:37] + "..."
+					}
+					if newTitle != "" {
+						_, _ = db.DB.Exec("UPDATE conversations SET title = ? WHERE id = ?", newTitle, conversationId)
+					}
+				}
+			}
+		}
+	}
+
 	return err
 }
 
-// GetChatHistory fetches chat messages from SQLite
 func (s *UserService) GetChatHistory(userId string, sandboxId string) ([]models.ChatMessageDTO, error) {
-	query := `
-		SELECT id, sender, text, thoughts_json, tools_json, is_error, created_at
-		FROM chat_messages
-		WHERE user_id = ?
-		ORDER BY created_at ASC
-		LIMIT 200
-	`
-	rows, err := db.DB.Query(query, userId)
+	return s.GetChatHistoryWithContext(userId, sandboxId, "", "")
+}
+
+func (s *UserService) GetChatHistoryWithContext(userId string, sandboxId string, conversationId string, projectId string) ([]models.ChatMessageDTO, error) {
+	var query string
+	var args []interface{}
+
+	if conversationId != "" {
+		query = `
+			SELECT id, conversation_id, project_id, sender, text, thoughts_json, tools_json, is_error, created_at
+			FROM chat_messages
+			WHERE user_id = ? AND conversation_id = ?
+			ORDER BY created_at ASC
+			LIMIT 300
+		`
+		args = []interface{}{userId, conversationId}
+	} else if projectId != "" {
+		query = `
+			SELECT id, conversation_id, project_id, sender, text, thoughts_json, tools_json, is_error, created_at
+			FROM chat_messages
+			WHERE user_id = ? AND project_id = ?
+			ORDER BY created_at ASC
+			LIMIT 300
+		`
+		args = []interface{}{userId, projectId}
+	} else {
+		query = `
+			SELECT id, conversation_id, project_id, sender, text, thoughts_json, tools_json, is_error, created_at
+			FROM chat_messages
+			WHERE user_id = ?
+			ORDER BY created_at ASC
+			LIMIT 300
+		`
+		args = []interface{}{userId}
+	}
+
+	rows, err := db.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -412,16 +833,18 @@ func (s *UserService) GetChatHistory(userId string, sandboxId string) ([]models.
 	var messages []models.ChatMessageDTO
 	for rows.Next() {
 		var m models.ChatMessageDTO
-		var thoughtsRaw, toolsRaw sql.NullString
+		var convId, projId, thoughtsRaw, toolsRaw sql.NullString
 		var isErr int
 
-		if err := rows.Scan(&m.ID, &m.Sender, &m.Text, &thoughtsRaw, &toolsRaw, &isErr, &m.Timestamp); err == nil {
+		if err := rows.Scan(&m.ID, &convId, &projId, &m.Sender, &m.Text, &thoughtsRaw, &toolsRaw, &isErr, &m.Timestamp); err == nil {
+			m.ConversationID = convId.String
+			m.ProjectID = projId.String
 			m.IsError = isErr == 1
 			if thoughtsRaw.Valid && thoughtsRaw.String != "" {
-				json.Unmarshal([]byte(thoughtsRaw.String), &m.Thoughts)
+				_ = json.Unmarshal([]byte(thoughtsRaw.String), &m.Thoughts)
 			}
 			if toolsRaw.Valid && toolsRaw.String != "" {
-				json.Unmarshal([]byte(toolsRaw.String), &m.Tools)
+				_ = json.Unmarshal([]byte(toolsRaw.String), &m.Tools)
 			}
 			messages = append(messages, m)
 		}
@@ -430,8 +853,12 @@ func (s *UserService) GetChatHistory(userId string, sandboxId string) ([]models.
 	return messages, nil
 }
 
-// ClearChatHistory deletes chat messages for user
 func (s *UserService) ClearChatHistory(userId string, sandboxId string) error {
 	_, err := db.DB.Exec("DELETE FROM chat_messages WHERE user_id = ?", userId)
+	return err
+}
+
+func (s *UserService) ClearConversationChatHistory(userId string, conversationId string) error {
+	_, err := db.DB.Exec("DELETE FROM chat_messages WHERE user_id = ? AND conversation_id = ?", userId, conversationId)
 	return err
 }

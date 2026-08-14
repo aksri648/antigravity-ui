@@ -93,14 +93,60 @@ type UpdateSettingsRequest struct {
 	GoogleApiKey  string `json:"googleApiKey,omitempty"`
 }
 
+// Multi-Project and Multi-Chat Workspace Models
+type Project struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"userId"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description string    `json:"description"`
+	FolderPath  string    `json:"folderPath"`
+	IsDefault   bool      `json:"isDefault"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type Conversation struct {
+	ID           string    `json:"id"`
+	UserID       string    `json:"userId"`
+	ProjectID    string    `json:"projectId"`
+	SandboxID    string    `json:"sandboxId,omitempty"`
+	Title        string    `json:"title"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+	MessageCount int       `json:"messageCount"`
+}
+
+type CreateProjectRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description,omitempty"`
+}
+
+type UpdateProjectRequest struct {
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type CreateConversationRequest struct {
+	ProjectID string `json:"projectId" binding:"required"`
+	SandboxID string `json:"sandboxId,omitempty"`
+	Title     string `json:"title,omitempty"`
+}
+
+type UpdateConversationRequest struct {
+	Title string `json:"title" binding:"required"`
+}
+
 type ChatMessageDTO struct {
-	ID        string                   `json:"id"`
-	Sender    string                   `json:"sender"`
-	Text      string                   `json:"text"`
-	Thoughts  []string                 `json:"thoughts,omitempty"`
-	Tools     []map[string]interface{} `json:"tools,omitempty"`
-	IsError   bool                     `json:"isError,omitempty"`
-	Timestamp int64                    `json:"timestamp"`
+	ID             string                   `json:"id"`
+	ConversationID string                   `json:"conversationId,omitempty"`
+	ProjectID      string                   `json:"projectId,omitempty"`
+	Sender         string                   `json:"sender"`
+	Text           string                   `json:"text"`
+	Thoughts       []string                 `json:"thoughts,omitempty"`
+	Tools          []map[string]interface{} `json:"tools,omitempty"`
+	IsError        bool                     `json:"isError,omitempty"`
+	Timestamp      int64                    `json:"timestamp"`
 }
 
 // API Request/Response DTOs
@@ -169,6 +215,8 @@ type SendPromptRequest struct {
 	ServerUrl      string `json:"serverUrl,omitempty"`
 	UserId         string `json:"userId"`
 	SandboxID      string `json:"sandboxId"`
+	ConversationID string `json:"conversationId,omitempty"`
+	ProjectID      string `json:"projectId,omitempty"`
 	Prompt         string `json:"prompt"`
 	AgentMode      string `json:"agentMode,omitempty"`      // "app-developer", "llm-deployer", "app-deployer", "app-maintainer"
 	ApprovalAction string `json:"approvalAction,omitempty"` // "approve", "reject", "amend"

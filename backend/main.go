@@ -96,6 +96,18 @@ func main() {
 		api.POST("/auth/settings", handlers.UpdateSettings(userSvc))
 		api.GET("/auth/google/callback", handlers.GoogleOAuthCallback(daytonaSvc, agySvc, userSvc))
 
+		// Multi-Project Management Endpoints
+		api.GET("/projects", handlers.ListProjectsHandler(userSvc))
+		api.POST("/projects", handlers.CreateProjectHandler(userSvc))
+		api.PUT("/projects/:id", handlers.UpdateProjectHandler(userSvc))
+		api.DELETE("/projects/:id", handlers.DeleteProjectHandler(userSvc))
+
+		// Multi-Chat Conversations Endpoints
+		api.GET("/conversations", handlers.ListConversationsHandler(userSvc))
+		api.POST("/conversations", handlers.CreateConversationHandler(userSvc))
+		api.PUT("/conversations/:id", handlers.UpdateConversationHandler(userSvc))
+		api.DELETE("/conversations/:id", handlers.DeleteConversationHandler(userSvc))
+
 		// Persistent Chat & Runs History
 		api.GET("/chat/history", handlers.GetChatHistoryHandler(userSvc))
 		api.POST("/chat/history", handlers.SaveChatMessageHandler(userSvc))

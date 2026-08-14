@@ -3,10 +3,12 @@ import { LandingPage } from "./components/marketing/LandingPage";
 import { SetupWizard } from "./components/onboarding/SetupWizard";
 import { AuthView } from "./components/auth/AuthView";
 import { HeaderBar } from "./components/workspace/HeaderBar";
+import { ProjectsSidebar } from "./components/workspace/ProjectsSidebar";
 import { ChatPane } from "./components/workspace/ChatPane";
 import type { ChatMessage, AgentMode, CliEngine } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
 import { SettingsModal } from "./components/workspace/SettingsModal";
+import type { Project, Conversation } from "./types";
 import { apiUrl, getWsUrl } from "./config/api";
 
 export function App() {
@@ -30,6 +32,16 @@ export function App() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [activePort, setActivePort] = useState<number>(3000);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Multi-Project and Multi-Chat State
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem("workspace_sidebar_open");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   // Adjustable Split Pane Width State (Left Panel %)
   const [leftPanePercent, setLeftPanePercent] = useState<number>(() => {
@@ -80,13 +92,65 @@ export function App() {
     checkUserSession();
   }, [userId]);
 
-  // Fetch persistent chat history from SQLite
-  const fetchChatHistory = useCallback(async () => {
+  // Fetch projects from backend
+  const fetchProjects = useCallback(async () => {
+    if (!userId) return;
     try {
-      const res = await fetch(apiUrl("/api/chat/history", { userId }));
+      const res = await fetch(apiUrl("/api/projects", { userId }));
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.messages) && data.messages.length > 0) {
+        if (Array.isArray(data.projects) && data.projects.length > 0) {
+          setProjects(data.projects);
+          setActiveProject((prev) => {
+            if (prev) {
+              const stillExists = data.projects.find((p: Project) => p.id === prev.id);
+              if (stillExists) return stillExists;
+            }
+            const savedProjId = localStorage.getItem(`active_project_id_${userId}`);
+            const matched = data.projects.find((p: Project) => p.id === savedProjId);
+            return matched || data.projects[0];
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch projects:", err);
+    }
+  }, [userId]);
+
+  // Fetch conversations for the active project
+  const fetchConversations = useCallback(async (projId?: string) => {
+    if (!userId) return;
+    const targetProjId = projId || activeProject?.id || "";
+    try {
+      const res = await fetch(apiUrl("/api/conversations", { userId, projectId: targetProjId }));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.conversations)) {
+          setConversations(data.conversations);
+          setActiveConversationId((prev) => {
+            if (prev && data.conversations.some((c: Conversation) => c.id === prev)) {
+              return prev;
+            }
+            return data.conversations.length > 0 ? data.conversations[0].id : null;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch conversations:", err);
+    }
+  }, [userId, activeProject]);
+
+  // Fetch chat history for the active conversation
+  const fetchChatHistory = useCallback(async (convId?: string) => {
+    const targetConvId = convId !== undefined ? convId : activeConversationId;
+    try {
+      const query: Record<string, string> = { userId };
+      if (targetConvId) query.conversationId = targetConvId;
+      if (activeProject?.id) query.projectId = activeProject.id;
+      const res = await fetch(apiUrl("/api/chat/history", query));
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages)) {
           const formatted: ChatMessage[] = data.messages.map((m: any) => ({
             id: m.id ? String(m.id) : `hist-${Math.random()}`,
             sender: m.sender === "user" ? "user" : "agy",
@@ -96,19 +160,35 @@ export function App() {
             timestamp: m.timestamp || Date.now(),
           }));
           setMessages(formatted);
+        } else {
+          setMessages([]);
         }
       }
     } catch (err) {
       console.warn("Failed to load chat history:", err);
     }
-  }, [userId]);
+  }, [userId, activeConversationId, activeProject]);
 
-  // Load persistent chat history from SQLite when entering workspace
+  // Load projects & conversations when entering workspace
   useEffect(() => {
     if (currentView === "workspace" && userId) {
-      fetchChatHistory();
+      fetchProjects();
     }
-  }, [currentView, userId, sandboxId, fetchChatHistory]);
+  }, [currentView, userId, fetchProjects]);
+
+  useEffect(() => {
+    if (activeProject?.id) {
+      fetchConversations(activeProject.id);
+    }
+  }, [activeProject?.id, fetchConversations]);
+
+  useEffect(() => {
+    if (activeConversationId) {
+      fetchChatHistory(activeConversationId);
+    } else if (conversations.length === 0) {
+      setMessages([]);
+    }
+  }, [activeConversationId, fetchChatHistory, conversations.length]);
 
   // Handle Dragging Splitter for Workspace Panel Resizing
   useEffect(() => {
@@ -481,6 +561,8 @@ export function App() {
           serverUrl: serverUrl || localStorage.getItem("daytona_server_url") || "",
           userId,
           sandboxId: currentSandbox || "",
+          conversationId: activeConversationId || "",
+          projectId: activeProject?.id || "",
           prompt: promptText,
           agentMode: activeMode,
           repoUrl: repoUrl || "",
@@ -488,6 +570,11 @@ export function App() {
           cliEngine: activeEngine,
         }),
       });
+
+      // Refresh conversations to reflect updated titles or message counts
+      if (activeProject?.id) {
+        fetchConversations(activeProject.id);
+      }
     } catch (err) {
       console.error("Failed to send prompt to backend", err);
       setIsProcessing(false);
@@ -498,10 +585,141 @@ export function App() {
     setMessages([]);
     setTerminalLogs([]);
     try {
-      await fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }), {
+      const query: Record<string, string> = { userId };
+      if (activeConversationId) query.conversationId = activeConversationId;
+      if (sandboxId) query.sandboxId = sandboxId;
+      await fetch(apiUrl("/api/chat/history", query), {
         method: "DELETE",
       });
+      if (activeProject?.id) {
+        fetchConversations(activeProject.id);
+      }
     } catch {}
+  };
+
+  // Project & Conversation Handlers
+  const handleSelectProject = (project: Project) => {
+    setActiveProject(project);
+    localStorage.setItem(`active_project_id_${userId}`, project.id);
+    fetchConversations(project.id);
+  };
+
+  const handleCreateProject = async (name: string, description: string) => {
+    try {
+      const res = await fetch(apiUrl("/api/projects", { userId }), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description,
+          apiKey: apiKey || "",
+          serverUrl: serverUrl || "",
+          sandboxId: sandboxId || "",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.project) {
+          await fetchProjects();
+          setActiveProject(data.project);
+          localStorage.setItem(`active_project_id_${userId}`, data.project.id);
+          await fetchConversations(data.project.id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to create project:", err);
+    }
+  };
+
+  const handleUpdateProject = async (projectId: string, name: string, description: string) => {
+    try {
+      await fetch(apiUrl(`/api/projects/${projectId}`, { userId }), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, description }),
+      });
+      fetchProjects();
+    } catch (err) {
+      console.error("Failed to update project:", err);
+    }
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      const res = await fetch(apiUrl(`/api/projects/${projectId}`, { userId }), {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await fetchProjects();
+      }
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+    }
+  };
+
+  const handleSelectConversation = (convId: string) => {
+    setActiveConversationId(convId);
+    fetchChatHistory(convId);
+  };
+
+  const handleCreateConversation = async (projectId?: string) => {
+    const targetProjId = projectId || activeProject?.id;
+    if (!targetProjId) return;
+    try {
+      const res = await fetch(apiUrl("/api/conversations", { userId }), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: targetProjId,
+          sandboxId: sandboxId || "",
+          title: "New Chat",
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.conversation) {
+          await fetchConversations(targetProjId);
+          setActiveConversationId(data.conversation.id);
+          setMessages([]);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to create conversation:", err);
+    }
+  };
+
+  const handleUpdateConversationTitle = async (convId: string, title: string) => {
+    try {
+      await fetch(apiUrl(`/api/conversations/${convId}`, { userId }), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      fetchConversations(activeProject?.id);
+    } catch (err) {
+      console.error("Failed to update conversation title:", err);
+    }
+  };
+
+  const handleDeleteConversation = async (convId: string) => {
+    try {
+      await fetch(apiUrl(`/api/conversations/${convId}`, { userId }), {
+        method: "DELETE",
+      });
+      if (activeConversationId === convId) {
+        const remaining = conversations.filter((c) => c.id !== convId);
+        if (remaining.length > 0) {
+          setActiveConversationId(remaining[0].id);
+          fetchChatHistory(remaining[0].id);
+        } else {
+          setActiveConversationId(null);
+          setMessages([]);
+        }
+      }
+      fetchConversations(activeProject?.id);
+    } catch (err) {
+      console.error("Failed to delete conversation:", err);
+    }
   };
 
   // Stop generating / cancel active prompt
@@ -651,6 +869,15 @@ export function App() {
             userId={userId}
             userEmail={userEmail}
             userName={userName}
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => {
+              setIsSidebarOpen((prev) => {
+                const next = !prev;
+                localStorage.setItem("workspace_sidebar_open", String(next));
+                return next;
+              });
+            }}
+            activeProjectName={activeProject?.name}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenAuth={(mode) => {
               setAuthMode(mode);
@@ -660,11 +887,35 @@ export function App() {
             onExitWorkspace={handleExitWorkspace}
           />
 
-          {/* Main Adjustable Split Screen Workspace */}
+          {/* Main Adjustable Split Screen Workspace with Projects Sidebar */}
           <div
             ref={workspaceContainerRef}
             className={`flex flex-1 overflow-hidden relative ${isDraggingSplitter ? "select-none cursor-col-resize" : ""}`}
           >
+            {/* Multi-Project & Multi-Chat Collapsible Sidebar */}
+            <ProjectsSidebar
+              isOpen={isSidebarOpen}
+              onToggle={() => {
+                setIsSidebarOpen((prev) => {
+                  const next = !prev;
+                  localStorage.setItem("workspace_sidebar_open", String(next));
+                  return next;
+                });
+              }}
+              projects={projects}
+              activeProject={activeProject}
+              onSelectProject={handleSelectProject}
+              onCreateProject={handleCreateProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
+              conversations={conversations}
+              activeConversationId={activeConversationId}
+              onSelectConversation={handleSelectConversation}
+              onCreateConversation={handleCreateConversation}
+              onUpdateConversationTitle={handleUpdateConversationTitle}
+              onDeleteConversation={handleDeleteConversation}
+            />
+
             {/* Left Pane (Adjustable Width) */}
             <div
               style={{ width: `${leftPanePercent}%` }}
@@ -683,6 +934,9 @@ export function App() {
                   setCliEngine(engine);
                   localStorage.setItem("preferred_cli_engine", engine);
                 }}
+                activeConversationTitle={conversations.find((c) => c.id === activeConversationId)?.title}
+                activeProjectName={activeProject?.name}
+                onNewChat={() => handleCreateConversation(activeProject?.id)}
               />
             </div>
 

@@ -20,8 +20,10 @@ func GetChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 			return
 		}
 		sandboxId := c.DefaultQuery("sandboxId", "")
+		conversationId := c.Query("conversationId")
+		projectId := c.Query("projectId")
 
-		messages, err := userSvc.GetChatHistory(userId, sandboxId)
+		messages, err := userSvc.GetChatHistoryWithContext(userId, sandboxId, conversationId, projectId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -37,13 +39,15 @@ func GetChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			UserId    string                   `json:"userId"`
-			SandboxId string                   `json:"sandboxId"`
-			Sender    string                   `json:"sender"`
-			Text      string                   `json:"text"`
-			Thoughts  []string                 `json:"thoughts,omitempty"`
-			Tools     []map[string]interface{} `json:"tools,omitempty"`
-			IsError   bool                     `json:"isError,omitempty"`
+			UserId         string                   `json:"userId"`
+			SandboxId      string                   `json:"sandboxId"`
+			ConversationId string                   `json:"conversationId"`
+			ProjectId      string                   `json:"projectId"`
+			Sender         string                   `json:"sender"`
+			Text           string                   `json:"text"`
+			Thoughts       []string                 `json:"thoughts,omitempty"`
+			Tools          []map[string]interface{} `json:"tools,omitempty"`
+			IsError        bool                     `json:"isError,omitempty"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -61,7 +65,7 @@ func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
 			return
 		}
 
-		err := userSvc.SaveChatMessage(req.UserId, req.SandboxId, req.Sender, req.Text, req.Thoughts, req.Tools, req.IsError)
+		err := userSvc.SaveChatMessageWithContext(req.UserId, req.SandboxId, req.ConversationId, req.ProjectId, req.Sender, req.Text, req.Thoughts, req.Tools, req.IsError)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -71,7 +75,7 @@ func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
 	}
 }
 
-// ClearChatHistoryHandler clears chat history for a user
+// ClearChatHistoryHandler clears chat history for a user or specific conversation
 func ClearChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.Query("userId")
@@ -82,9 +86,16 @@ func ClearChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to clear history"})
 			return
 		}
-		sandboxId := c.DefaultQuery("sandboxId", "")
+		conversationId := c.Query("conversationId")
 
-		err := userSvc.ClearChatHistory(userId, sandboxId)
+		var err error
+		if conversationId != "" {
+			err = userSvc.ClearConversationChatHistory(userId, conversationId)
+		} else {
+			sandboxId := c.DefaultQuery("sandboxId", "")
+			err = userSvc.ClearChatHistory(userId, sandboxId)
+		}
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
