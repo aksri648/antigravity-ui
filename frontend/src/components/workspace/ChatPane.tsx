@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
-  User,
   Brain,
   Wrench,
   Sparkles,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { MarkdownMessageCard } from "./MarkdownMessageCard";
 
 export type AgentMode = "app-developer" | "llm-deployer" | "app-deployer" | "app-maintainer";
 
@@ -313,29 +313,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           </div>
         ) : (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex flex-col space-y-1.5 ${
-                msg.sender === "user" ? "items-end" : "items-start"
-              }`}
-            >
-              {/* Sender Tag */}
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                {msg.sender === "user" ? (
-                  <>
-                    <span>You</span> <User className="h-3 w-3 text-blue-400" />
-                  </>
-                ) : (
-                  <>
-                    <Bot className="h-3 w-3 text-emerald-400" />
-                    <span>agy ({msg.agentMode || selectedMode})</span>
-                  </>
-                )}
-              </div>
-
+            <div key={msg.id} className="w-full space-y-2">
               {/* Thoughts */}
               {msg.thoughts && msg.thoughts.length > 0 && (
-                <div className="w-full rounded-md border border-purple-500/30 bg-purple-950/20 p-2.5 space-y-1.5 text-xs text-purple-200">
+                <div className="w-full rounded-xl border border-purple-500/30 bg-purple-950/20 p-3 space-y-1.5 text-xs text-purple-200 shadow-md">
                   <div className="flex items-center gap-1.5 font-semibold text-[11px] text-purple-300">
                     <Brain className="h-3.5 w-3.5" /> AGY Reasoning & Step Plan
                   </div>
@@ -398,24 +379,16 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                 </div>
               )}
 
-              {/* Message Bubble Content */}
+              {/* Error or Markdown Message Card */}
               {msg.isError ? (
-                <div className="rounded-lg px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%] whitespace-pre-wrap font-mono bg-red-950/40 border border-red-500/30 text-red-300 rounded-bl-none shadow">
-                  <div className="flex items-center gap-1.5 mb-1 text-red-400 font-semibold">
-                    <AlertCircle className="h-3.5 w-3.5" /> Error
+                <div className="rounded-xl px-4 py-3 text-xs leading-relaxed w-full whitespace-pre-wrap font-mono bg-red-950/40 border border-red-500/40 text-red-300 shadow-md">
+                  <div className="flex items-center gap-1.5 mb-1.5 text-red-400 font-semibold">
+                    <AlertCircle className="h-4 w-4" /> Error Occurred
                   </div>
                   {msg.text}
                 </div>
               ) : (
-                <div
-                  className={`rounded-lg px-3.5 py-2.5 text-xs leading-relaxed max-w-[95%] whitespace-pre-wrap font-mono ${
-                    msg.sender === "user"
-                      ? "bg-blue-600 text-white rounded-br-none shadow-md"
-                      : "bg-[#18181b] border border-border/80 text-gray-200 rounded-bl-none shadow"
-                  }`}
-                >
-                  {msg.text || (msg.sender === "agy" && isProcessing ? "" : msg.text)}
-                </div>
+                <MarkdownMessageCard message={msg} isProcessing={isProcessing} />
               )}
             </div>
           ))
