@@ -62,6 +62,10 @@ interface PreviewPaneProps {
   userId?: string;
   projectId?: string;
   onToggleCollapse?: () => void;
+  openTabs?: RightTabId[];
+  onOpenTabsChange?: (tabs: RightTabId[]) => void;
+  activeTab?: RightTabId;
+  onActiveTabChange?: (tab: RightTabId) => void;
 }
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
@@ -75,9 +79,13 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   userId,
   projectId,
   onToggleCollapse,
+  openTabs: externalOpenTabs,
+  onOpenTabsChange,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
 }) => {
   // Configurable open tabs in right panel (closable with 'X', reopenable with '+')
-  const [openTabsList, setOpenTabsList] = useState<RightTabId[]>(() => {
+  const [internalOpenTabsList, setInternalOpenTabsList] = useState<RightTabId[]>(() => {
     const saved = localStorage.getItem("workspace_open_right_tabs");
     if (saved) {
       try {
@@ -91,7 +99,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     return ["preview", "vnc", "code", "terminal", "telemetry", "deployments"];
   });
 
-  const [activeTab, setActiveTab] = useState<RightTabId>(() => {
+  const [internalActiveTab, setInternalActiveTab] = useState<RightTabId>(() => {
     const saved = localStorage.getItem("workspace_open_right_tabs");
     if (saved) {
       try {
@@ -101,6 +109,20 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     }
     return "preview";
   });
+
+  const openTabsList = externalOpenTabs !== undefined ? externalOpenTabs : internalOpenTabsList;
+  const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+
+  const setActiveTab = (tab: RightTabId) => {
+    if (onActiveTabChange) onActiveTabChange(tab);
+    setInternalActiveTab(tab);
+  };
+
+  const setOpenTabsList = (tabs: RightTabId[]) => {
+    if (onOpenTabsChange) onOpenTabsChange(tabs);
+    setInternalOpenTabsList(tabs);
+    localStorage.setItem("workspace_open_right_tabs", JSON.stringify(tabs));
+  };
 
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
   const plusMenuRef = useRef<HTMLDivElement>(null);

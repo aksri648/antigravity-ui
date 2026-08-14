@@ -7,6 +7,7 @@ import { ProjectsSidebar } from "./components/workspace/ProjectsSidebar";
 import { ChatPane } from "./components/workspace/ChatPane";
 import type { ChatMessage, AgentMode, CliEngine } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
+import type { RightTabId } from "./components/workspace/PreviewPane";
 import { SettingsModal } from "./components/workspace/SettingsModal";
 import type { Project, Conversation } from "./types";
 import { apiUrl, getWsUrl } from "./config/api";
@@ -42,10 +43,38 @@ export function App() {
     const saved = localStorage.getItem("workspace_right_panel_open");
     return saved !== null ? saved === "true" : true;
   });
+  const [rightOpenTabs, setRightOpenTabs] = useState<RightTabId[]>(() => {
+    const saved = localStorage.getItem("workspace_open_right_tabs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return ["preview", "vnc", "code", "terminal", "telemetry", "deployments"];
+  });
+  const [rightActiveTab, setRightActiveTab] = useState<RightTabId>(() => {
+    const saved = localStorage.getItem("workspace_open_right_tabs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+      } catch {}
+    }
+    return "preview";
+  });
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const handleOpenPreviewOnly = () => {
+    setIsRightPanelOpen(true);
+    localStorage.setItem("workspace_right_panel_open", "true");
+    setRightOpenTabs(["preview"]);
+    setRightActiveTab("preview");
+    localStorage.setItem("workspace_open_right_tabs", JSON.stringify(["preview"]));
+  };
 
   // Adjustable Split Pane Width State (Left Panel %)
   const [leftPanePercent, setLeftPanePercent] = useState<number>(() => {
@@ -992,6 +1021,7 @@ export function App() {
                     return next;
                   });
                 }}
+                onOpenPreviewOnly={handleOpenPreviewOnly}
               />
             </div>
 
@@ -1029,6 +1059,10 @@ export function App() {
                   terminalLogs={terminalLogs}
                   userId={userId}
                   projectId={activeProject?.id}
+                  openTabs={rightOpenTabs}
+                  onOpenTabsChange={setRightOpenTabs}
+                  activeTab={rightActiveTab}
+                  onActiveTabChange={setRightActiveTab}
                   onToggleCollapse={() => {
                     setIsRightPanelOpen(false);
                     localStorage.setItem("workspace_right_panel_open", "false");

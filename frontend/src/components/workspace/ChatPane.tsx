@@ -63,6 +63,7 @@ interface ChatPaneProps {
   onNewChat?: () => void;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
+  onOpenPreviewOnly?: () => void;
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -80,6 +81,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onNewChat,
   isRightPanelOpen = true,
   onToggleRightPanel,
+  onOpenPreviewOnly,
 }) => {
   const [input, setInput] = useState("");
   const [selectedMode, setSelectedMode] = useState<AgentMode>(currentAgentMode);
@@ -209,16 +211,16 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
 
-          {!isRightPanelOpen && onToggleRightPanel && (
+          {!isRightPanelOpen && (onOpenPreviewOnly || onToggleRightPanel) && (
             <Button
               variant="outline"
               size="sm"
-              onClick={onToggleRightPanel}
-              className="h-7 text-xs px-2 border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 cursor-pointer flex items-center gap-1 shadow-sm font-medium"
-              title="Expand right preview & dev panel"
+              onClick={onOpenPreviewOnly || onToggleRightPanel}
+              className="h-7 text-xs px-2.5 border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 cursor-pointer flex items-center gap-1.5 shadow-sm font-medium"
+              title="Open Live Preview tab in right panel"
             >
               <PanelRight className="h-3.5 w-3.5 text-purple-400" />
-              <span className="hidden sm:inline">Preview</span>
+              <span>Preview</span>
             </Button>
           )}
         </div>
