@@ -45,14 +45,18 @@ export type ChatMessage = {
   questions?: string[];
 };
 
+export type CliEngine = "agy" | "opencode";
+
 interface ChatPaneProps {
   messages: ChatMessage[];
-  onSendMessage: (prompt: string, agentMode?: AgentMode, repoUrl?: string, approvalAction?: "approve" | "reject" | "amend") => void;
+  onSendMessage: (prompt: string, agentMode?: AgentMode, repoUrl?: string, approvalAction?: "approve" | "reject" | "amend", cliEngine?: CliEngine) => void;
   isProcessing: boolean;
   onClearChat: () => void;
   onStopGenerating?: () => void;
   currentAgentMode?: AgentMode;
   onAgentModeChange?: (mode: AgentMode) => void;
+  cliEngine?: CliEngine;
+  onCliEngineChange?: (engine: CliEngine) => void;
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -63,9 +67,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onStopGenerating,
   currentAgentMode = "app-developer",
   onAgentModeChange,
+  cliEngine = "agy",
+  onCliEngineChange,
 }) => {
   const [input, setInput] = useState("");
   const [selectedMode, setSelectedMode] = useState<AgentMode>(currentAgentMode);
+  const [selectedEngine, setSelectedEngine] = useState<CliEngine>(cliEngine);
   const [repoUrl, setRepoUrl] = useState("");
   const [trafficProfile, setTrafficProfile] = useState<string>("sporadic");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,9 +81,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     setSelectedMode(currentAgentMode);
   }, [currentAgentMode]);
 
+  useEffect(() => {
+    setSelectedEngine(cliEngine);
+  }, [cliEngine]);
+
   const handleModeSelect = (mode: AgentMode) => {
     setSelectedMode(mode);
     if (onAgentModeChange) onAgentModeChange(mode);
+  };
+
+  const handleEngineToggle = (engine: CliEngine) => {
+    setSelectedEngine(engine);
+    if (onCliEngineChange) onCliEngineChange(engine);
   };
 
   const scrollToBottom = () => {
@@ -96,7 +112,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       fullPrompt = `[Traffic Profile: ${trafficProfile.toUpperCase()}] ${fullPrompt}`;
     }
 
-    onSendMessage(fullPrompt, selectedMode, repoUrl.trim());
+    onSendMessage(fullPrompt, selectedMode, repoUrl.trim(), undefined, selectedEngine);
     setInput("");
   };
 
@@ -108,28 +124,59 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   const handleApproval = (action: "approve" | "reject" | "amend", customNote?: string) => {
     const prompt = customNote ? `${action.toUpperCase()}: ${customNote}` : `${action.toUpperCase()} action.`;
-    onSendMessage(prompt, selectedMode, repoUrl.trim(), action);
+    onSendMessage(prompt, selectedMode, repoUrl.trim(), action, selectedEngine);
   };
 
   return (
     <div className="flex h-full flex-col bg-[#141416] border-r border-border/80">
-      {/* Top Header */}
+      {/* Top Header with CLI Switcher */}
       <div className="h-11 px-3 border-b border-border/80 flex items-center justify-between bg-[#18181b]/95">
         <div className="flex items-center gap-2 text-xs font-semibold text-white">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600/20 text-blue-400 border border-blue-500/30">
             <Bot className="h-3.5 w-3.5" />
           </div>
-          <span>AGY Autonomous Multi-Agent</span>
+          <span>AGY Multi-Agent</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-white"
-          onClick={onClearChat}
-          title="Clear chat thread"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+
+        {/* Switch CLI Button / Selector */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center bg-black/60 border border-border/80 rounded-lg p-0.5 text-[10px]">
+            <button
+              type="button"
+              onClick={() => handleEngineToggle("agy")}
+              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                selectedEngine === "agy"
+                  ? "bg-blue-600 text-white font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-white"
+              }`}
+              title="Execute using Antigravity CLI (agy) inside ~/workspace"
+            >
+              ⚡ AGY
+            </button>
+            <button
+              type="button"
+              onClick={() => handleEngineToggle("opencode")}
+              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                selectedEngine === "opencode"
+                  ? "bg-cyan-600 text-white font-semibold shadow-sm"
+                  : "text-muted-foreground hover:text-white"
+              }`}
+              title="Execute using OpenCode CLI inside ~/workspace"
+            >
+              💻 OpenCode
+            </button>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-white"
+            onClick={onClearChat}
+            title="Clear chat thread"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* Agent Selector Bar */}

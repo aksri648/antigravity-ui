@@ -76,11 +76,17 @@ cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/settings.json"
       "command(ls *)",
       "command(docker *)",
       "command(az *)",
+      "command(opencode *)",
       "write_file(*)"
     ]
   }
 }
 EOF
+
+# Ensure OpenCode CLI is installed
+if ! command -v opencode >/dev/null 2>&1; then
+  (npm install -g @opencode/cli 2>/dev/null || curl -fsSL https://opencode.ai/install | bash 2>/dev/null || true)
+fi
 
 # 1. Provision MCP Servers configuration (GitHub, Azure, RunPod, Hugging Face)
 cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/mcp_config.json"
@@ -462,7 +468,7 @@ echo "API_KEY_SAVED"
 	return err
 }
 
-// StreamPromptExec runs agy inside Daytona sandbox and streams real events to frontend
+// StreamPromptExec runs agy or opencode inside Daytona sandbox and streams real events to frontend
 func (s *AGYService) StreamPromptExec(
 	ctx context.Context,
 	apiKey string,
@@ -472,15 +478,20 @@ func (s *AGYService) StreamPromptExec(
 	agentMode string,
 	repoUrl string,
 	approvalAction string,
+	cliEngine string,
 	eventCallback func(models.StreamEvent),
 ) error {
+	engineName := "Antigravity CLI (agy)"
+	if cliEngine == "opencode" {
+		engineName = "OpenCode CLI"
+	}
 	agentTitle := "Antigravity AI Agent"
 	if agentMode != "" {
 		agentTitle = strings.Title(strings.ReplaceAll(agentMode, "-", " "))
 	}
 	eventCallback(models.StreamEvent{
 		Type:      "thought",
-		Content:   fmt.Sprintf("Connecting to Daytona Sandbox & activating %s with persistent volume...", agentTitle),
+		Content:   fmt.Sprintf("Connecting to Daytona Sandbox & activating %s via %s in persistent workspace...", agentTitle, engineName),
 		SandboxID: sandboxId,
 		Timestamp: time.Now().UnixMilli(),
 	})
@@ -515,15 +526,27 @@ func (s *AGYService) StreamPromptExec(
 		skillPrompt = fmt.Sprintf("User REJECTED the previous plan. Reason: %s. Propose an amended plan.", skillPrompt)
 	}
 
-	// 1. Run agy command directly inside persistent workspace directory with loaded environment
-	cmdStr := fmt.Sprintf(`#!/usr/bin/env bash
-mkdir -p /home/daytona/persist/workspace /home/daytona/workspace /home/daytona/persist/gemini
-[ -f /home/daytona/persist/gemini/.env ] && set -a && . /home/daytona/persist/gemini/.env && set +a 2>/dev/null || true
-[ -f /home/daytona/.gemini/.env ] && set -a && . /home/daytona/.gemini/.env && set +a 2>/dev/null || true
-
-export PATH="/usr/local/bin:/home/daytona/.local/bin:$PATH"
-cd /home/daytona/persist/workspace 2>/dev/null || cd /home/daytona/workspace 2>/dev/null || cd /home/daytona
-
+	// Build runner script based on selected CLI Engine (agy vs opencode)
+	var runnerScript string
+	if cliEngine == "opencode" {
+		runnerScript = fmt.Sprintf(`
+if command -v opencode >/dev/null 2>&1; then
+  opencode run %s 2>&1 || opencode %s 2>&1
+elif [ -f /home/daytona/.opencode/bin/opencode ]; then
+  /home/daytona/.opencode/bin/opencode run %s 2>&1
+elif [ -f /root/.opencode/bin/opencode ]; then
+  /root/.opencode/bin/opencode run %s 2>&1
+else
+  (npm install -g @opencode/cli 2>/dev/null || curl -fsSL https://opencode.ai/install | bash 2>/dev/null || true)
+  if command -v opencode >/dev/null 2>&1; then
+    opencode run %s 2>&1
+  else
+    agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions
+  fi
+fi
+`, strconv.Quote(skillPrompt), strconv.Quote(skillPrompt), strconv.Quote(skillPrompt), strconv.Quote(skillPrompt), strconv.Quote(skillPrompt), strconv.Quote(skillPrompt))
+	} else {
+		runnerScript = fmt.Sprintf(`
 if command -v agy >/dev/null 2>&1; then
   agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions
 elif command -v gemini >/dev/null 2>&1; then
@@ -532,6 +555,19 @@ else
   echo "AGY CLI not found in PATH inside Daytona sandbox container."
 fi
 `, strconv.Quote(skillPrompt), strconv.Quote(skillPrompt))
+	}
+
+	// 1. Run chosen CLI directly inside persistent workspace directory with loaded environment
+	cmdStr := fmt.Sprintf(`#!/usr/bin/env bash
+mkdir -p /home/daytona/persist/workspace /home/daytona/workspace /home/daytona/persist/gemini
+[ -f /home/daytona/persist/gemini/.env ] && set -a && . /home/daytona/persist/gemini/.env && set +a 2>/dev/null || true
+[ -f /home/daytona/.gemini/.env ] && set -a && . /home/daytona/.gemini/.env && set +a 2>/dev/null || true
+
+export PATH="/usr/local/bin:/home/daytona/.local/bin:/home/daytona/.opencode/bin:/root/.opencode/bin:$PATH"
+cd /home/daytona/persist/workspace 2>/dev/null || cd /home/daytona/workspace 2>/dev/null || cd /home/daytona
+
+%s
+`, runnerScript)
 
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmdStr)
 

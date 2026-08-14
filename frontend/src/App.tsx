@@ -4,7 +4,7 @@ import { SetupWizard } from "./components/onboarding/SetupWizard";
 import { AuthView } from "./components/auth/AuthView";
 import { HeaderBar } from "./components/workspace/HeaderBar";
 import { ChatPane } from "./components/workspace/ChatPane";
-import type { ChatMessage, AgentMode } from "./components/workspace/ChatPane";
+import type { ChatMessage, AgentMode, CliEngine } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
 import { SettingsModal } from "./components/workspace/SettingsModal";
 import { apiUrl, getWsUrl } from "./config/api";
@@ -360,13 +360,15 @@ export function App() {
   };
 
   const [currentAgentMode, setCurrentAgentMode] = useState<AgentMode>("app-developer");
+  const [cliEngine, setCliEngine] = useState<CliEngine>(() => (localStorage.getItem("preferred_cli_engine") as CliEngine) || "agy");
 
-  // Send Prompt to AGY via Go Backend
+  // Send Prompt to AGY or OpenCode via Go Backend
   const handleSendMessage = async (
     promptText: string,
     agentMode?: AgentMode,
     repoUrl?: string,
-    approvalAction?: "approve" | "reject" | "amend"
+    approvalAction?: "approve" | "reject" | "amend",
+    cliEngineParam?: CliEngine
   ) => {
     let currentKey = apiKey || localStorage.getItem("daytona_api_key");
     if (!currentKey) {
@@ -403,6 +405,7 @@ export function App() {
     }
 
     const activeMode = agentMode || currentAgentMode;
+    const activeEngine = cliEngineParam || cliEngine;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -438,6 +441,7 @@ export function App() {
           agentMode: activeMode,
           repoUrl: repoUrl || "",
           approvalAction: approvalAction || "",
+          cliEngine: activeEngine,
         }),
       });
     } catch (err) {
@@ -615,6 +619,11 @@ export function App() {
                 onStopGenerating={handleStopGenerating}
                 currentAgentMode={currentAgentMode}
                 onAgentModeChange={setCurrentAgentMode}
+                cliEngine={cliEngine}
+                onCliEngineChange={(engine) => {
+                  setCliEngine(engine);
+                  localStorage.setItem("preferred_cli_engine", engine);
+                }}
               />
             </div>
 

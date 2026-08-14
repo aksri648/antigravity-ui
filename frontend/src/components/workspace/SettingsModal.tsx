@@ -137,6 +137,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [envSaveSuccess, setEnvSaveSuccess] = useState(false);
 
   // Agent Preferences
+  const [preferredEngine, setPreferredEngine] = useState<"agy" | "opencode">(() => (localStorage.getItem("preferred_cli_engine") as "agy" | "opencode") || "agy");
   const [skipPermissions, setSkipPermissions] = useState(true);
   const [outputFormat, setOutputFormat] = useState("stream-json");
   const [autoScrollLogs, setAutoScrollLogs] = useState(true);
@@ -1282,7 +1283,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <p className="text-xs text-muted-foreground">Configure flags, stream formats, and log streaming behaviors</p>
                 </div>
 
-                <div className="space-y-3 rounded-xl border border-border/80 bg-black/30 p-4">
+                <div className="space-y-4 rounded-xl border border-border/80 bg-black/30 p-4">
+                  {/* CLI Engine Selector */}
+                  <div className="space-y-2 p-2 border-b border-border/60">
+                    <p className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <Terminal className="h-3.5 w-3.5 text-blue-400" /> Coding CLI Execution Engine
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Choose which underlying AI coding CLI executes your prompts inside the Daytona micro-VM. Both run inside the shared persistent workspace: <code className="text-blue-300">/home/daytona/persist/workspace</code>.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreferredEngine("agy");
+                          localStorage.setItem("preferred_cli_engine", "agy");
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          preferredEngine === "agy"
+                            ? "bg-blue-600/20 border-blue-500 text-white font-semibold shadow-sm"
+                            : "bg-black/40 border-border/70 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-white">⚡ Antigravity (agy)</span>
+                          {preferredEngine === "agy" && <Badge className="text-[9px] bg-blue-600 text-white">Active</Badge>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Google Antigravity CLI with multi-tool skills and progressive disclosure</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreferredEngine("opencode");
+                          localStorage.setItem("preferred_cli_engine", "opencode");
+                        }}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          preferredEngine === "opencode"
+                            ? "bg-cyan-600/20 border-cyan-500 text-white font-semibold shadow-sm"
+                            : "bg-black/40 border-border/70 text-muted-foreground hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-white">💻 OpenCode CLI</span>
+                          {preferredEngine === "opencode" && <Badge className="text-[9px] bg-cyan-600 text-white">Active</Badge>}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Open-source agentic coding assistant with multi-model terminal interface</p>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Skip permissions */}
                   <label className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer">
                     <div>

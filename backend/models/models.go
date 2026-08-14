@@ -173,6 +173,7 @@ type SendPromptRequest struct {
 	AgentMode      string `json:"agentMode,omitempty"`      // "app-developer", "llm-deployer", "app-deployer", "app-maintainer"
 	ApprovalAction string `json:"approvalAction,omitempty"` // "approve", "reject", "amend"
 	RepoURL        string `json:"repoUrl,omitempty"`
+	CliEngine      string `json:"cliEngine,omitempty"`      // "agy", "opencode"
 }
 
 type FileNode struct {

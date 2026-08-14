@@ -293,6 +293,7 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 				req.AgentMode,
 				req.RepoURL,
 				req.ApprovalAction,
+				req.CliEngine,
 				func(event models.StreamEvent) {
 					hub.BroadcastEvent(event)
 					if event.Type == "token" {
