@@ -21,7 +21,7 @@ func HealthCheck(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "online",
-			"service": "AGY Cloud Orchestrator API",
+			"service": "DELTA Orchestrator API",
 		})
 	}
 }

@@ -150,7 +150,7 @@ func main() {
 	// WebSocket Endpoint for Real-time Streaming
 	r.GET("/ws", handlers.HandleWebSocket(wsHub))
 
-	log.Printf("🚀 AGY Cloud SaaS Backend listening on http://localhost:%s", port)
+	log.Printf("🚀 DELTA SaaS Backend listening on http://localhost:%s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}

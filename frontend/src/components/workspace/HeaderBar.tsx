@@ -38,7 +38,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-extrabold tracking-tight text-white font-mono">AGY CLOUD</h1>
+            <h1 className="text-sm font-extrabold tracking-tight text-white font-mono">DELTA</h1>
             <Badge variant="outline" className="text-[10px] py-0 px-2 border-emerald-500/40 text-emerald-400 font-mono">
               SaaS IDE
             </Badge>

@@ -61,7 +61,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-black tracking-tight text-white font-mono">AGY CLOUD</span>
+              <span className="text-lg font-black tracking-tight text-white font-mono">DELTA</span>
               <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0.5 px-2.5 border-emerald-500/40 text-emerald-400 font-mono">
                 v2.4 Production
               </Badge>
@@ -301,7 +301,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             But something else happened. AI agents made confident decisions inside ephemeral containers that lacked persistent memory, real cloud tools, or live verification.
           </p>
           <p>
-            <span className="text-emerald-400">AGY Cloud is different.</span> It is an autonomous development platform that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, and cloud deployment pipelines.
+            <span className="text-emerald-400">DELTA is different.</span> It is an autonomous development platform that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, and cloud deployment pipelines.
           </p>
           <p className="text-white text-2xl sm:text-4xl font-extrabold leading-tight">
             Your agents don't guess in the dark. They build, verify, deploy, and maintain.
@@ -440,7 +440,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">System Architecture</Badge>
                 <h3 className="text-2xl font-bold text-white">Decoupled Agentic Micro-VM Architecture</h3>
                 <p className="text-sm text-gray-300 leading-relaxed">
-                  AGY Cloud uses a three-tier decoupled architecture:
+                  DELTA uses a three-tier decoupled architecture:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
@@ -463,7 +463,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="space-y-4">
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Getting Started</Badge>
                 <h3 className="text-2xl font-bold text-white">3-Step First-Run Onboarding</h3>
-                <p className="text-sm text-gray-300">Setting up your AGY Cloud environment takes under 60 seconds:</p>
+                <p className="text-sm text-gray-300">Setting up your DELTA environment takes under 60 seconds:</p>
                 <ol className="space-y-3 text-xs text-gray-300 list-decimal list-inside">
                   <li><strong>Enter Daytona API Key:</strong> Get your key from <code className="text-emerald-400">app.daytona.io</code>.</li>
                   <li><strong>Provide AI Model Credentials:</strong> Enter your Google AI Studio key or OpenAI API key.</li>
@@ -478,19 +478,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "agents" && (
               <div className="space-y-4">
                 <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Autonomous Swarm</Badge>
-                <h3 className="text-2xl font-bold text-white">The 4 Specialized Agents</h3>
-                <div className="space-y-3 text-xs text-gray-300">
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-blue-400">App Developer Agent:</strong> Interrogates user requirements, designs architecture, writes code, launches dev servers.
+                <h3 className="text-2xl font-bold text-white">The 4 Autonomous Agent Personas</h3>
+                <p className="text-sm text-gray-300">
+                  Each agent operates independently to guide you through complex software lifecycles:
+                </p>
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/30">
+                    <span className="text-xs font-bold text-emerald-400">1. App Developer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Gathers full product specifications, recommends modern stacks, and produces complete production code.</p>
                   </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-purple-400">LLM Deployer Agent:</strong> Profiles traffic (bursty vs steady), provisions RunPod Serverless or Azure AKS, outputs connection snippets.
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/30">
+                    <span className="text-xs font-bold text-purple-400">2. LLM Deployer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Interviews for latency and QPS requirements, chooses Azure vs RunPod Serverless, and returns live connection details.</p>
                   </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-emerald-400">App Deployer Agent:</strong> Generates multi-stage Dockerfiles, provisions Azure VMs / Container Apps, configures TLS.
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/30">
+                    <span className="text-xs font-bold text-blue-400">3. App Deployer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Reads workspace files, produces production Dockerfiles, provisions Azure VMs, and deploys containers.</p>
                   </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-amber-400">App Maintainer Agent:</strong> Clones GitHub repos, creates fix branches, runs tests, and opens PRs via GitHub MCP.
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/30">
+                    <span className="text-xs font-bold text-cyan-400">4. App Maintainer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Clones GitHub repos into persistent volumes, applies bugfixes/features on isolated branches, and submits PRs.</p>
                   </div>
                 </div>
               </div>
@@ -498,15 +505,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {activeDocSection === "cliswitcher" && (
               <div className="space-y-4">
-                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Modular CLI Drivers</Badge>
+                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Runtime Engine</Badge>
                 <h3 className="text-2xl font-bold text-white">Runtime CLI Switcher (AGY & OpenCode)</h3>
                 <p className="text-sm text-gray-300">
-                  You can switch between Antigravity CLI and OpenCode CLI at any point during your session:
+                  Both CLI engines run in the exact same persistent workspace folder (<code className="text-emerald-400">/home/daytona/persist/workspace</code>):
                 </p>
                 <ul className="space-y-2 text-xs text-gray-300">
                   <li>• Click the <strong>⚡ AGY</strong> or <strong>💻 OpenCode</strong> button in the Chat header.</li>
-                  <li>• Both CLIs execute inside the exact same persistent volume: <code className="text-cyan-300">/home/daytona/persist/workspace</code>.</li>
-                  <li>• All files, git commits, environment variables, and dev servers continue uninterrupted.</li>
+                  <li>• You can switch at any moment during development — all files and git histories remain intact.</li>
+                  <li>• OpenCode automatically leverages the keys stored in your persistent <code className="text-gray-400">.env</code>.</li>
                 </ul>
               </div>
             )}
@@ -516,7 +523,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Persistence & Security</Badge>
                 <h3 className="text-2xl font-bold text-white">Daytona Secrets & Volume Inactivity Watchdog</h3>
                 <p className="text-sm text-gray-300">
-                  How AGY Cloud protects your credentials and minimizes cloud costs:
+                  How DELTA protects your credentials and minimizes cloud costs:
                 </p>
                 <ul className="space-y-2 text-xs text-gray-300">
                   <li>• <strong>Daytona Secrets API:</strong> Sensitive tokens are saved to Daytona Cloud Secrets Manager without plaintext exposure.</li>
@@ -529,48 +536,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "mcp" && (
               <div className="space-y-4">
                 <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Model Context Protocol</Badge>
-                <h3 className="text-2xl font-bold text-white">Bootstrapped MCP Servers</h3>
+                <h3 className="text-2xl font-bold text-white">MCP Integration Recipes</h3>
                 <p className="text-sm text-gray-300">
-                  Every Daytona sandbox automatically provisions <code className="text-amber-300">mcp_config.json</code> with:
+                  Built-in recipes installed directly in your persistent Daytona sandbox volume:
                 </p>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-white">GitHub MCP:</strong> PR management, issue tracking, repo cloning.
-                  </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-white">Azure MCP:</strong> Resource provisioning, VM creation, Container Apps.
-                  </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-white">RunPod MCP:</strong> Serverless endpoint creation, GPU pod spinning.
-                  </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-white">Hugging Face API:</strong> Model weights inspection, inference API.
-                  </div>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2.5 rounded bg-black/40 border border-white/10 text-blue-300">Azure MCP Server</div>
+                  <div className="p-2.5 rounded bg-black/40 border border-white/10 text-emerald-300">GitHub MCP Server</div>
+                  <div className="p-2.5 rounded bg-black/40 border border-white/10 text-purple-300">RunPod Serverless API</div>
+                  <div className="p-2.5 rounded bg-black/40 border border-white/10 text-amber-300">Hugging Face Hub MCP</div>
                 </div>
               </div>
             )}
 
             {activeDocSection === "api" && (
               <div className="space-y-4">
-                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Developer API</Badge>
-                <h3 className="text-2xl font-bold text-white">REST & WebSocket Endpoints</h3>
-                <div className="space-y-2 text-xs font-mono">
-                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
-                    <span className="text-emerald-400">POST /api/workspace/prompt</span>
-                    <span className="text-gray-400">Execute agent prompt with live token streaming</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
-                    <span className="text-blue-400">POST /api/integrations/secrets</span>
-                    <span className="text-gray-400">Save and sync credentials to Daytona Secrets</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
-                    <span className="text-purple-400">GET /ws</span>
-                    <span className="text-gray-400">Real-time WebSocket event broadcaster</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
-                    <span className="text-amber-400">POST /api/webhooks/daytona</span>
-                    <span className="text-gray-400">Daytona lifecycle webhook receiver</span>
-                  </div>
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Developer API</Badge>
+                <h3 className="text-2xl font-bold text-white">REST & WebSocket API Endpoints</h3>
+                <div className="space-y-2 font-mono text-xs text-gray-300">
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/register</code> - SaaS User Signup</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/login</code> - SaaS User Login</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/workspace/prompt</code> - Dispatch Agent Prompt</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET  /ws</code> - Real-time Execution & Telemetry Stream</div>
                 </div>
               </div>
             )}
@@ -580,18 +567,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* FINAL HIGH-IMPACT SPOTIFY-STYLE CTA BANNER */}
       <section className="px-6 py-20 max-w-7xl mx-auto w-full">
-        <div className="w-full rounded-3xl bg-emerald-500 text-black p-8 sm:p-14 shadow-2xl space-y-6">
-          <span className="font-mono text-xs uppercase font-extrabold tracking-widest text-black/80">// GET STARTED TODAY</span>
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight max-w-3xl leading-tight">
-            Start with one project. See what your agents can build when they have real context.
-          </h2>
-          <div className="flex flex-wrap items-center gap-4 pt-4">
+        <div className="relative rounded-3xl bg-[#1ed760] text-black p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden shadow-2xl">
+          <div className="space-y-3 text-center md:text-left z-10 max-w-xl">
+            <h2 className="text-3xl sm:text-5xl font-black tracking-tight leading-none text-black font-mono">
+              Ready to code at lightning speed?
+            </h2>
+            <p className="text-black/80 font-medium text-sm sm:text-base">
+              Start with one project. See what your agents can build when they have real context, persistent volumes, and cloud sandboxes.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 z-10 w-full md:w-auto">
             <Button
               size="lg"
               onClick={onStartSetup}
-              className="h-12 px-8 text-sm bg-black text-white hover:bg-zinc-800 font-extrabold rounded-full shadow-xl transition-all"
+              className="h-12 px-8 text-sm bg-black hover:bg-zinc-900 text-white font-extrabold rounded-full shadow-xl"
             >
-              Start Free Setup
+              Start 3-Step Setup
             </Button>
             <Button
               size="lg"
@@ -609,7 +600,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className="w-full border-t border-white/10 py-10 px-6 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
-          <span>AGY Cloud SaaS • Built with Google Antigravity & Daytona Micro-VMs</span>
+          <span>DELTA • Autonomous Cloud IDE & Swarm • Built with Daytona Micro-VMs</span>
         </div>
         <div className="flex items-center gap-4">
           <a href="#docs" className="hover:text-white transition-colors">Docs</a>

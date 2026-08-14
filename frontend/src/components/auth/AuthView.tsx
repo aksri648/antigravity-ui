@@ -248,7 +248,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
             <Sparkles className="h-6 w-6" />
           </div>
           <h2 className="text-2xl font-extrabold tracking-tight text-white font-mono">
-            {mode === "signup" ? "Create AGY Cloud Account" : "Welcome Back"}
+            {mode === "signup" ? "Create DELTA Account" : "Welcome Back"}
           </h2>
           <div className="flex items-center justify-center gap-2">
             <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/40 text-emerald-400">

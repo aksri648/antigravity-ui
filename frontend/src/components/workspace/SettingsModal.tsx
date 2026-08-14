@@ -511,8 +511,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                 Workspace Settings & Environment
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-blue-500/40 text-blue-400 font-mono">
-                  AGY Cloud
+                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/40 text-emerald-400 font-mono">
+                  DELTA
                 </Badge>
               </h2>
               <p className="text-[11px] text-muted-foreground">Manage Daytona micro-VM, Google OAuth, environment variables & previews</p>
