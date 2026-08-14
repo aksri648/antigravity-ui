@@ -21,6 +21,8 @@ import {
   Activity,
   Layers,
   PanelRightClose,
+  Plus,
+  Check,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
@@ -30,6 +32,24 @@ import type { FileNode } from "./FileTree";
 import { TelemetryView } from "./TelemetryView";
 import { DeploymentsView } from "./DeploymentsView";
 import { apiUrl } from "../../config/api";
+
+export type RightTabId = "preview" | "vnc" | "code" | "terminal" | "telemetry" | "deployments";
+
+export interface RightTabDef {
+  id: RightTabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+export const ALL_RIGHT_TABS: RightTabDef[] = [
+  { id: "preview", label: "Live Preview", icon: Globe, color: "text-blue-400" },
+  { id: "vnc", label: "VNC Desktop", icon: Monitor, color: "text-purple-400" },
+  { id: "code", label: "VS Code IDE", icon: Code, color: "text-emerald-400" },
+  { id: "terminal", label: "Daytona Terminal", icon: Terminal, color: "text-amber-400" },
+  { id: "telemetry", label: "Telemetry & OTEL", icon: Activity, color: "text-cyan-400" },
+  { id: "deployments", label: "Deployments", icon: Layers, color: "text-purple-400" },
+];
 
 interface PreviewPaneProps {
   sandboxId?: string;
@@ -56,7 +76,70 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   projectId,
   onToggleCollapse,
 }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal" | "telemetry" | "deployments">("preview");
+  // Configurable open tabs in right panel (closable with 'X', reopenable with '+')
+  const [openTabsList, setOpenTabsList] = useState<RightTabId[]>(() => {
+    const saved = localStorage.getItem("workspace_open_right_tabs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const valid = parsed.filter((id) => ALL_RIGHT_TABS.some((t) => t.id === id));
+          if (valid.length > 0) return valid;
+        }
+      } catch {}
+    }
+    return ["preview", "vnc", "code", "terminal", "telemetry", "deployments"];
+  });
+
+  const [activeTab, setActiveTab] = useState<RightTabId>(() => {
+    const saved = localStorage.getItem("workspace_open_right_tabs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+      } catch {}
+    }
+    return "preview";
+  });
+
+  const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close plus dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
+        setIsPlusMenuOpen(false);
+      }
+    };
+    if (isPlusMenuOpen) {
+      window.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => window.removeEventListener("mousedown", handleClickOutside);
+  }, [isPlusMenuOpen]);
+
+  const handleCloseRightTab = (e: React.MouseEvent, tabId: RightTabId) => {
+    e.stopPropagation();
+    const nextList = openTabsList.filter((id) => id !== tabId);
+    setOpenTabsList(nextList);
+    localStorage.setItem("workspace_open_right_tabs", JSON.stringify(nextList));
+    if (activeTab === tabId) {
+      if (nextList.length > 0) {
+        setActiveTab(nextList[0]);
+      }
+    }
+  };
+
+  const handleOpenRightTab = (tabId: RightTabId) => {
+    if (!openTabsList.includes(tabId)) {
+      const nextList = [...openTabsList, tabId];
+      setOpenTabsList(nextList);
+      localStorage.setItem("workspace_open_right_tabs", JSON.stringify(nextList));
+    }
+    setActiveTab(tabId);
+    setIsPlusMenuOpen(false);
+  };
+
   const [iframeKey, setIframeKey] = useState(0);
 
   // Signed Preview URL State (Direct Daytona Auth embedded URL for iframes)
@@ -373,61 +456,102 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     <div className="flex h-full flex-col bg-card/40">
       {/* 70% Right Pane Top Navigation Toolbar */}
       <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-card/90">
-        {/* Mode Selector Tabs with Rounded Rectangular Shape on Hover */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant={activeTab === "preview" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("preview")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Globe className="h-3.5 w-3.5 text-blue-400" /> Live Preview
-          </Button>
+        {/* Mode Selector Tabs with X Close Button & + Dropdown to Re-open */}
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1 max-w-[calc(100%-240px)]">
+          {openTabsList.map((tabId) => {
+            const tabDef = ALL_RIGHT_TABS.find((t) => t.id === tabId);
+            if (!tabDef) return null;
+            const Icon = tabDef.icon;
+            const isActive = activeTab === tabId;
 
-          <Button
-            variant={activeTab === "vnc" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("vnc")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Monitor className="h-3.5 w-3.5 text-purple-400" /> VNC Desktop
-          </Button>
+            return (
+              <div
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                className={`group h-7 text-xs gap-1.5 pl-2.5 pr-1.5 font-medium rounded-xl border flex items-center shrink-0 cursor-pointer transition-all ${
+                  isActive
+                    ? "bg-white/10 text-white border-white/20 shadow-sm font-semibold"
+                    : "border-transparent text-gray-400 hover:text-white hover:border-white/10 hover:bg-white/[0.06]"
+                }`}
+              >
+                <Icon className={`h-3.5 w-3.5 ${tabDef.color}`} />
+                <span className="truncate">{tabDef.label}</span>
 
-          <Button
-            variant={activeTab === "code" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("code")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Code className="h-3.5 w-3.5 text-emerald-400" /> VS Code IDE
-          </Button>
+                {/* Tab Close "X" Button */}
+                <button
+                  type="button"
+                  onClick={(e) => handleCloseRightTab(e, tabId)}
+                  className="h-4 w-4 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/20 transition-colors ml-0.5 cursor-pointer"
+                  title={`Close ${tabDef.label} tab`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
 
-          <Button
-            variant={activeTab === "terminal" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("terminal")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Terminal className="h-3.5 w-3.5 text-amber-400" /> Daytona Terminal
-          </Button>
+          {/* Plus Button with Dropdown to Re-Open Any Closed/Available Tab */}
+          <div className="relative" ref={plusMenuRef}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsPlusMenuOpen((prev) => !prev)}
+              className={`h-7 w-7 rounded-xl transition-all cursor-pointer ${
+                isPlusMenuOpen
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-gray-400 hover:text-white hover:bg-white/10 border border-transparent"
+              }`}
+              title="Add or reopen tab"
+            >
+              <Plus className={`h-3.5 w-3.5 transition-transform duration-200 ${isPlusMenuOpen ? "rotate-45 text-emerald-400" : ""}`} />
+            </Button>
 
-          <Button
-            variant={activeTab === "telemetry" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("telemetry")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Activity className="h-3.5 w-3.5 text-cyan-400" /> Telemetry & OTEL
-          </Button>
+            {/* Dropdown Menu */}
+            {isPlusMenuOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl border border-white/15 bg-[#121216] p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
+                <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono border-b border-white/10 mb-1 flex items-center justify-between">
+                  <span>Reopen / Switch Tab</span>
+                  <Badge variant="outline" className="text-[9px] py-0 px-1 border-white/15 text-gray-400">
+                    {openTabsList.length}/{ALL_RIGHT_TABS.length} Open
+                  </Badge>
+                </div>
+                <div className="space-y-0.5">
+                  {ALL_RIGHT_TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const isOpen = openTabsList.includes(tab.id);
+                    const isCurrent = activeTab === tab.id;
 
-          <Button
-            variant={activeTab === "deployments" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("deployments")}
-            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
-          >
-            <Layers className="h-3.5 w-3.5 text-purple-400" /> Deployments
-          </Button>
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => handleOpenRightTab(tab.id)}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left cursor-pointer group ${
+                          isCurrent
+                            ? "bg-white/10 text-white font-semibold"
+                            : "text-gray-300 hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Icon className={`h-3.5 w-3.5 shrink-0 ${tab.color}`} />
+                          <span className="truncate">{tab.label}</span>
+                        </div>
+                        {isOpen ? (
+                          <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
+                            <Check className="h-3 w-3" /> Open
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-400 font-mono group-hover:text-emerald-400">
+                            + Reopen
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Address Bar & Sandbox Port Controls */}
@@ -485,7 +609,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
       <div className="flex-1 overflow-hidden relative">
         
         {/* MODE 1: DAYTONA SANDBOX LIVE PREVIEW */}
-        {activeTab === "preview" && (
+        {openTabsList.includes("preview") && activeTab === "preview" && (
           <div className="h-full w-full flex flex-col bg-black">
             {/* Live Daytona URL Bar */}
             <div className="h-8 bg-[#1a1a2e] border-b border-border/60 px-3 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
@@ -531,7 +655,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         )}
 
         {/* MODE 2: DAYTONA VNC DESKTOP GUI ACCESS */}
-        {activeTab === "vnc" && (
+        {openTabsList.includes("vnc") && activeTab === "vnc" && (
           <div className="h-full w-full flex flex-col bg-[#12121c] text-white">
             {/* VNC Desktop Controls Bar */}
             <div className="h-9 bg-[#1a1a2e] border-b border-border/60 px-4 flex items-center justify-between text-xs font-mono">
@@ -656,7 +780,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         )}
 
         {/* MODE 2: VS CODE-LIKE IDE CODE EDITOR */}
-        {activeTab === "code" && (
+        {openTabsList.includes("code") && activeTab === "code" && (
           <div className="h-full w-full flex bg-[#1e1e1e] text-gray-300">
             {/* VS Code Left Nested File Explorer Sidebar */}
             <div className="w-60 border-r border-[#333333] bg-[#252526] flex flex-col shrink-0">
@@ -697,49 +821,56 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               </div>
             </div>
 
-            {/* VS Code Main Editor Area */}
-            <div className="flex-1 flex flex-col bg-[#1e1e1e] min-w-0">
-              {/* File Tab Bar & Save Button */}
-              <div className="h-[35px] bg-[#252526] border-b border-[#333333] flex items-center justify-between px-0 overflow-x-auto">
-                {/* File Tabs */}
+            {/* VS Code Right Editor Main View */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
+              {/* Editor Tabs Bar */}
+              <div className="h-[35px] bg-[#252526] border-b border-[#333333] flex items-center justify-between overflow-x-auto scrollbar-none px-1">
                 <div className="flex items-center overflow-x-auto h-full">
-                  {openTabs.map((tabPath) => (
-                    <div
-                      key={tabPath}
-                      onClick={() => setSelectedFile(tabPath)}
-                      className={`group flex items-center gap-1.5 px-3 h-full text-[13px] font-sans cursor-pointer select-none border-r border-[#252526] transition-colors ${
-                        selectedFile === tabPath
-                          ? "bg-[#1e1e1e] text-white border-t-2 border-t-[#0078d4]"
-                          : "bg-[#2d2d2d] text-[#969696] hover:bg-[#2d2d2d] border-t-2 border-t-transparent"
-                      }`}
-                    >
-                      <FileCode className="h-3.5 w-3.5 text-blue-400 shrink-0" />
-                      <span className="truncate max-w-[120px] text-[13px]">{tabPath.split("/").pop()}</span>
-                      {openTabs.length > 1 && (
-                        <button
-                          onClick={(e) => handleCloseTab(e, tabPath)}
-                          className="h-4 w-4 rounded hover:bg-white/10 flex items-center justify-center text-[#969696] hover:text-white opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                  {openTabs.length === 0 ? (
+                    <span className="text-[11px] text-[#888888] italic px-3">No files open</span>
+                  ) : (
+                    openTabs.map((filePath) => {
+                      const fileName = filePath.split("/").pop() || filePath;
+                      const isActive = selectedFile === filePath;
+
+                      return (
+                        <div
+                          key={filePath}
+                          onClick={() => handleSelectFile(filePath)}
+                          className={`h-[35px] px-3 flex items-center gap-2 border-r border-[#333333] text-xs cursor-pointer select-none transition-colors shrink-0 ${
+                            isActive
+                              ? "bg-[#1e1e1e] text-white border-t-2 border-t-blue-500 font-medium"
+                              : "bg-[#2d2d2d] text-[#969696] hover:bg-[#282828] hover:text-white"
+                          }`}
                         >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          <FileCode className={`h-3.5 w-3.5 ${isActive ? "text-blue-400" : "text-gray-500"}`} />
+                          <span>{fileName}</span>
+                          <button
+                            onClick={(e) => handleCloseTab(e, filePath)}
+                            className="h-4 w-4 rounded flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 ml-1 cursor-pointer"
+                            title="Close file tab"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
 
-                {openTabs.length > 0 && (
+                {openTabs.length > 0 && selectedFile && (
                   <Button
                     size="sm"
                     onClick={handleSaveFile}
                     disabled={savingFile}
-                    className="h-7 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium shrink-0 mx-2"
+                    className="h-6 text-xs px-2.5 gap-1 bg-blue-600 hover:bg-blue-500 text-white font-medium shrink-0 mr-2"
                   >
                     {savingFile ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-3 w-3 animate-spin" />
                     ) : saveSuccess ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" />
                     ) : (
-                      <Save className="h-3.5 w-3.5" />
+                      <Save className="h-3 w-3" />
                     )}
                     {saveSuccess ? "Saved!" : "Save"}
                   </Button>
@@ -769,29 +900,25 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                     <Code className="h-10 w-10 text-[#444]" />
                     <div>
                       <p className="font-semibold text-sm text-[#ccc]">VS Code Daytona Editor</p>
-                      <p className="text-xs text-[#777] max-w-sm mt-1 leading-relaxed">
-                        Files generated in your Daytona sandbox will appear here. Select a file from the explorer on the left or prompt the AGY assistant to create files.
-                      </p>
+                      <p className="text-[11px] text-[#777] mt-1">Select a file from the explorer sidebar on the left</p>
                     </div>
                   </div>
                 ) : (
                   <Editor
                     height="100%"
-                    theme="vs-dark"
-                    path={selectedFile}
                     language={getLanguage(selectedFile)}
                     value={fileContent}
+                    theme="vs-dark"
                     onChange={(val) => setFileContent(val || "")}
                     options={{
                       fontSize: 13,
-                      fontFamily: "'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace",
-                      fontLigatures: true,
-                      minimap: { enabled: true, maxColumn: 80, renderCharacters: false },
+                      fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, Monaco, monospace",
+                      minimap: { enabled: true, maxColumn: 80 },
                       scrollBeyondLastLine: false,
+                      wordWrap: "on",
                       automaticLayout: true,
-                      lineNumbers: "on",
-                      renderLineHighlight: "line",
-                      bracketPairColorization: { enabled: true },
+                      tabSize: 2,
+                      renderWhitespace: "selection",
                       cursorBlinking: "smooth",
                       smoothScrolling: true,
                       padding: { top: 8 },
@@ -804,7 +931,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         )}
 
         {/* MODE 3: REAL DAYTONA SANDBOX TERMINAL LOGS */}
-        {activeTab === "terminal" && (
+        {openTabsList.includes("terminal") && activeTab === "terminal" && (
           <div className="h-full w-full flex flex-col bg-[#1e1e1e]">
             {/* Terminal Header */}
             <div className="h-[35px] bg-[#252526] border-b border-[#333333] px-4 flex items-center justify-between">
@@ -894,13 +1021,44 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         )}
 
         {/* MODE 4: OPEN TELEMETRY OBSERVABILITY DASHBOARD */}
-        {activeTab === "telemetry" && (
+        {openTabsList.includes("telemetry") && activeTab === "telemetry" && (
           <TelemetryView sandboxId={sandboxId} apiKey={apiKey} serverUrl={serverUrl} />
         )}
 
         {/* MODE 5: LLM & APPLICATION DEPLOYMENTS OBSERVABILITY */}
-        {activeTab === "deployments" && (
+        {openTabsList.includes("deployments") && activeTab === "deployments" && (
           <DeploymentsView userId={userId} projectId={projectId} sandboxId={sandboxId} />
+        )}
+
+        {/* EMPTY STATE: WHEN ALL TABS ARE CLOSED */}
+        {openTabsList.length === 0 && (
+          <div className="h-full w-full flex flex-col items-center justify-center text-center p-8 bg-[#0b0b0e] text-gray-400 space-y-4">
+            <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 shadow-lg">
+              <Layers className="h-6 w-6 text-purple-400" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-bold text-white">All Right Panel Tabs Closed</h3>
+              <p className="text-xs text-gray-400 max-w-sm">
+                Reopen any view below or click the <span className="text-emerald-400 font-mono font-bold">+</span> button in the toolbar to restore your workspace panes.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-w-md w-full pt-2">
+              {ALL_RIGHT_TABS.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => handleOpenRightTab(t.id)}
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-white/20 hover:bg-white/[0.08] text-left transition-all cursor-pointer group"
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${t.color}`} />
+                    <span className="text-xs text-gray-200 group-hover:text-white font-medium truncate">{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
     </div>
