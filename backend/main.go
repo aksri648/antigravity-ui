@@ -132,9 +132,15 @@ func main() {
 		api.POST("/workspace/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/vnc/status", handlers.GetVNCStatusHandler(daytonaSvc))
 		api.POST("/vnc/start", handlers.StartVNCHandler(daytonaSvc))
-		api.POST("/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/telemetry", handlers.GetTelemetryHandler(daytonaSvc))
 		api.GET("/telemetry/metrics", handlers.GetTelemetryHandler(daytonaSvc))
+
+		// Cloud & MCP Integration Secrets
+		api.GET("/integrations/secrets", handlers.GetSecretsStatusHandler(daytonaSvc))
+		api.POST("/integrations/secrets", handlers.SaveSecretsHandler(daytonaSvc))
+
+		// Daytona Webhooks
+		api.POST("/webhooks/daytona", handlers.DaytonaWebhookHandler(daytonaSvc, wsHub))
 	}
 
 	// WebSocket Endpoint for Real-time Streaming

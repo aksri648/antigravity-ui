@@ -47,7 +47,7 @@ interface SettingsModalProps {
   onRecreateSandbox: () => Promise<void>;
 }
 
-type SettingsTab = "daytona" | "googleAuth" | "env" | "preview" | "agent" | "danger";
+type SettingsTab = "daytona" | "googleAuth" | "mcpSecrets" | "env" | "preview" | "agent" | "danger";
 
 interface EnvPair {
   key: string;
@@ -101,6 +101,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [savingGeminiKey, setSavingGeminiKey] = useState(false);
   const [geminiKeySuccess, setGeminiKeySuccess] = useState(false);
 
+  // MCP & Cloud Secrets States
+  const [githubToken, setGithubToken] = useState("");
+  const [showGithubToken, setShowGithubToken] = useState(false);
+  const [azureClientId, setAzureClientId] = useState("");
+  const [azureClientSecret, setAzureClientSecret] = useState("");
+  const [showAzureSecret, setShowAzureSecret] = useState(false);
+  const [azureTenantId, setAzureTenantId] = useState("");
+  const [azureSubscriptionId, setAzureSubscriptionId] = useState("");
+  const [runpodApiKey, setRunpodApiKey] = useState("");
+  const [showRunpodKey, setShowRunpodKey] = useState(false);
+  const [hfToken, setHfToken] = useState("");
+  const [showHfToken, setShowHfToken] = useState(false);
+  const [savingSecrets, setSavingSecrets] = useState(false);
+  const [secretsSuccess, setSecretsSuccess] = useState(false);
+  const [secretStatus, setSecretStatus] = useState<{
+    githubConfigured?: boolean;
+    azureConfigured?: boolean;
+    runpodConfigured?: boolean;
+    huggingfaceConfigured?: boolean;
+    githubTokenMasked?: string;
+    runpodKeyMasked?: string;
+    hfTokenMasked?: string;
+    azureClientId?: string;
+    azureTenantId?: string;
+    azureSubscriptionId?: string;
+  } | null>(null);
+
   // Environment Variables States
   const [envPairs, setEnvPairs] = useState<EnvPair[]>([]);
   const [rawEnv, setRawEnv] = useState("");
@@ -119,6 +146,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [wipingVolume, setWipingVolume] = useState(false);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
 
+  const fetchSecrets = async () => {
+    try {
+      const res = await fetch(apiUrl("/api/integrations/secrets", { userId: currentUserId }));
+      if (res.ok) {
+        const data = await res.json();
+        setSecretStatus(data);
+        if (data.azureClientId && !azureClientId) setAzureClientId(data.azureClientId);
+        if (data.azureTenantId && !azureTenantId) setAzureTenantId(data.azureTenantId);
+        if (data.azureSubscriptionId && !azureSubscriptionId) setAzureSubscriptionId(data.azureSubscriptionId);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch cloud secrets", e);
+    }
+  };
+
+  const handleSaveSecrets = async () => {
+    setSavingSecrets(true);
+    setSecretsSuccess(false);
+    try {
+      const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
+      const res = await fetch(apiUrl("/api/integrations/secrets"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUserId,
+          sandboxId: currentSandboxId,
+          apiKey: keyToUse,
+          serverUrl: currentServerUrl,
+          githubToken: githubToken.trim(),
+          azureClientId: azureClientId.trim(),
+          azureClientSecret: azureClientSecret.trim(),
+          azureTenantId: azureTenantId.trim(),
+          azureSubscriptionId: azureSubscriptionId.trim(),
+          runpodApiKey: runpodApiKey.trim(),
+          huggingfaceToken: hfToken.trim(),
+        }),
+      });
+      if (res.ok) {
+        setSecretsSuccess(true);
+        fetchSecrets();
+        setTimeout(() => setSecretsSuccess(false), 4000);
+      }
+    } catch (e) {
+      console.error("Failed to save cloud secrets", e);
+    } finally {
+      setSavingSecrets(false);
+    }
+  };
+
   // Sync props to local state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -131,6 +207,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setSaveBanner(null);
       fetchEnvVars();
       checkAuthStatus();
+      fetchSecrets();
     }
   }, [isOpen, apiKey, serverUrl, userId, sandboxId, activePort]);
 
@@ -470,6 +547,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {[
               { id: "daytona", label: "Daytona Cloud", icon: Server, desc: "API key, server & VM" },
               { id: "googleAuth", label: "Google AI & AGY", icon: ShieldCheck, desc: "OAuth & quota volume" },
+              { id: "mcpSecrets", label: "Cloud & MCP Keys", icon: Database, desc: "GitHub, Azure, RunPod, HF" },
               { id: "env", label: "Environment (.env)", icon: SlidersHorizontal, desc: "Variables & secrets" },
               { id: "preview", label: "Preview & Ports", icon: Globe, desc: "Ports & domain URLs" },
               { id: "agent", label: "Agent Preferences", icon: Sparkles, desc: "CLI flags & stream" },
@@ -796,6 +874,232 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB: CLOUD & MCP INTEGRATION KEYS */}
+            {activeTab === "mcpSecrets" && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Model Context Protocol (MCP) & Cloud Secrets</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Configure API keys for GitHub, Azure, RunPod, and Hugging Face. Secrets are securely stored and synced into your Daytona sandbox volume (.env) for automated agent execution.
+                  </p>
+                </div>
+
+                {/* Status Overview */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  {[
+                    { label: "GitHub MCP", configured: secretStatus?.githubConfigured, desc: "PRs & Git repos" },
+                    { label: "Azure Cloud", configured: secretStatus?.azureConfigured, desc: "VMs & Container Apps" },
+                    { label: "RunPod GPU", configured: secretStatus?.runpodConfigured, desc: "Serverless vLLM" },
+                    { label: "Hugging Face", configured: secretStatus?.huggingfaceConfigured, desc: "Models & Hub" },
+                  ].map((m, idx) => (
+                    <div key={idx} className="rounded-xl border border-border/70 bg-black/40 p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-white">{m.label}</span>
+                        <Badge
+                          variant={m.configured ? "default" : "outline"}
+                          className={`text-[9px] font-mono py-0 px-1 ${
+                            m.configured ? "bg-emerald-600 text-white" : "text-muted-foreground border-border"
+                          }`}
+                        >
+                          {m.configured ? "Ready" : "Not Set"}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{m.desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Section 1: GitHub MCP */}
+                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-blue-400" /> GitHub Personal Access Token (PAT)
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-blue-500/40 text-blue-400">
+                      GitHub MCP
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex gap-2">
+                      <Input
+                        type={showGithubToken ? "text" : "password"}
+                        placeholder={secretStatus?.githubTokenMasked || "ghp_xxxxxxxxxxxx..."}
+                        value={githubToken}
+                        onChange={(e) => setGithubToken(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-blue-300"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowGithubToken(!showGithubToken)}
+                        className="px-2.5 border-border shrink-0"
+                      >
+                        {showGithubToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Required for App Maintainer to clone repos, create branches, and open PRs.</p>
+                  </div>
+                </div>
+
+                {/* Section 2: RunPod API Key */}
+                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <Cpu className="h-3.5 w-3.5 text-purple-400" /> RunPod API Key
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-purple-500/40 text-purple-400">
+                      RunPod MCP
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex gap-2">
+                      <Input
+                        type={showRunpodKey ? "text" : "password"}
+                        placeholder={secretStatus?.runpodKeyMasked || "rpa_xxxxxxxxxxxx..."}
+                        value={runpodApiKey}
+                        onChange={(e) => setRunpodApiKey(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-purple-300"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRunpodKey(!showRunpodKey)}
+                        className="px-2.5 border-border shrink-0"
+                      >
+                        {showRunpodKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Used by LLM Deployer to provision vLLM Serverless endpoints & Cloud GPUs.</p>
+                  </div>
+                </div>
+
+                {/* Section 3: Azure Entra ID Credentials */}
+                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <Server className="h-3.5 w-3.5 text-emerald-400" /> Azure Service Principal & Subscription
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/40 text-emerald-400">
+                      Azure MCP
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Azure Client ID (App ID)</label>
+                      <Input
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        value={azureClientId}
+                        onChange={(e) => setAzureClientId(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Azure Client Secret</label>
+                      <div className="flex gap-1.5">
+                        <Input
+                          type={showAzureSecret ? "text" : "password"}
+                          placeholder={secretStatus?.azureConfigured ? "••••••••••••••••" : "Client Secret Value"}
+                          value={azureClientSecret}
+                          onChange={(e) => setAzureClientSecret(e.target.value)}
+                          className="font-mono text-xs bg-black/60 border-border text-gray-200"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowAzureSecret(!showAzureSecret)}
+                          className="px-2 border-border shrink-0"
+                        >
+                          {showAzureSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Azure Tenant ID</label>
+                      <Input
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        value={azureTenantId}
+                        onChange={(e) => setAzureTenantId(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-muted-foreground">Azure Subscription ID</label>
+                      <Input
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        value={azureSubscriptionId}
+                        onChange={(e) => setAzureSubscriptionId(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-gray-200"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Used by App Deployer & LLM Deployer to create Azure VMs and Container Apps.</p>
+                </div>
+
+                {/* Section 4: Hugging Face Token */}
+                <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Hugging Face User Access Token
+                    </span>
+                    <Badge variant="outline" className="text-[10px] font-mono border-amber-500/40 text-amber-400">
+                      HF Hub API
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex gap-2">
+                      <Input
+                        type={showHfToken ? "text" : "password"}
+                        placeholder={secretStatus?.hfTokenMasked || "hf_xxxxxxxxxxxx..."}
+                        value={hfToken}
+                        onChange={(e) => setHfToken(e.target.value)}
+                        className="font-mono text-xs bg-black/60 border-border text-amber-300"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowHfToken(!showHfToken)}
+                        className="px-2.5 border-border shrink-0"
+                      >
+                        {showHfToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Allows downloading gated models (e.g. Llama 3) and accessing Hugging Face MCP tools.</p>
+                  </div>
+                </div>
+
+                {/* Save & Status Actions */}
+                <div className="flex items-center justify-between pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchSecrets}
+                    className="gap-1.5 text-xs border-border"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" /> Reload Secrets
+                  </Button>
+                  <Button
+                    onClick={handleSaveSecrets}
+                    disabled={savingSecrets}
+                    className="gap-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white cursor-pointer px-5"
+                  >
+                    {savingSecrets ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Save & Sync to Daytona Volume
+                  </Button>
+                </div>
+
+                {secretsSuccess && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-2.5 text-xs text-emerald-300 animate-in fade-in">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <span>Cloud and MCP credentials saved to database and synced to persistent Daytona volume!</span>
+                  </div>
+                )}
               </div>
             )}
 

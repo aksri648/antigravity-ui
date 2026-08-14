@@ -149,6 +149,17 @@ func migrateSchema(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_user_env_user ON user_environments(user_id);
 	CREATE INDEX IF NOT EXISTS idx_agent_runs_user ON agent_runs(user_id, created_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_agent_messages_run ON agent_messages(run_id, created_at ASC);
+
+	CREATE TABLE IF NOT EXISTS cloud_secrets (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id TEXT NOT NULL,
+		provider TEXT NOT NULL,
+		key_name TEXT NOT NULL,
+		encrypted_value TEXT NOT NULL,
+		updated_at INTEGER NOT NULL,
+		UNIQUE(user_id, key_name)
+	);
+	CREATE INDEX IF NOT EXISTS idx_cloud_secrets_user ON cloud_secrets(user_id);
 	`
 
 	_, err := db.Exec(schema)

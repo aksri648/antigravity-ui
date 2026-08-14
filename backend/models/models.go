@@ -165,11 +165,14 @@ type CreateWorkspaceResponse struct {
 }
 
 type SendPromptRequest struct {
-	ApiKey    string `json:"apiKey"`
-	ServerUrl string `json:"serverUrl,omitempty"`
-	UserId    string `json:"userId"`
-	SandboxID string `json:"sandboxId"`
-	Prompt    string `json:"prompt"`
+	ApiKey         string `json:"apiKey"`
+	ServerUrl      string `json:"serverUrl,omitempty"`
+	UserId         string `json:"userId"`
+	SandboxID      string `json:"sandboxId"`
+	Prompt         string `json:"prompt"`
+	AgentMode      string `json:"agentMode,omitempty"`      // "app-developer", "llm-deployer", "app-deployer", "app-maintainer"
+	ApprovalAction string `json:"approvalAction,omitempty"` // "approve", "reject", "amend"
+	RepoURL        string `json:"repoUrl,omitempty"`
 }
 
 type FileNode struct {

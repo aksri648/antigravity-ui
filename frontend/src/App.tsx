@@ -4,7 +4,7 @@ import { SetupWizard } from "./components/onboarding/SetupWizard";
 import { AuthView } from "./components/auth/AuthView";
 import { HeaderBar } from "./components/workspace/HeaderBar";
 import { ChatPane } from "./components/workspace/ChatPane";
-import type { ChatMessage } from "./components/workspace/ChatPane";
+import type { ChatMessage, AgentMode } from "./components/workspace/ChatPane";
 import { PreviewPane } from "./components/workspace/PreviewPane";
 import { SettingsModal } from "./components/workspace/SettingsModal";
 import { apiUrl, getWsUrl } from "./config/api";
@@ -359,8 +359,15 @@ export function App() {
     await createWorkspace(currentKey, userId);
   };
 
+  const [currentAgentMode, setCurrentAgentMode] = useState<AgentMode>("app-developer");
+
   // Send Prompt to AGY via Go Backend
-  const handleSendMessage = async (promptText: string) => {
+  const handleSendMessage = async (
+    promptText: string,
+    agentMode?: AgentMode,
+    repoUrl?: string,
+    approvalAction?: "approve" | "reject" | "amend"
+  ) => {
     let currentKey = apiKey || localStorage.getItem("daytona_api_key");
     if (!currentKey) {
       // Prompt user to provide credentials before executing prompt
@@ -395,11 +402,14 @@ export function App() {
       }
     }
 
+    const activeMode = agentMode || currentAgentMode;
+
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       sender: "user",
       text: promptText,
       timestamp: Date.now(),
+      agentMode: activeMode,
     };
 
     const agyMsgPlaceholder: ChatMessage = {
@@ -409,6 +419,7 @@ export function App() {
       thoughts: [],
       tools: [],
       timestamp: Date.now(),
+      agentMode: activeMode,
     };
 
     setMessages((prev) => [...prev, userMsg, agyMsgPlaceholder]);
@@ -424,6 +435,9 @@ export function App() {
           userId,
           sandboxId: currentSandbox || "",
           prompt: promptText,
+          agentMode: activeMode,
+          repoUrl: repoUrl || "",
+          approvalAction: approvalAction || "",
         }),
       });
     } catch (err) {
@@ -599,6 +613,8 @@ export function App() {
                 isProcessing={isProcessing}
                 onClearChat={handleClearChat}
                 onStopGenerating={handleStopGenerating}
+                currentAgentMode={currentAgentMode}
+                onAgentModeChange={setCurrentAgentMode}
               />
             </div>
 

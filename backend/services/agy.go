@@ -66,17 +66,165 @@ cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/settings.json"
   "permissions": {
     "allow": [
       "command(git *)",
+      "command(gh *)",
       "command(npm *)",
+      "command(npx *)",
       "command(node *)",
       "command(python3 *)",
       "command(pip *)",
       "command(cat *)",
       "command(ls *)",
+      "command(docker *)",
+      "command(az *)",
       "write_file(*)"
     ]
   }
 }
 EOF
+
+# 1. Provision MCP Servers configuration (GitHub, Azure, RunPod, Hugging Face)
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/mcp_config.json"
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "azure": {
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@latest"],
+      "env": {
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_SUBSCRIPTION_ID": "${AZURE_SUBSCRIPTION_ID}"
+      }
+    },
+    "runpod": {
+      "command": "npx",
+      "args": ["-y", "@runpod/mcp-server@latest"],
+      "env": {
+        "RUNPOD_API_KEY": "${RUNPOD_API_KEY}"
+      }
+    },
+    "huggingface": {
+      "serverUrl": "https://huggingface.co/mcp"
+    }
+  }
+}
+EOF
+
+# 2. Provision the 4 Specialized Antigravity Skills
+mkdir -p "$PERSIST/gemini/antigravity-cli/skills/app-developer" \
+         "$PERSIST/gemini/antigravity-cli/skills/llm-deployer" \
+         "$PERSIST/gemini/antigravity-cli/skills/app-deployer" \
+         "$PERSIST/gemini/antigravity-cli/skills/app-maintainer"
+
+# Skill 1: App Developer
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/skills/app-developer/SKILL.md"
+---
+name: app-developer
+description: Full-stack application creation from prompt, interviewing user requirements, architecture planning, code generation, and live preview.
+---
+
+# App Developer Skill
+
+## Workflow:
+1. **Interactive Interview**: If requirements are underspecified, ask 2-4 clarifying questions (domain goal, tech stack, styling, auth/database).
+2. **Architecture Blueprint**: Generate structured file tree, dependencies list, and data models before creating files.
+3. **Approval Gate**: Request user review on major architecture decisions.
+4. **Code Generation**: Build frontend and backend files inside ~/workspace (/home/daytona/persist/workspace).
+5. **Validation & Live Preview**: Start dev server, verify build with 'npm run build' or 'go build', and expose preview port.
+
+## Official Documentation References:
+- Vite Guide: https://vite.dev/guide/
+- React 19 Reference: https://react.dev/reference/react
+- Tailwind CSS: https://tailwindcss.com/docs
+- Go Gin Framework: https://gin-gonic.com/docs/
+- FastAPI Docs: https://fastapi.tiangolo.com/
+EOF
+
+# Skill 2: LLM Deployer
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/skills/llm-deployer/SKILL.md"
+---
+name: llm-deployer
+description: Production deployment of open-weight LLMs (Llama 3.1, Qwen 2.5, DeepSeek) to RunPod Serverless or Azure Cloud with traffic profiling heuristics.
+---
+
+# LLM Deployer Skill
+
+## Workflow:
+1. **Traffic Profiling & Sizing**:
+   - **Sporadic / Bursty Traffic**: Recommend RunPod Serverless with vLLM (scale-to-zero, per-ms billing).
+   - **Steady High-Concurrency Enterprise**: Recommend Azure Kubernetes Service (AKS) or Azure AI Managed Endpoint.
+   - **Dev / Prototyping**: Recommend RunPod Dedicated Spot GPU Pod.
+2. **Hardware Sizing**: Select appropriate GPU (RTX 4090 24GB, L40S 48GB, A100 80GB) and quantization (FP8, AWQ, BF16).
+3. **Human Approval Gate**: Present GPU spec, estimated hourly cost, and endpoint configuration for approval.
+4. **Execution**: Deploy container using RunPod MCP / Azure MCP / HF Hub API.
+5. **Post-Deployment Connection Package**: Return live OpenAI-compatible Base URL, API key, model ID, and ready-to-run Python/Node.js/cURL snippets.
+
+## Official Documentation References:
+- RunPod Serverless Docs: https://docs.runpod.io/serverless/
+- RunPod vLLM Workers: https://docs.runpod.io/serverless/workers/vllm/
+- vLLM Engine Documentation: https://docs.vllm.ai/en/latest/
+- Azure AI Studio Online Endpoints: https://learn.microsoft.com/en-us/azure/ai-studio/how-to/deploy-models-open
+- Azure ML Managed Endpoints: https://learn.microsoft.com/en-us/azure/machine-learning/how-to-deploy-online-endpoints
+- Hugging Face TGI: https://huggingface.co/docs/text-generation-inference/
+EOF
+
+# Skill 3: App Deployer
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/skills/app-deployer/SKILL.md"
+---
+name: app-deployer
+description: Automated containerization and cloud VM / Container App deployment of workspace code on Azure.
+---
+
+# App Deployer Skill
+
+## Workflow:
+1. **Codebase Inspection**: Scan ~/workspace to detect language, framework, dependencies, exposed ports, and .env keys.
+2. **Dockerization**: Generate optimized multi-stage production Dockerfile and docker-compose.yml.
+3. **Approval Gate**: Present deployment target (Azure Container App vs Azure VM), SKU pricing estimate, and SSL setup.
+4. **Cloud Deployment**: Invoke Azure MCP / Azure CLI to provision resource group, Azure Container Registry (ACR), build image, and deploy.
+5. **Health Probe**: Verify public HTTPS health status and return live URL.
+
+## Official Documentation References:
+- Docker Multi-stage Builds: https://docs.docker.com/build/building/multi-stage/
+- Azure Container Apps: https://learn.microsoft.com/en-us/azure/container-apps/
+- Azure CLI Manual: https://learn.microsoft.com/en-us/cli/azure/
+- Azure Linux Virtual Machines: https://learn.microsoft.com/en-us/azure/virtual-machines/linux/
+EOF
+
+# Skill 4: App Maintainer
+cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/skills/app-maintainer/SKILL.md"
+---
+name: app-maintainer
+description: GitHub repository ingestion, feature additions, bugfixing, branch management, and Pull Request creation via GitHub MCP.
+---
+
+# App Maintainer Skill
+
+## Workflow:
+1. **Repository Ingestion**: Clone target GitHub repository into ~/workspace using gh repo clone or GitHub MCP.
+2. **Indexing & Task Intake**: Analyze file structure, dependencies, test suite, and user prompt.
+3. **Branching & Implementation**: Create dedicated feature branch ('git checkout -b feature/...'), make modifications, and run linters/tests.
+4. **Approval Gate**: Show git diff summary and commit message for confirmation.
+5. **Pull Request**: Push branch and open a GitHub Pull Request via GitHub MCP / 'gh pr create' with changelog.
+
+## Official Documentation References:
+- GitHub CLI (gh) Manual: https://cli.github.com/manual/
+- GitHub Pull Requests API: https://docs.github.com/en/rest/pulls
+- Git Branching Reference: https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging
+EOF
+
+# Symlink skills into home config
+mkdir -p "$HOME_DIR/.gemini/antigravity-cli"
+ln -sf "$PERSIST/gemini/antigravity-cli/skills" "$HOME_DIR/.gemini/antigravity-cli/skills"
+ln -sf "$PERSIST/gemini/antigravity-cli/mcp_config.json" "$HOME_DIR/.gemini/antigravity-cli/mcp_config.json"
+ln -sf "$PERSIST/gemini/antigravity-cli/settings.json" "$HOME_DIR/.gemini/antigravity-cli/settings.json"
 
 # Launch DBUS session if not active
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
@@ -321,11 +469,18 @@ func (s *AGYService) StreamPromptExec(
 	serverUrl string,
 	sandboxId string,
 	prompt string,
+	agentMode string,
+	repoUrl string,
+	approvalAction string,
 	eventCallback func(models.StreamEvent),
 ) error {
+	agentTitle := "Antigravity AI Agent"
+	if agentMode != "" {
+		agentTitle = strings.Title(strings.ReplaceAll(agentMode, "-", " "))
+	}
 	eventCallback(models.StreamEvent{
 		Type:      "thought",
-		Content:   "Connecting to Daytona Sandbox & verifying Google Account AI Pro quota...",
+		Content:   fmt.Sprintf("Connecting to Daytona Sandbox & activating %s with persistent volume...", agentTitle),
 		SandboxID: sandboxId,
 		Timestamp: time.Now().UnixMilli(),
 	})
@@ -335,6 +490,29 @@ func (s *AGYService) StreamPromptExec(
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
+	}
+
+	skillPrompt := prompt
+	if agentMode != "" {
+		switch agentMode {
+		case "app-developer":
+			skillPrompt = fmt.Sprintf("Activate skill 'app-developer'. Goal: %s", prompt)
+		case "llm-deployer":
+			skillPrompt = fmt.Sprintf("Activate skill 'llm-deployer'. Goal: %s", prompt)
+		case "app-deployer":
+			skillPrompt = fmt.Sprintf("Activate skill 'app-deployer'. Goal: %s", prompt)
+		case "app-maintainer":
+			if repoUrl != "" {
+				skillPrompt = fmt.Sprintf("Activate skill 'app-maintainer'. Target repository: %s. Task: %s", repoUrl, prompt)
+			} else {
+				skillPrompt = fmt.Sprintf("Activate skill 'app-maintainer'. Task: %s", prompt)
+			}
+		}
+	}
+	if approvalAction == "approve" {
+		skillPrompt = fmt.Sprintf("User explicitly APPROVED the previous blueprint/deployment/PR plan. Proceed with execution: %s", skillPrompt)
+	} else if approvalAction == "reject" {
+		skillPrompt = fmt.Sprintf("User REJECTED the previous plan. Reason: %s. Propose an amended plan.", skillPrompt)
 	}
 
 	// 1. Run agy command directly inside persistent workspace directory with loaded environment
@@ -353,7 +531,7 @@ elif command -v gemini >/dev/null 2>&1; then
 else
   echo "AGY CLI not found in PATH inside Daytona sandbox container."
 fi
-`, strconv.Quote(prompt), strconv.Quote(prompt))
+`, strconv.Quote(skillPrompt), strconv.Quote(skillPrompt))
 
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmdStr)
 
