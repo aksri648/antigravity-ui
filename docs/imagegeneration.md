@@ -97,4 +97,6 @@ After the four PNGs are saved, update the documentation image references in `fro
 | DB Schema & RLS Policies | `/images/docs/delta-trust-boundaries.png` |
 | 4 Autonomous Agents | `/images/docs/delta-agent-ecosystem.png` |
 
-Also update `system_design.md` and `detailed-implementation-plan.md` if they embed their corresponding older figures.
+Also update `system_design.md` if it embeds its corresponding older figures.
+
+> **Note:** The project currently uses the existing JPG images in `frontend/public/images/docs/` rather than the planned PNG replacements. The Mermaid diagrams in the markdown files now serve as the primary architecture visuals.
