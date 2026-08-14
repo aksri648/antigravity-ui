@@ -465,10 +465,11 @@ func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, s
 		if req, err := http.NewRequest(ep.method, ep.url, nil); err == nil {
 			req.Header.Set("Authorization", "Bearer "+apiKey)
 			if resp, err := s.client.Do(req); err == nil {
-				defer resp.Body.Close()
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()  // close immediately, not deferred
 				if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 					var res models.SignedPreviewResponse
-					if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.URL != "" {
+					if err := json.Unmarshal(body, &res); err == nil && res.URL != "" {
 						return &res, nil
 					}
 				}

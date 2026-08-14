@@ -259,6 +259,9 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
       if (res.ok) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        console.error("File save failed with status:", res.status);
+        alert("Failed to save file. Server returned status " + res.status);
       }
     } catch (e) {
       console.error("Failed to save file in Daytona", e);
@@ -298,7 +301,11 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
       const data = await res.json();
       if (data.logs && Array.isArray(data.logs)) {
         const cleaned = data.logs.filter((l: string) => !l.includes('"statusCode":404') && !l.includes('Cannot POST'));
-        setLiveLogs(cleaned);
+        setLiveLogs(prev => {
+          const existing = new Set(prev);
+          const newLogs = cleaned.filter((l: string) => !existing.has(l));
+          return newLogs.length > 0 ? [...prev, ...newLogs] : prev;
+        });
       }
     } catch (e) {
       // Silently fail — will retry on next poll

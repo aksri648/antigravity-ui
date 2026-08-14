@@ -72,14 +72,8 @@ export function App() {
     checkUserSession();
   }, [userId]);
 
-  // Load persistent chat history from SQLite when entering workspace
-  useEffect(() => {
-    if (currentView === "workspace" && userId) {
-      fetchChatHistory();
-    }
-  }, [currentView, userId, sandboxId]);
-
-  const fetchChatHistory = async () => {
+  // Fetch persistent chat history from SQLite
+  const fetchChatHistory = useCallback(async () => {
     try {
       const res = await fetch(apiUrl("/api/chat/history", { userId }));
       if (res.ok) {
@@ -99,7 +93,14 @@ export function App() {
     } catch (err) {
       console.warn("Failed to load chat history:", err);
     }
-  };
+  }, [userId]);
+
+  // Load persistent chat history from SQLite when entering workspace
+  useEffect(() => {
+    if (currentView === "workspace" && userId) {
+      fetchChatHistory();
+    }
+  }, [currentView, userId, sandboxId, fetchChatHistory]);
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
@@ -453,7 +454,7 @@ export function App() {
     setMessages([]);
     setTerminalLogs([]);
     try {
-      fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }), {
+      await fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }), {
         method: "DELETE",
       });
     } catch {}

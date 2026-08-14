@@ -87,7 +87,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [authSuccess, setAuthSuccess] = useState(false);
 
   // Custom OAuth Client Settings
-  const [oauthClientId, setOauthClientId] = useState(() => localStorage.getItem("google_oauth_client_id") || "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com");
+  const [oauthClientId, setOauthClientId] = useState(() => localStorage.getItem("google_oauth_client_id") || import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || "");
   const [oauthClientSecret, setOauthClientSecret] = useState(() => localStorage.getItem("google_oauth_client_secret") || "");
   const [showAdvancedOAuth, setShowAdvancedOAuth] = useState(false);
 

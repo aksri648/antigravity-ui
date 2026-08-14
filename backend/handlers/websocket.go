@@ -104,7 +104,9 @@ func (c *Client) writePump() {
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			return
 		}
-		c.conn.WriteMessage(websocket.TextMessage, message)
+		if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+			return
+		}
 	}
 }
 

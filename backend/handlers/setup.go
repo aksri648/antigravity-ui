@@ -228,7 +228,9 @@ func GoogleOAuthCallback(daytonaSvc *services.DaytonaService, agySvc *services.A
 
 		_, email, err := agySvc.ExchangeGoogleAuthCode(state.ApiKey, state.ServerUrl, state.SandboxId, code, clientId, state.ClientSecret, redirectURI)
 		if err != nil {
-			log.Printf("Google token exchange error: %v", err)
+			log.Printf("Google auth code exchange failed: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Google authentication failed: " + err.Error()})
+			return
 		}
 
 		if db.DB != nil && state.UserId != "" {

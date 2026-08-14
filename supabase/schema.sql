@@ -70,3 +70,8 @@ CREATE POLICY "Users can manage own sandboxes"
 CREATE POLICY "Users can manage own secrets" 
     ON public.cloud_secrets FOR ALL 
     USING (auth.uid() = user_id);
+
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user_sandbox ON public.chat_messages(user_id, sandbox_id);
+CREATE INDEX IF NOT EXISTS idx_user_sandboxes_user ON public.user_sandboxes(user_id);
+CREATE INDEX IF NOT EXISTS idx_cloud_secrets_user ON public.cloud_secrets(user_id);

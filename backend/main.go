@@ -34,7 +34,7 @@ func main() {
 
 	// 2. CORS configuration for React frontend
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		AllowOrigins: []string{"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Daytona-Key"},
 		ExposeHeaders:    []string{"Content-Length"},

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -36,7 +37,7 @@ func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' | sort"
+		cmd := "find . -maxdepth 4 -not -path '*/.*' -not -path '*/node_modules*' -not -path '*/dist*' -printf '%y %p\\n' | sort -k2"
 		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 
 		var lines []string
@@ -58,14 +59,19 @@ func parseFindOutput(lines []string) []*models.FileNode {
 	var rootNodes []*models.FileNode
 
 	for _, line := range lines {
-		clean := strings.TrimPrefix(strings.TrimSpace(line), "./")
+		trimmed := strings.TrimSpace(line)
+		if len(trimmed) < 3 {
+			continue
+		}
+		typeChar := trimmed[0:1]  // 'd' for directory, 'f' for file
+		clean := strings.TrimPrefix(trimmed[2:], "./")
 		if clean == "" || clean == "." {
 			continue
 		}
 
 		parts := strings.Split(clean, "/")
 		name := parts[len(parts)-1]
-		isDir := !strings.Contains(name, ".") || (len(parts) > 1 && !strings.Contains(parts[len(parts)-1], "."))
+		isDir := typeChar == "d"
 
 		node := &models.FileNode{
 			Name:  name,
@@ -202,7 +208,8 @@ func SaveFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		cmd := fmt.Sprintf("mkdir -p $(dirname %s) && cat << 'EOF' > %s\n%s\nEOF", req.Path, req.Path, req.Content)
+		encoded := base64.StdEncoding.EncodeToString([]byte(req.Content))
+		cmd := fmt.Sprintf("mkdir -p $(dirname '%s') && echo '%s' | base64 -d > '%s'", req.Path, encoded, req.Path)
 		_, err := daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, cmd)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -277,10 +284,17 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		activePromptMu.Unlock()
 
 		// Asynchronously stream prompt execution to connected WebSockets
+		currentCancel := cancel  // capture before goroutine
 		go func() {
 			defer func() {
 				activePromptMu.Lock()
-				delete(activePromptCancel, req.SandboxID)
+				// Only clean up if we're still the active prompt
+				if storedCancel, exists := activePromptCancel[req.SandboxID]; exists {
+					// Compare function pointers — if a newer prompt replaced ours, don't delete
+					if fmt.Sprintf("%p", storedCancel) == fmt.Sprintf("%p", currentCancel) {
+						delete(activePromptCancel, req.SandboxID)
+					}
+				}
 				activePromptMu.Unlock()
 			}()
 

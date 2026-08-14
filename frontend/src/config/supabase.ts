@@ -22,6 +22,10 @@ export const getSupabaseConfig = () => {
 
 const config = getSupabaseConfig();
 
+if (!config.isConfigured) {
+  console.warn("[DELTA] Supabase is not configured. Auth features will be unavailable. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
+}
+
 export const supabase = createClient(config.url, config.anonKey, {
   auth: {
     persistSession: true,

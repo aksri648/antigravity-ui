@@ -32,7 +32,7 @@ async function getMermaid() {
     mermaidInstance.initialize({
       startOnLoad: false,
       theme: "dark",
-      securityLevel: "loose",
+      securityLevel: "strict",
       themeVariables: {
         darkMode: true,
         background: "#0c0c0e",
