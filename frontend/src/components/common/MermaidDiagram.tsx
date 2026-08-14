@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import mermaid from "mermaid";
 import { Check, Copy, AlertCircle } from "lucide-react";
 
 interface MermaidDiagramProps {
@@ -9,45 +8,70 @@ interface MermaidDiagramProps {
   className?: string;
 }
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "dark",
-  securityLevel: "loose",
-  themeVariables: {
-    darkMode: true,
-    background: "#0c0c0e",
-    primaryColor: "#10b981",
-    primaryTextColor: "#ffffff",
-    primaryBorderColor: "#34d399",
-    lineColor: "#10b981",
-    secondaryColor: "#06b6d4",
-    tertiaryColor: "#8b5cf6",
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-    fontSize: "13px",
-  },
-  flowchart: {
-    htmlLabels: true,
-    curve: "basis",
-    useMaxWidth: true,
-    padding: 16,
-    nodeSpacing: 40,
-    rankSpacing: 40,
-  },
-  sequence: {
-    useMaxWidth: true,
-    actorFontSize: 13,
-    noteFontSize: 12,
-    messageFontSize: 12,
-  },
-  er: {
-    useMaxWidth: true,
-    fontSize: 12,
-  },
-});
+let mermaidInstance: any = null;
+let isInitialized = false;
+
+async function getMermaid() {
+  if (mermaidInstance) return mermaidInstance;
+  try {
+    const mod = await import("mermaid");
+    mermaidInstance = mod.default || mod;
+  } catch (err) {
+    console.warn("Failed to import mermaid locally, trying browser global", err);
+    if (typeof window !== "undefined" && (window as any).mermaid) {
+      mermaidInstance = (window as any).mermaid;
+    } else {
+      // Dynamic ESM loader via Function constructor to avoid TS URL import complaints
+      const importDynamic = new Function("moduleUrl", "return import(moduleUrl)");
+      const cdnMod = await importDynamic("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+      mermaidInstance = cdnMod.default || cdnMod;
+    }
+  }
+
+  if (mermaidInstance && !isInitialized) {
+    mermaidInstance.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      securityLevel: "loose",
+      themeVariables: {
+        darkMode: true,
+        background: "#0c0c0e",
+        primaryColor: "#10b981",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#34d399",
+        lineColor: "#10b981",
+        secondaryColor: "#06b6d4",
+        tertiaryColor: "#8b5cf6",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        fontSize: "13px",
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis",
+        useMaxWidth: true,
+        padding: 16,
+        nodeSpacing: 40,
+        rankSpacing: 40,
+      },
+      sequence: {
+        useMaxWidth: true,
+        actorFontSize: 13,
+        noteFontSize: 12,
+        messageFontSize: 12,
+      },
+      er: {
+        useMaxWidth: true,
+        fontSize: 12,
+      },
+    });
+    isInitialized = true;
+  }
+  return mermaidInstance;
+}
 
 export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
   chart,
-  id = `mermaid-${Math.random().toString(36).substr(2, 9)}`,
+  id = `mermaid-${Math.random().toString(36).substring(2, 9)}`,
   title,
   className = "",
 }) => {
@@ -62,9 +86,11 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
       if (!chart.trim()) return;
       try {
         setError(null);
-        // Unique ID per render
+        const m = await getMermaid();
+        if (!m) throw new Error("Mermaid engine unavailable");
+
         const renderId = `${id.replace(/[^a-zA-Z0-9_-]/g, "")}-${Date.now()}`;
-        const { svg } = await mermaid.render(renderId, chart);
+        const { svg } = await m.render(renderId, chart);
         if (isMounted) {
           setSvgContent(svg);
         }
@@ -122,7 +148,7 @@ export const MermaidDiagram: React.FC<MermaidDiagramProps> = ({
         {error ? (
           <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-mono flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>Diagram syntax error: {error}</span>
+            <span>Diagram error: {error}</span>
           </div>
         ) : svgContent ? (
           <div
