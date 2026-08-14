@@ -49,6 +49,16 @@ ln -sf "$PERSIST/gemini" "$HOME_DIR/.gemini"
 rm -rf "$HOME_DIR/.local/share/keyrings"
 ln -sf "$PERSIST/keyrings" "$HOME_DIR/.local/share/keyrings"
 
+# Symlink codebase workspace to persistent volume
+if [ ! -L "$HOME_DIR/workspace" ]; then
+  if [ -d "$HOME_DIR/workspace" ] && [ ! -d "$PERSIST/workspace/src" ] && [ -n "$(ls -A "$HOME_DIR/workspace" 2>/dev/null)" ]; then
+    cp -r "$HOME_DIR/workspace/." "$PERSIST/workspace/" 2>/dev/null || true
+    rm -rf "$HOME_DIR/workspace"
+  fi
+  rm -rf "$HOME_DIR/workspace"
+  ln -sf "$PERSIST/workspace" "$HOME_DIR/workspace"
+fi
+
 # Write default permissions settings.json
 cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/settings.json"
 {
