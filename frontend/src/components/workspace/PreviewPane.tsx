@@ -554,23 +554,8 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           </div>
         </div>
 
-        {/* Address Bar & Sandbox Port Controls */}
+        {/* Controls: Refresh and Collapse */}
         <div className="flex items-center gap-2">
-          {activeTab === "preview" && (
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-muted-foreground text-[11px]">Port:</span>
-              <select
-                value={activePort}
-                onChange={(e) => onPortChange(Number(e.target.value))}
-                className="bg-black/60 border border-border text-white text-xs rounded px-1.5 py-0.5 font-mono focus:outline-none"
-              >
-                <option value={3000}>:3000 (React/Next)</option>
-                <option value={5173}>:5173 (Vite)</option>
-                <option value={8080}>:8080 (Backend)</option>
-              </select>
-            </div>
-          )}
-
           <Button
             variant="ghost"
             size="icon"
@@ -601,7 +586,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         {/* MODE 1: DAYTONA SANDBOX LIVE PREVIEW */}
         {openTabsList.includes("preview") && activeTab === "preview" && (
           <div className="h-full w-full flex flex-col bg-black">
-            {/* Live Daytona URL Bar */}
+            {/* Live Daytona URL Bar with Embedded Port Selector Dropdown */}
             <div className="h-8 bg-[#1a1a2e] border-b border-border/60 px-3 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
               <div className="flex items-center gap-2 overflow-hidden text-ellipsis flex-1 min-w-0">
                 <span className={`h-2 w-2 rounded-full shrink-0 ${signedUrl || previewUrl ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
@@ -616,9 +601,20 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                     <Sparkles className="h-2.5 w-2.5 mr-1" /> Signed URL
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-emerald-500/30 text-emerald-400">
-                  <MonitorCheck className="h-3 w-3 mr-1" /> Port :{activePort}
-                </Badge>
+                {/* Port Selection Dropdown under Live Preview Main Window */}
+                <div className="flex items-center gap-1 bg-black/60 border border-emerald-500/30 rounded-lg px-2 py-0.5 text-[11px] text-emerald-400 font-mono shadow-sm">
+                  <MonitorCheck className="h-3 w-3 shrink-0 text-emerald-400" />
+                  <span className="text-gray-400 text-[10px]">Port:</span>
+                  <select
+                    value={activePort}
+                    onChange={(e) => onPortChange(Number(e.target.value))}
+                    className="bg-transparent border-0 text-emerald-400 font-bold font-mono focus:outline-none cursor-pointer text-[11px]"
+                  >
+                    <option value={3000} className="bg-[#121216] text-white">:3000 (React/Next)</option>
+                    <option value={5173} className="bg-[#121216] text-white">:5173 (Vite)</option>
+                    <option value={8080} className="bg-[#121216] text-white">:8080 (Backend)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
