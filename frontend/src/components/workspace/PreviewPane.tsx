@@ -491,7 +491,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           })}
         </div>
 
-        {/* Plus Button with Dropdown (Outside overflow container so dropdown is fully visible) */}
+        {/* Plus Button with Dropdown (Anchored to right, displaying only closed/available tabs) */}
         <div className="relative shrink-0 mr-2 z-40" ref={plusMenuRef}>
           <Button
             variant="ghost"
@@ -507,48 +507,45 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             <Plus className={`h-3.5 w-3.5 transition-transform duration-200 ${isPlusMenuOpen ? "rotate-45 text-emerald-400" : ""}`} />
           </Button>
 
-          {/* Dropdown Menu */}
+          {/* Dropdown Menu (Anchored right-0 so it never extends beyond the screen) */}
           {isPlusMenuOpen && (
-            <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border border-white/20 bg-[#141418] p-1.5 shadow-2xl shadow-black/90 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
+            <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl border border-white/20 bg-[#141418] p-1.5 shadow-2xl shadow-black/90 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
               <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono border-b border-white/10 mb-1 flex items-center justify-between">
-                <span>Workspace Panes</span>
-                <Badge variant="outline" className="text-[9px] py-0 px-1 border-white/15 text-gray-400">
-                  {openTabsList.length}/{ALL_RIGHT_TABS.length} Open
+                <span>Reopen Pane</span>
+                <Badge variant="outline" className="text-[9px] py-0 px-1 border-white/15 text-gray-400 font-mono">
+                  {ALL_RIGHT_TABS.filter((t) => !openTabsList.includes(t.id)).length} Available
                 </Badge>
               </div>
-              <div className="space-y-0.5 max-h-72 overflow-y-auto">
-                {ALL_RIGHT_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isOpen = openTabsList.includes(tab.id);
-                  const isCurrent = activeTab === tab.id;
 
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => handleOpenRightTab(tab.id)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left cursor-pointer group ${
-                        isCurrent
-                          ? "bg-white/15 text-white font-semibold shadow-sm"
-                          : "text-gray-300 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Icon className={`h-3.5 w-3.5 shrink-0 ${tab.color}`} />
-                        <span className="truncate">{tab.label}</span>
-                      </div>
-                      {isOpen ? (
-                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                          <Check className="h-3 w-3" /> Active
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-gray-400 font-mono group-hover:text-emerald-400 font-medium">
+              <div className="space-y-0.5 max-h-72 overflow-y-auto">
+                {ALL_RIGHT_TABS.filter((t) => !openTabsList.includes(t.id)).length === 0 ? (
+                  <div className="py-3 px-2 text-center text-gray-400 space-y-1">
+                    <Check className="h-4 w-4 text-emerald-400 mx-auto" />
+                    <p className="text-xs font-semibold text-white">All Panes Open</p>
+                    <p className="text-[10px] text-gray-500">All available workspace tabs are already visible.</p>
+                  </div>
+                ) : (
+                  ALL_RIGHT_TABS.filter((t) => !openTabsList.includes(t.id)).map((tab) => {
+                    const Icon = tab.icon;
+
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => handleOpenRightTab(tab.id)}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-gray-200 hover:bg-white/10 hover:text-white transition-colors text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Icon className={`h-3.5 w-3.5 shrink-0 ${tab.color}`} />
+                          <span className="truncate">{tab.label}</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-400 font-mono font-medium group-hover:underline">
                           + Open
                         </span>
-                      )}
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}
