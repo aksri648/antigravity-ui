@@ -130,28 +130,53 @@ mkdir -p "$PERSIST/gemini/antigravity-cli/skills/app-developer" \
          "$PERSIST/gemini/antigravity-cli/skills/app-deployer" \
          "$PERSIST/gemini/antigravity-cli/skills/app-maintainer"
 
-# Skill 1: App Developer
+# Skill 1: App Developer (Full-Stack + Gen AI, RAG & Chatbots)
 cat << 'EOF' > "$PERSIST/gemini/antigravity-cli/skills/app-developer/SKILL.md"
 ---
 name: app-developer
-description: Full-stack application creation from prompt, interviewing user requirements, architecture planning, code generation, and live preview.
+description: Full-stack application creation, architecture planning, code generation, live preview, and production Generative AI engineering (RAG pipelines, streaming chatbots, vector search, function calling, agentic workflows).
 ---
 
 # App Developer Skill
 
-## Workflow:
-1. **Interactive Interview**: If requirements are underspecified, ask 2-4 clarifying questions (domain goal, tech stack, styling, auth/database).
-2. **Architecture Blueprint**: Generate structured file tree, dependencies list, and data models before creating files.
+## Core Engineering Capabilities:
+1. **Full-Stack Application Development**: React 19, Vite, Next.js, Tailwind CSS, Go Gin, and FastAPI.
+2. **Production Generative AI & RAG Architecture**:
+   - **Vector Search & Embeddings**: Chunking strategies (recursive character, semantic), embeddings (text-embedding-3-small/large, BGE), vector stores (pgvector with HNSW indexes, Qdrant, Chroma, Pinecone).
+   - **Hybrid Retrieval & Reranking**: BM25 keyword + dense vector search with cross-encoder reranking (Cohere Rerank, BGE) to ensure grounded top-k context.
+   - **Context Assembly & Anti-Hallucination**: Source attribution citations, system prompt context fences (<context>...</context>), strict fallback instructions when context is insufficient.
+3. **Enterprise Chatbots & Agentic Workflows**:
+   - **Real-Time Streaming**: Server-Sent Events (SSE) / WebSocket chunk streaming with backpressure control.
+   - **Conversation State & Memory**: Windowed token buffer, sliding window summarization, session persistence in SQLite/PostgreSQL/Redis.
+   - **Function Calling & Structured Outputs**: Deterministic JSON Schemas (response_format: json_schema), Pydantic / Zod models, and tool invocation dispatch loops.
+   - **LLM Observability & Guardrails**: Prompt injection defense, input/output validation, rate limiting, and OpenTelemetry / Langfuse trace logging.
+
+## Standard Development Workflow:
+1. **Interactive Scoping**: When details are underspecified, clarify: domain goal, AI integration (RAG vs direct LLM vs agentic tools), stack, and data persistence.
+2. **Architecture Blueprint**: Define file hierarchy, API schemas, vector store config, environment variables (.env.example), and database models before writing code.
 3. **Approval Gate**: Request user review on major architecture decisions.
-4. **Code Generation**: Build frontend and backend files inside ~/workspace (/home/daytona/persist/workspace).
-5. **Validation & Live Preview**: Start dev server, verify build with 'npm run build' or 'go build', and expose preview port.
+4. **Code Generation**: Build modular, clean, type-safe frontend and backend code inside project folder.
+5. **Validation & Live Preview**: Start dev server, verify build with 'npm run build' or 'go build', test API endpoints, and expose live preview.
 
 ## Official Documentation References:
-- Vite Guide: https://vite.dev/guide/
-- React 19 Reference: https://react.dev/reference/react
-- Tailwind CSS: https://tailwindcss.com/docs
-- Go Gin Framework: https://gin-gonic.com/docs/
-- FastAPI Docs: https://fastapi.tiangolo.com/
+- **Core Web & Frameworks**:
+  - Vite Guide: https://vite.dev/guide/
+  - React 19 Reference: https://react.dev/reference/react
+  - Tailwind CSS: https://tailwindcss.com/docs
+  - Go Gin Framework: https://gin-gonic.com/docs/
+  - FastAPI Docs: https://fastapi.tiangolo.com/
+- **Gen AI, RAG & Vector Search**:
+  - LangChain / LangGraph: https://python.langchain.com/docs/ | https://langchain-ai.github.io/langgraph/
+  - LlamaIndex (Advanced RAG): https://docs.llamaindex.ai/en/stable/
+  - pgvector (PostgreSQL Vector Search): https://github.com/pgvector/pgvector
+  - Qdrant Vector Search Engine: https://qdrant.tech/documentation/
+- **Model Providers, Function Calling & Structured Outputs**:
+  - OpenAI Structured Outputs & Function Calling: https://platform.openai.com/docs/guides/structured-outputs
+  - Anthropic Claude Tool Use: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
+  - Google Gemini Function Calling: https://ai.google.dev/gemini-api/docs/function-calling
+- **LLM Observability & Production Serving**:
+  - Langfuse (LLM Tracing & Metrics): https://langfuse.com/docs
+  - vLLM Production Inference: https://docs.vllm.ai/
 EOF
 
 # Skill 2: LLM Deployer
