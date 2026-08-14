@@ -581,16 +581,6 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             <RotateCw className="h-3.5 w-3.5" />
           </Button>
 
-          <a
-            href={activeTab === "vnc" ? (vncUrl || `https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`) : daytonaPreviewUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-7 items-center gap-1 rounded border border-border bg-black/40 px-2 text-[11px] text-muted-foreground hover:text-white hover:bg-accent font-mono"
-            title="Open in new browser tab"
-          >
-            <ExternalLink className="h-3 w-3 text-blue-400" /> Open External
-          </a>
-
           {onToggleCollapse && (
             <Button
               variant="ghost"
@@ -698,7 +688,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                 )}
 
                 <a
-                  href={`https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
+                  href={vncUrl || `https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-6 items-center gap-1 rounded border border-purple-500/30 bg-purple-500/10 px-2 text-[11px] text-purple-300 hover:bg-purple-500/20"
@@ -731,7 +721,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                     </div>
                     <div className="flex items-center gap-3 pt-2">
                       <a
-                        href={`https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
+                        href={vncUrl || `https://app.daytona.io/dashboard/sandboxes/${sandboxId}/vnc`}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all"
