@@ -784,6 +784,23 @@ export function App() {
     }
   };
 
+  // Sign out handler
+  const handleLogout = () => {
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_user_email");
+    localStorage.removeItem("auth_user_name");
+    setUserEmail("");
+    setUserName("");
+    const newGuestId = `user-${Math.random().toString(36).substring(2, 8)}`;
+    setUserId(newGuestId);
+    localStorage.setItem("workspace_user_id", newGuestId);
+    setProjects([]);
+    setActiveProject(null);
+    setConversations([]);
+    setActiveConversationId(null);
+    setMessages([]);
+  };
+
   // Recreate Sandbox Container (fresh VM attached to persistent volume)
   const handleRecreateSandbox = async () => {
     const currentKey = apiKey || localStorage.getItem("daytona_api_key") || "";
@@ -914,6 +931,15 @@ export function App() {
               onCreateConversation={handleCreateConversation}
               onUpdateConversationTitle={handleUpdateConversationTitle}
               onDeleteConversation={handleDeleteConversation}
+              userId={userId}
+              userEmail={userEmail}
+              userName={userName}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onOpenAuth={(mode) => {
+                setAuthMode(mode);
+                setIsAuthModalOpen(true);
+              }}
+              onLogout={handleLogout}
             />
 
             {/* Left Pane (Adjustable Width) */}
