@@ -364,48 +364,77 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     <div className="flex h-full flex-col bg-card/40">
       {/* 70% Right Pane Top Navigation Toolbar */}
       <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-card/90">
-        {/* Mode Selector Tabs */}
+        {/* Mode Selector Tabs with Hover Rounded Rectangular Boxes */}
         <div className="flex items-center gap-1">
-          <Button
-            variant={activeTab === "preview" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("preview")}
-            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
-          >
-            <Globe className="h-3.5 w-3.5 text-blue-400" /> Live Preview
-          </Button>
-          <Button
-            variant={activeTab === "vnc" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("vnc")}
-            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
-          >
-            <Monitor className="h-3.5 w-3.5 text-purple-400" /> VNC Desktop
-          </Button>
-          <Button
-            variant={activeTab === "code" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("code")}
-            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
-          >
-            <Code className="h-3.5 w-3.5 text-emerald-400" /> VS Code IDE
-          </Button>
-          <Button
-            variant={activeTab === "terminal" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("terminal")}
-            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
-          >
-            <Terminal className="h-3.5 w-3.5 text-amber-400" /> Daytona Terminal
-          </Button>
-          <Button
-            variant={activeTab === "telemetry" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setActiveTab("telemetry")}
-            className="h-7 text-xs gap-1.5 px-2.5 font-medium"
-          >
-            <Activity className="h-3.5 w-3.5 text-cyan-400" /> Telemetry & OTEL
-          </Button>
+          <div className="relative group">
+            <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1a1a22] border border-white/20 text-[10px] font-mono text-blue-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
+              Live Web View (:3000)
+            </span>
+            <Button
+              variant={activeTab === "preview" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("preview")}
+              className="h-7 text-xs gap-1.5 px-2.5 font-medium rounded-lg hover:border hover:border-white/15"
+            >
+              <Globe className="h-3.5 w-3.5 text-blue-400" /> Live Preview
+            </Button>
+          </div>
+
+          <div className="relative group">
+            <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1a1a22] border border-white/20 text-[10px] font-mono text-purple-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
+              XFCE Desktop Stream
+            </span>
+            <Button
+              variant={activeTab === "vnc" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("vnc")}
+              className="h-7 text-xs gap-1.5 px-2.5 font-medium rounded-lg hover:border hover:border-white/15"
+            >
+              <Monitor className="h-3.5 w-3.5 text-purple-400" /> VNC Desktop
+            </Button>
+          </div>
+
+          <div className="relative group">
+            <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1a1a22] border border-white/20 text-[10px] font-mono text-emerald-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
+              Monaco Code Editor
+            </span>
+            <Button
+              variant={activeTab === "code" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("code")}
+              className="h-7 text-xs gap-1.5 px-2.5 font-medium rounded-lg hover:border hover:border-white/15"
+            >
+              <Code className="h-3.5 w-3.5 text-emerald-400" /> VS Code IDE
+            </Button>
+          </div>
+
+          <div className="relative group">
+            <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1a1a22] border border-white/20 text-[10px] font-mono text-amber-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
+              Live Sandbox Output
+            </span>
+            <Button
+              variant={activeTab === "terminal" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("terminal")}
+              className="h-7 text-xs gap-1.5 px-2.5 font-medium rounded-lg hover:border hover:border-white/15"
+            >
+              <Terminal className="h-3.5 w-3.5 text-amber-400" /> Daytona Terminal
+            </Button>
+          </div>
+
+          <div className="relative group">
+            <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1a1a22] border border-white/20 text-[10px] font-mono text-cyan-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
+              CPU & Memory OTEL
+            </span>
+            <Button
+              variant={activeTab === "telemetry" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("telemetry")}
+              className="h-7 text-xs gap-1.5 px-2.5 font-medium rounded-lg hover:border hover:border-white/15"
+            >
+              <Activity className="h-3.5 w-3.5 text-cyan-400" /> Telemetry & OTEL
+            </Button>
+          </div>
         </div>
 
         {/* Address Bar & Sandbox Port Controls */}
