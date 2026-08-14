@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"backend/db"
 	"backend/handlers"
@@ -48,9 +49,27 @@ func main() {
 	wsHub := handlers.NewHub()
 	go wsHub.Run()
 
+	inactivityMgr := services.NewInactivityManager(daytonaSvc, wsHub, 30*time.Minute)
+
 	// 4. API Routes
 	api := r.Group("/api")
 	api.Use(handlers.AuthMiddleware(userSvc))
+	api.Use(func(c *gin.Context) {
+		sandboxId := c.Param("sandboxId")
+		if sandboxId == "" {
+			sandboxId = c.Query("sandboxId")
+		}
+		apiKey := c.Query("apiKey")
+		serverUrl := c.Query("serverUrl")
+		userId := ""
+		if u, exists := c.Get("userId"); exists {
+			userId = u.(string)
+		}
+		if sandboxId != "" && sandboxId != "sb-daytona-demo" {
+			inactivityMgr.RecordActivity(sandboxId, apiKey, serverUrl, userId)
+		}
+		c.Next()
+	})
 	{
 		// Health status
 		api.GET("/health", handlers.HealthCheck(daytonaSvc))
