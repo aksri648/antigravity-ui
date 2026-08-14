@@ -279,52 +279,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Center Nav Links with Rounded Rectangular Box on Hover */}
-          <nav className="hidden md:flex items-center gap-2 text-xs font-bold text-gray-300">
+          <nav className="hidden md:flex items-center gap-1 text-xs font-bold text-gray-300">
             <a
               href="#showcase"
-              className="relative px-4 py-2 rounded-2xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-lg hover:shadow-black/50 text-gray-300 hover:text-white transition-all duration-200 group flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)] text-gray-300 hover:text-white transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-xl bg-[#1c1c22] border border-white/25 text-[10px] font-mono text-emerald-400 font-bold shadow-2xl shadow-black/80 opacity-0 group-hover:opacity-100 group-hover:-top-9 transition-all duration-200 whitespace-nowrap z-50 flex items-center gap-1.5 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Showcase View
-              </span>
               Showcase
             </a>
 
             <a
               href="#manifesto"
-              className="relative px-4 py-2 rounded-2xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-lg hover:shadow-black/50 text-gray-300 hover:text-white transition-all duration-200 group flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)] text-gray-300 hover:text-white transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-xl bg-[#1c1c22] border border-white/25 text-[10px] font-mono text-cyan-400 font-bold shadow-2xl shadow-black/80 opacity-0 group-hover:opacity-100 group-hover:-top-9 transition-all duration-200 whitespace-nowrap z-50 flex items-center gap-1.5 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                FDE Manifesto
-              </span>
               FDE Manifesto
             </a>
 
             <a
               href="#features"
-              className="relative px-4 py-2 rounded-2xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-lg hover:shadow-black/50 text-gray-300 hover:text-white transition-all duration-200 group flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)] text-gray-300 hover:text-white transition-all duration-200 flex items-center gap-1.5 cursor-pointer"
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-xl bg-[#1c1c22] border border-white/25 text-[10px] font-mono text-purple-400 font-bold shadow-2xl shadow-black/80 opacity-0 group-hover:opacity-100 group-hover:-top-9 transition-all duration-200 whitespace-nowrap z-50 flex items-center gap-1.5 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />
-                4 Agent Personas
-              </span>
               Agent Swarm
             </a>
 
             <a
               href="#docs"
-              className="relative px-4 py-2 rounded-2xl border border-emerald-500/20 hover:border-emerald-400/50 bg-emerald-500/10 hover:bg-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/10 text-emerald-300 hover:text-white transition-all duration-200 group flex items-center gap-1.5 font-bold cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-emerald-500/25 hover:border-emerald-400/60 bg-emerald-500/10 hover:bg-emerald-500/20 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] text-emerald-300 hover:text-white transition-all duration-200 flex items-center gap-1.5 font-bold cursor-pointer"
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-xl bg-[#1c1c22] border border-emerald-500/30 text-[10px] font-mono text-emerald-400 font-bold shadow-2xl shadow-black/80 opacity-0 group-hover:opacity-100 group-hover:-top-9 transition-all duration-200 whitespace-nowrap z-50 flex items-center gap-1.5 backdrop-blur-md">
-                <BookOpen className="h-3 w-3 text-emerald-400" />
-                Docs & Architecture
-              </span>
               <BookOpen className="h-4 w-4 text-emerald-400" /> Documentation & Diagrams
             </a>
           </nav>
@@ -421,61 +401,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="flex rounded-2xl bg-[#16161a] p-1.5 border border-white/10 gap-1.5 shadow-xl">
             <button
               onClick={() => setActiveShowcase("ide")}
-              className={`relative px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 activeShowcase === "ide"
-                  ? "bg-white text-black shadow-md"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  ? "bg-white text-black border-white shadow-md"
+                  : "text-gray-400 hover:text-white border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)]"
               }`}
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1e1e24] border border-white/20 text-[10px] font-mono text-emerald-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
-                Split IDE Stream
-              </span>
               Split IDE & Preview
             </button>
 
             <button
               onClick={() => setActiveShowcase("agents")}
-              className={`relative px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 activeShowcase === "agents"
-                  ? "bg-white text-black shadow-md"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  ? "bg-white text-black border-white shadow-md"
+                  : "text-gray-400 hover:text-white border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)]"
               }`}
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1e1e24] border border-white/20 text-[10px] font-mono text-purple-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
-                4 Autonomous Personas
-              </span>
               4 Specialized Agents
             </button>
 
             <button
               onClick={() => setActiveShowcase("opencode")}
-              className={`relative px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 activeShowcase === "opencode"
-                  ? "bg-white text-black shadow-md"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  ? "bg-white text-black border-white shadow-md"
+                  : "text-gray-400 hover:text-white border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)]"
               }`}
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1e1e24] border border-white/20 text-[10px] font-mono text-cyan-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
-                ⚡ AGY & 💻 OpenCode
-              </span>
               Dual CLI Switcher
             </button>
 
             <button
               onClick={() => setActiveShowcase("preview")}
-              className={`relative px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer group ${
+              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
                 activeShowcase === "preview"
-                  ? "bg-white text-black shadow-md"
-                  : "text-gray-400 hover:text-white hover:bg-white/10"
+                  ? "bg-white text-black border-white shadow-md"
+                  : "text-gray-400 hover:text-white border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_16px_rgba(255,255,255,0.06)]"
               }`}
             >
-              {/* Floating rounded rectangular box just above the tab */}
-              <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-lg bg-[#1e1e24] border border-white/20 text-[10px] font-mono text-emerald-400 font-bold shadow-xl opacity-0 group-hover:opacity-100 group-hover:-top-8 transition-all duration-150 whitespace-nowrap z-50">
-                30-Min Inactivity Auto-Persist
-              </span>
               Daytona Volume Sync
             </button>
           </div>
