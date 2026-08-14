@@ -107,6 +107,8 @@ func main() {
 		api.POST("/workspace/recreate", handlers.RecreateWorkspace(daytonaSvc))
 		api.GET("/workspace/preview-url", handlers.GetPreviewLinkHandler(daytonaSvc))
 		api.GET("/preview/url", handlers.GetPreviewLinkHandler(daytonaSvc))
+		api.Any("/preview/proxy/:sandboxId/:port/*path", handlers.PreviewProxyHandler(daytonaSvc))
+		api.Any("/preview/proxy/:sandboxId/:port", handlers.PreviewProxyHandler(daytonaSvc))
 		api.POST("/workspace/vnc/start", handlers.StartVNCHandler(daytonaSvc))
 		api.POST("/workspace/vnc/stop", handlers.StopVNCHandler(daytonaSvc))
 		api.GET("/workspace/vnc/status", handlers.GetVNCStatusHandler(daytonaSvc))

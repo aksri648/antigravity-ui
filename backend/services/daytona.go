@@ -236,6 +236,7 @@ func (s *DaytonaService) CreateSandbox(apiKey string, serverUrl string, userId s
 		payloads = append(payloads, map[string]interface{}{
 			"name":             sbName,
 			"language":         "typescript",
+			"public":           true,
 			"autoStopInterval": 30,
 			"volumes": []map[string]interface{}{
 				{
@@ -255,6 +256,7 @@ func (s *DaytonaService) CreateSandbox(apiKey string, serverUrl string, userId s
 		map[string]interface{}{
 			"name":             sbName,
 			"language":         "typescript",
+			"public":           true,
 			"autoStopInterval": 30,
 			"labels": map[string]string{
 				"userId": userId,
@@ -263,6 +265,7 @@ func (s *DaytonaService) CreateSandbox(apiKey string, serverUrl string, userId s
 		},
 		map[string]interface{}{
 			"language": "typescript",
+			"public":   true,
 		},
 		map[string]interface{}{},
 	)
@@ -414,7 +417,7 @@ func (s *DaytonaService) GetPreviewURL(sandboxId string, port int, serverUrl str
 	return fmt.Sprintf("https://%s-%d.daytona.app", sandboxId, port)
 }
 
-// GetSignedPreviewLink generates a signed preview link via Daytona REST API
+// GetSignedPreviewLink generates a signed preview link via Daytona REST API with multi-endpoint fallback
 func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, sandboxId string, port int) (*models.SignedPreviewResponse, error) {
 	if port <= 0 {
 		port = 3000
@@ -427,16 +430,49 @@ func (s *DaytonaService) GetSignedPreviewLink(apiKey string, serverUrl string, s
 		}, nil
 	}
 
-	url := fmt.Sprintf("%s/sandbox/%s/preview/%d", s.getBaseURL(serverUrl), sandboxId, port)
-	req, err := http.NewRequest("GET", url, nil)
-	if err == nil {
+	baseURL := s.getBaseURL(serverUrl)
+
+	// 1. Try POST signed-preview-url endpoint (Daytona SDK & Nightona pattern)
+	signedReqBody, _ := json.Marshal(map[string]interface{}{
+		"port":             port,
+		"expiresInSeconds": 86400,
+	})
+	if req, err := http.NewRequest("POST", fmt.Sprintf("%s/sandbox/%s/signed-preview-url", baseURL, sandboxId), bytes.NewBuffer(signedReqBody)); err == nil {
 		req.Header.Set("Authorization", "Bearer "+apiKey)
-		resp, doErr := s.client.Do(req)
-		if doErr == nil && resp.StatusCode == http.StatusOK {
+		req.Header.Set("Content-Type", "application/json")
+		if resp, err := s.client.Do(req); err == nil {
 			defer resp.Body.Close()
-			var res models.SignedPreviewResponse
-			if decodeErr := json.NewDecoder(resp.Body).Decode(&res); decodeErr == nil && res.URL != "" {
-				return &res, nil
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+				var res models.SignedPreviewResponse
+				if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.URL != "" {
+					return &res, nil
+				}
+			}
+		}
+	}
+
+	// 2. Try GET and POST preview ports endpoints
+	probeEndpoints := []struct {
+		method string
+		url    string
+	}{
+		{"GET", fmt.Sprintf("%s/sandbox/%s/ports/%d/preview", baseURL, sandboxId, port)},
+		{"POST", fmt.Sprintf("%s/sandbox/%s/ports/%d/preview", baseURL, sandboxId, port)},
+		{"GET", fmt.Sprintf("%s/sandbox/%s/preview/%d", baseURL, sandboxId, port)},
+		{"GET", fmt.Sprintf("%s/sandbox/%s/preview-url?port=%d", baseURL, sandboxId, port)},
+	}
+
+	for _, ep := range probeEndpoints {
+		if req, err := http.NewRequest(ep.method, ep.url, nil); err == nil {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+			if resp, err := s.client.Do(req); err == nil {
+				defer resp.Body.Close()
+				if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+					var res models.SignedPreviewResponse
+					if err := json.NewDecoder(resp.Body).Decode(&res); err == nil && res.URL != "" {
+						return &res, nil
+					}
+				}
 			}
 		}
 	}

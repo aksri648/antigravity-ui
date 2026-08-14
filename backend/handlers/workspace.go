@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -754,6 +756,52 @@ func GetTelemetryHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, data)
+	}
+}
+
+// PreviewProxyHandler proxies requests to Daytona Sandbox ports and strips restrictive iframe/CSP headers
+func PreviewProxyHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sandboxId := c.Param("sandboxId")
+		portStr := c.Param("port")
+		path := c.Param("path")
+		apiKey := c.Query("apiKey")
+
+		port, _ := strconv.Atoi(portStr)
+		if port <= 0 {
+			port = 3000
+		}
+
+		targetURL := fmt.Sprintf("https://%s-%d.daytona.app%s", sandboxId, port, path)
+		if c.Request.URL.RawQuery != "" {
+			targetURL += "?" + c.Request.URL.RawQuery
+		}
+
+		remoteURL, err := url.Parse(targetURL)
+		if err != nil {
+			c.String(http.StatusBadRequest, "Invalid proxy target")
+			return
+		}
+
+		proxy := httputil.NewSingleHostReverseProxy(remoteURL)
+		originalDirector := proxy.Director
+		proxy.Director = func(req *http.Request) {
+			originalDirector(req)
+			req.Host = remoteURL.Host
+			if apiKey != "" {
+				req.Header.Set("Authorization", "Bearer "+apiKey)
+			}
+		}
+
+		proxy.ModifyResponse = func(resp *http.Response) error {
+			// Strip restrictive headers to allow seamless iframe embedding
+			resp.Header.Del("X-Frame-Options")
+			resp.Header.Del("Content-Security-Policy")
+			resp.Header.Set("Access-Control-Allow-Origin", "*")
+			return nil
+		}
+
+		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
