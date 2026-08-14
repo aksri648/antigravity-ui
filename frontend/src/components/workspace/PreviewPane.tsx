@@ -456,8 +456,8 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     <div className="flex h-full flex-col bg-card/40">
       {/* 70% Right Pane Top Navigation Toolbar */}
       <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-card/90">
-        {/* Mode Selector Tabs with X Close Button & + Dropdown to Re-open */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-none py-1 max-w-[calc(100%-240px)]">
+        {/* Mode Selector Tabs with X Close Button & + Dropdown to Re-open (Full Width Flex-1) */}
+        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-none py-1 mr-2">
           {openTabsList.map((tabId) => {
             const tabDef = ALL_RIGHT_TABS.find((t) => t.id === tabId);
             if (!tabDef) return null;
@@ -491,7 +491,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           })}
 
           {/* Plus Button with Dropdown to Re-Open Any Closed/Available Tab */}
-          <div className="relative" ref={plusMenuRef}>
+          <div className="relative shrink-0" ref={plusMenuRef}>
             <Button
               variant="ghost"
               size="icon"
@@ -554,13 +554,13 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           </div>
         </div>
 
-        {/* Controls: Refresh and Collapse */}
-        <div className="flex items-center gap-2">
+        {/* Controls: Refresh and Collapse (Pinned Right) */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             onClick={activeTab === "vnc" ? fetchVNCStatus : handleRefreshPreview}
-            className="h-7 w-7 text-muted-foreground hover:text-white"
+            className="h-7 w-7 text-muted-foreground hover:text-white hover:bg-white/10 cursor-pointer"
             title="Refresh View"
           >
             <RotateCw className="h-3.5 w-3.5" />
