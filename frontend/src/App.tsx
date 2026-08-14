@@ -559,11 +559,20 @@ export function App() {
       {currentView === "marketing" && (
         <LandingPage
           onStartSetup={() => {
-            setAuthMode("signup");
-            setCurrentView("auth");
+            const hasApiKey = apiKey || localStorage.getItem("daytona_api_key");
+            if (hasApiKey) {
+              setCurrentView("workspace");
+            } else {
+              setCurrentView("setup");
+            }
           }}
           onLaunchWorkspace={() => {
-            setCurrentView("workspace");
+            const hasApiKey = apiKey || localStorage.getItem("daytona_api_key");
+            if (hasApiKey) {
+              setCurrentView("workspace");
+            } else {
+              setCurrentView("setup");
+            }
           }}
           onOpenAuth={(mode) => {
             setAuthMode(mode);

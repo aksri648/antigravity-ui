@@ -701,3 +701,71 @@ func (s *DaytonaService) GetSandboxTelemetry(apiKey string, serverUrl string, sa
 
 	return data, nil
 }
+
+// SetDaytonaSecret creates or updates a persistent secret in Daytona Cloud Secrets Manager
+func (s *DaytonaService) SetDaytonaSecret(apiKey string, serverUrl string, name string, value string) error {
+	if apiKey == "" || name == "" || value == "" {
+		return nil
+	}
+	url := fmt.Sprintf("%s/secret", s.getBaseURL(serverUrl))
+	payload := map[string]interface{}{
+		"name":  name,
+		"value": value,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// ListDaytonaSecrets queries available secret names in Daytona Cloud
+func (s *DaytonaService) ListDaytonaSecrets(apiKey string, serverUrl string) ([]string, error) {
+	if apiKey == "" {
+		return nil, nil
+	}
+	url := fmt.Sprintf("%s/secret", s.getBaseURL(serverUrl))
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil
+	}
+
+	var data struct {
+		Items []struct {
+			Name string `json:"name"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for _, item := range data.Items {
+		names = append(names, item.Name)
+	}
+	return names, nil
+}
+
