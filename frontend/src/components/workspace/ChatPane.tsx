@@ -16,6 +16,12 @@ import {
   Zap,
   Plus,
   PanelRight,
+  Terminal,
+  FlaskConical,
+  Code2,
+  Cpu,
+  Server,
+  GitPullRequest,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -179,26 +185,28 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             <button
               type="button"
               onClick={() => handleEngineToggle("agy")}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1 ${
                 selectedEngine === "agy"
                   ? "bg-emerald-500 text-black font-extrabold shadow-sm"
                   : "text-gray-400 hover:text-white"
               }`}
               title="Execute using Antigravity CLI (agy) inside ~/workspace"
             >
-              ⚡ AGY
+              <Zap className="h-3.5 w-3.5 shrink-0" />
+              <span>AGY</span>
             </button>
             <button
               type="button"
               onClick={() => handleEngineToggle("opencode")}
-              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer flex items-center gap-1 ${
                 selectedEngine === "opencode"
                   ? "bg-cyan-500 text-black font-extrabold shadow-sm"
                   : "text-gray-400 hover:text-white"
               }`}
               title="Execute using OpenCode CLI inside ~/workspace"
             >
-              💻 OpenCode
+              <Terminal className="h-3.5 w-3.5 shrink-0" />
+              <span>OpenCode</span>
             </button>
           </div>
 
@@ -246,22 +254,26 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <Activity className="h-4 w-4 text-purple-400 shrink-0" />
           <span className="text-gray-400 shrink-0 text-[11px] uppercase font-semibold">Traffic Profile:</span>
           {[
-            { id: "sporadic", label: "⚡ Serverless vLLM (Scale-to-Zero)", desc: "Lowest idle cost" },
-            { id: "steady", label: "🏢 Dedicated GPU (Azure AKS / RunPod)", desc: "High throughput" },
-            { id: "dev", label: "🧪 Spot GPU (Lowest Cost Dev)", desc: "Spot Pod" },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTrafficProfile(t.id)}
-              className={`px-2.5 py-1 rounded-lg text-xs border transition-colors shrink-0 ${
-                trafficProfile === t.id
-                  ? "bg-purple-900/50 border-purple-400 text-purple-200 font-semibold shadow-sm"
-                  : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+            { id: "sporadic", label: "Serverless vLLM", desc: "Scale-to-zero", icon: Zap },
+            { id: "steady", label: "Dedicated GPU", desc: "High throughput", icon: Server },
+            { id: "dev", label: "Spot GPU", desc: "Spot Pod", icon: FlaskConical },
+          ].map((t) => {
+            const TIcon = t.icon;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTrafficProfile(t.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs border transition-colors shrink-0 flex items-center gap-1.5 ${
+                  trafficProfile === t.id
+                    ? "bg-purple-900/50 border-purple-400 text-purple-200 font-semibold shadow-sm"
+                    : "border-white/10 text-gray-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <TIcon className="h-3 w-3 shrink-0" />
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -323,10 +335,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                         textareaRef.current.focus();
                       }
                     }}
-                    className="w-full text-left text-xs bg-[#16161c] hover:bg-[#1f1f26] border border-white/10 hover:border-white/20 rounded-xl p-3 transition-all text-gray-300 hover:text-white shadow-sm cursor-pointer group"
+                    className="w-full text-left text-xs bg-[#16161c] hover:bg-[#1f1f26] border border-white/10 hover:border-white/20 rounded-xl p-3 transition-all text-gray-300 hover:text-white shadow-sm cursor-pointer group flex items-start gap-2.5"
                   >
-                    <span className="text-purple-400 mr-2 group-hover:scale-110 inline-block transition-transform">✦</span>
-                    {s}
+                    <Sparkles className="h-3.5 w-3.5 text-purple-400 mt-0.5 group-hover:scale-110 shrink-0 transition-transform" />
+                    <span>{s}</span>
                   </button>
                 ))}
               </div>
@@ -340,9 +352,12 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                     <div className="flex items-center gap-2 font-semibold text-xs text-purple-300">
                       <Brain className="h-4 w-4" /> AGY Reasoning & Step Execution
                     </div>
-                    <div className="space-y-1 font-mono text-[12px] text-purple-200/80 leading-relaxed">
+                    <div className="space-y-1.5 font-mono text-[12px] text-purple-200/80 leading-relaxed">
                       {msg.thoughts.map((thought, i) => (
-                        <p key={i}>💭 {thought}</p>
+                        <div key={i} className="flex items-start gap-2">
+                          <Sparkles className="h-3 w-3 text-purple-400 mt-0.5 shrink-0" />
+                          <span>{thought}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -477,19 +492,23 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
             {/* Bottom Action Row inside Input Card */}
             <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-white/5 gap-2">
-              {/* Left Controls: Agent Mode Pill */}
+              {/* Left Controls: Agent Mode Pill with Lucide Icon */}
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 hover:border-white/20 rounded-xl px-2.5 py-1 text-xs transition-colors">
+                <div className="flex items-center gap-2 bg-black/40 border border-white/10 hover:border-white/20 rounded-xl px-2.5 py-1 text-xs transition-colors">
+                  {selectedMode === "app-developer" && <Code2 className="h-3.5 w-3.5 text-blue-400" />}
+                  {selectedMode === "llm-deployer" && <Cpu className="h-3.5 w-3.5 text-purple-400" />}
+                  {selectedMode === "app-deployer" && <Server className="h-3.5 w-3.5 text-emerald-400" />}
+                  {selectedMode === "app-maintainer" && <GitPullRequest className="h-3.5 w-3.5 text-amber-400" />}
                   <span className="text-[11px] text-gray-400 font-medium">Agent:</span>
                   <select
                     value={selectedMode}
                     onChange={(e) => handleModeSelect(e.target.value as AgentMode)}
                     className="bg-transparent text-white font-semibold text-xs focus:outline-none cursor-pointer"
                   >
-                    <option value="app-developer" className="bg-[#18181f] text-white">⚡ App Developer</option>
-                    <option value="llm-deployer" className="bg-[#18181f] text-white">🧠 LLM Deployer</option>
-                    <option value="app-deployer" className="bg-[#18181f] text-white">🚀 App Deployer</option>
-                    <option value="app-maintainer" className="bg-[#18181f] text-white">🛠️ App Maintainer</option>
+                    <option value="app-developer" className="bg-[#18181f] text-white">App Developer</option>
+                    <option value="llm-deployer" className="bg-[#18181f] text-white">LLM Deployer</option>
+                    <option value="app-deployer" className="bg-[#18181f] text-white">App Deployer</option>
+                    <option value="app-maintainer" className="bg-[#18181f] text-white">App Maintainer</option>
                   </select>
                 </div>
               </div>

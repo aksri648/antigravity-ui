@@ -26,6 +26,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronRight,
+  Zap,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -1301,7 +1302,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-white">⚡ Antigravity (agy)</span>
+                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Zap className="h-3.5 w-3.5 text-emerald-400" /> Antigravity (agy)
+                          </span>
                           {preferredEngine === "agy" && <Badge className="text-[9px] bg-blue-600 text-white">Active</Badge>}
                         </div>
                         <p className="text-[10px] text-muted-foreground">Google Antigravity CLI with multi-tool skills and progressive disclosure</p>
@@ -1320,7 +1323,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-white">💻 OpenCode CLI</span>
+                          <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Terminal className="h-3.5 w-3.5 text-cyan-400" /> OpenCode CLI
+                          </span>
                           {preferredEngine === "opencode" && <Badge className="text-[9px] bg-cyan-600 text-white">Active</Badge>}
                         </div>
                         <p className="text-[10px] text-muted-foreground">Open-source agentic coding assistant with multi-model terminal interface</p>

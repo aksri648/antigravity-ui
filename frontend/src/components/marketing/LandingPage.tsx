@@ -381,7 +381,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span>Pluggable Drivers: AGY ⚡ & OpenCode 💻</span>
+            <span className="flex items-center gap-1.5">
+              Pluggable Drivers: AGY <Zap className="h-3.5 w-3.5 text-emerald-400 inline" /> & OpenCode <Terminal className="h-3.5 w-3.5 text-cyan-400 inline" />
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -861,7 +863,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   title="Dual CLI Switcher Data Pipeline"
                 />
                 <ul className="space-y-2 text-xs text-gray-300">
-                  <li>• Click the <strong>⚡ AGY</strong> or <strong>💻 OpenCode</strong> button in the Chat header.</li>
+                  <li className="flex items-center gap-1.5">• Click the <strong className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-emerald-400 inline" /> AGY</strong> or <strong className="flex items-center gap-1"><Terminal className="h-3.5 w-3.5 text-cyan-400 inline" /> OpenCode</strong> button in the Chat header.</li>
                   <li>• You can switch at any moment during development — all files and git histories remain intact.</li>
                   <li>• OpenCode automatically leverages the keys stored in your persistent <code className="text-gray-400">.env</code>.</li>
                 </ul>
