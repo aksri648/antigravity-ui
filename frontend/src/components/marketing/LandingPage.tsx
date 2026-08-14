@@ -43,9 +43,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   return (
     <div className="min-h-screen w-full bg-[#0c0c0e] text-[#f4f4f6] flex flex-col overflow-y-auto selection:bg-emerald-500 selection:text-black">
       {/* Top Banner Notice */}
-      <div className="w-full bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 border-b border-border/40 py-2 px-4 text-center text-xs font-medium text-gray-300">
+      <div className="w-full bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 border-b border-white/10 py-2.5 px-4 text-center text-xs font-medium text-gray-300">
         <span className="inline-flex items-center gap-2">
-          <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-1.5 py-0">NEW</Badge>
+          <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-2 py-0.5 rounded-full">NEW</Badge>
           <span>Multi-Agent Swarm with Pluggable CLI Drivers (Antigravity & OpenCode) and Daytona Secrets</span>
           <a href="#docs" className="text-emerald-400 font-semibold underline hover:text-emerald-300 ml-1">
             Read Docs →
@@ -53,50 +53,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </span>
       </div>
 
-      {/* Floating Glass Navigation Header */}
-      <header className="sticky top-4 z-50 mx-auto w-[94%] max-w-7xl rounded-full border border-white/10 bg-[#16161a]/85 backdrop-blur-xl px-6 h-16 flex items-center justify-between shadow-2xl shadow-black/40">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-lg shadow-emerald-500/20">
-            <Sparkles className="h-5 w-5" />
+      {/* Floating Glass Navigation Header Container with generous top gap and padding */}
+      <div className="sticky top-0 z-50 pt-5 pb-2 px-4 sm:px-8 w-full max-w-7xl mx-auto pointer-events-none">
+        <header className="pointer-events-auto mx-auto w-full rounded-full border border-white/15 bg-[#16161a]/90 backdrop-blur-2xl px-6 sm:px-8 h-20 flex items-center justify-between shadow-2xl shadow-black/60 transition-all">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-lg shadow-emerald-500/20">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black tracking-tight text-white font-mono">AGY CLOUD</span>
+              <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0.5 px-2.5 border-emerald-500/40 text-emerald-400 font-mono">
+                v2.4 Production
+              </Badge>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-base font-extrabold tracking-tight text-white font-mono">AGY CLOUD</span>
-            <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0.5 px-2 border-emerald-500/40 text-emerald-400 font-mono">
-              v2.4 Production
-            </Badge>
+
+          {/* Center Nav Links */}
+          <nav className="hidden md:flex items-center gap-8 text-xs font-bold text-gray-300">
+            <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
+            <a href="#manifesto" className="hover:text-white transition-colors">Manifesto</a>
+            <a href="#features" className="hover:text-white transition-colors">Architecture</a>
+            <a href="#docs" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 font-bold">
+              <BookOpen className="h-4 w-4" /> Documentation
+            </a>
+          </nav>
+
+          {/* Right CTA Actions */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenAuth("signin")}
+              className="h-10 text-xs text-gray-300 hover:text-white hover:bg-white/10 gap-1.5 font-semibold rounded-full px-5"
+            >
+              <LogIn className="h-4 w-4 text-emerald-400" /> Sign In
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={onLaunchWorkspace}
+              className="h-10 text-xs gap-1.5 bg-white text-zinc-950 hover:bg-emerald-400 hover:text-black shadow-lg font-extrabold rounded-full px-6 transition-all cursor-pointer"
+            >
+              Launch Workspace <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
-        </div>
-
-        {/* Center Nav Links */}
-        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-gray-300">
-          <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
-          <a href="#manifesto" className="hover:text-white transition-colors">Manifesto</a>
-          <a href="#features" className="hover:text-white transition-colors">Architecture</a>
-          <a href="#docs" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1">
-            <BookOpen className="h-3.5 w-3.5" /> Documentation
-          </a>
-        </nav>
-
-        {/* Right CTA Actions */}
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenAuth("signin")}
-            className="h-9 text-xs text-gray-300 hover:text-white hover:bg-white/10 gap-1.5 font-medium rounded-full px-4"
-          >
-            <LogIn className="h-3.5 w-3.5 text-emerald-400" /> Sign In
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={onLaunchWorkspace}
-            className="h-9 text-xs gap-1.5 bg-white text-zinc-950 hover:bg-emerald-400 hover:text-black shadow-md font-bold rounded-full px-5 transition-all"
-          >
-            Launch Workspace <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* HERO SECTION */}
       <section className="relative pt-20 pb-24 px-6 max-w-7xl mx-auto text-center flex flex-col items-center">
