@@ -455,9 +455,9 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   return (
     <div className="flex h-full flex-col bg-card/40">
       {/* 70% Right Pane Top Navigation Toolbar */}
-      <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-card/90">
-        {/* Mode Selector Tabs with X Close Button & + Dropdown to Re-open (Full Width Flex-1) */}
-        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-none py-1 mr-2">
+      <div className="h-10 px-3 border-b border-border flex items-center justify-between bg-card/90 relative z-30">
+        {/* Scrollable Tabs List */}
+        <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-none py-1 mr-1.5">
           {openTabsList.map((tabId) => {
             const tabDef = ALL_RIGHT_TABS.find((t) => t.id === tabId);
             if (!tabDef) return null;
@@ -489,69 +489,69 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               </div>
             );
           })}
+        </div>
 
-          {/* Plus Button with Dropdown to Re-Open Any Closed/Available Tab */}
-          <div className="relative shrink-0" ref={plusMenuRef}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsPlusMenuOpen((prev) => !prev)}
-              className={`h-7 w-7 rounded-xl transition-all cursor-pointer ${
-                isPlusMenuOpen
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "text-gray-400 hover:text-white hover:bg-white/10 border border-transparent"
-              }`}
-              title="Add or reopen tab"
-            >
-              <Plus className={`h-3.5 w-3.5 transition-transform duration-200 ${isPlusMenuOpen ? "rotate-45 text-emerald-400" : ""}`} />
-            </Button>
+        {/* Plus Button with Dropdown (Outside overflow container so dropdown is fully visible) */}
+        <div className="relative shrink-0 mr-2 z-40" ref={plusMenuRef}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsPlusMenuOpen((prev) => !prev)}
+            className={`h-7 w-7 rounded-xl transition-all cursor-pointer ${
+              isPlusMenuOpen
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "text-gray-400 hover:text-white hover:bg-white/10 border border-transparent"
+            }`}
+            title="Add or reopen tab"
+          >
+            <Plus className={`h-3.5 w-3.5 transition-transform duration-200 ${isPlusMenuOpen ? "rotate-45 text-emerald-400" : ""}`} />
+          </Button>
 
-            {/* Dropdown Menu */}
-            {isPlusMenuOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl border border-white/15 bg-[#121216] p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
-                <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono border-b border-white/10 mb-1 flex items-center justify-between">
-                  <span>Reopen / Switch Tab</span>
-                  <Badge variant="outline" className="text-[9px] py-0 px-1 border-white/15 text-gray-400">
-                    {openTabsList.length}/{ALL_RIGHT_TABS.length} Open
-                  </Badge>
-                </div>
-                <div className="space-y-0.5">
-                  {ALL_RIGHT_TABS.map((tab) => {
-                    const Icon = tab.icon;
-                    const isOpen = openTabsList.includes(tab.id);
-                    const isCurrent = activeTab === tab.id;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => handleOpenRightTab(tab.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left cursor-pointer group ${
-                          isCurrent
-                            ? "bg-white/10 text-white font-semibold"
-                            : "text-gray-300 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Icon className={`h-3.5 w-3.5 shrink-0 ${tab.color}`} />
-                          <span className="truncate">{tab.label}</span>
-                        </div>
-                        {isOpen ? (
-                          <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-0.5">
-                            <Check className="h-3 w-3" /> Open
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 font-mono group-hover:text-emerald-400">
-                            + Reopen
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+          {/* Dropdown Menu */}
+          {isPlusMenuOpen && (
+            <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl border border-white/20 bg-[#141418] p-1.5 shadow-2xl shadow-black/90 z-50 animate-in fade-in zoom-in-95 duration-100 font-sans">
+              <div className="px-2.5 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono border-b border-white/10 mb-1 flex items-center justify-between">
+                <span>Workspace Panes</span>
+                <Badge variant="outline" className="text-[9px] py-0 px-1 border-white/15 text-gray-400">
+                  {openTabsList.length}/{ALL_RIGHT_TABS.length} Open
+                </Badge>
               </div>
-            )}
-          </div>
+              <div className="space-y-0.5 max-h-72 overflow-y-auto">
+                {ALL_RIGHT_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isOpen = openTabsList.includes(tab.id);
+                  const isCurrent = activeTab === tab.id;
+
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => handleOpenRightTab(tab.id)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors text-left cursor-pointer group ${
+                        isCurrent
+                          ? "bg-white/15 text-white font-semibold shadow-sm"
+                          : "text-gray-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className={`h-3.5 w-3.5 shrink-0 ${tab.color}`} />
+                        <span className="truncate">{tab.label}</span>
+                      </div>
+                      {isOpen ? (
+                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Active
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 font-mono group-hover:text-emerald-400 font-medium">
+                          + Open
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls: Refresh and Collapse (Pinned Right) */}
