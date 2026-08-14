@@ -1,159 +1,314 @@
-# System Design Document: AGY Cloud Agent Workspace
+# DELTA System Design — Implementation-First Architecture
 
-The **AGY Cloud Agent Workspace** is an autonomous cloud-based AI code agent platform (similar to Devin / Codex Cloud / Replit Agent). It allows users to execute **Antigravity CLI (`agy`)** inside isolated **Daytona Sandboxes**, using their **personal Google Account AI quota**, and interact with code/previews via a **30/70 split-screen Web UI**.
+> This document describes the repository that exists today. It intentionally prefers executable code and registered routes over older planning documents. When a capability is present only as a future-ready abstraction, it is labeled as such.
 
----
+## 1. Executive overview
 
-## 1. High-Level Architecture
+DELTA is a React/Vite workspace front end backed by a single Go/Gin control-plane service. The control plane owns authentication middleware, local SQLite persistence, optional Supabase integration, Daytona sandbox lifecycle, agent execution, preview/VNC/telemetry APIs, and a Gorilla WebSocket broadcast hub.
 
-```mermaid
-flowchart TD
-    subgraph Client ["Client Layer (Browser)"]
-        UI["React + Vite + Tailwind CSS v3"]
-        SetupModal["Setup Wizard (Daytona Key & Google Auth)"]
-        LeftPane["Left 30% Pane: Chat & Tool Logs"]
-        RightPane["Right 70% Pane: Live Iframe / Monaco IDE / Terminal"]
-        WSClient["WebSocket Client Subscriber"]
-    end
+A user request follows this path:
 
-    subgraph ControlPlane ["Control Plane Backend (Golang)"]
-        GinAPI["Gin HTTP REST API (:8080)"]
-        WSHub["Gorilla WebSocket Hub"]
-        DaytonaSvc["Daytona Service Controller"]
-        AGYSvc["AGY Execution Engine"]
-    end
-
-    subgraph Infrastructure ["Cloud Infrastructure Layer"]
-        DaytonaAPI["Daytona Cloud API (app.daytona.io)"]
-        
-        subgraph Sandbox ["Isolated Daytona Micro-VM / Container"]
-            Vol["Persistent Volume (/root/.gemini)"]
-            AGYProcess["agy CLI Engine (stream-json)"]
-            AppServer["Dev Server (Vite / Express on :3000)"]
-        end
-    end
-
-    SetupModal -->|1. Verify API Key & Init Auth| GinAPI
-    GinAPI -->|2. Create Volume & Provision Sandbox| DaytonaAPI
-    DaytonaAPI -->|3. Attach Volume & Launch Container| Sandbox
-    
-    LeftPane -->|4. Submit Prompt| GinAPI
-    GinAPI -->|5. Exec agy inside Sandbox| AGYSvc
-    AGYSvc -->|6. Execute Command via Daytona REST API| AGYProcess
-    AGYProcess -->|7. Write Code & Run npm run dev| AppServer
-    
-    AGYProcess -->|8. Stream Output Tokens, Thoughts & Ports| WSHub
-    WSHub -->|9. WebSocket Events| WSClient
-    WSClient --> LeftPane & RightPane
-    AppServer -->|10. Live Subdomain Proxy (https://sb-port.daytona.app)| RightPane
+```text
+Browser (React)
+   │ HTTPS / WSS
+   ▼
+Go + Gin control plane
+   ├── auth middleware + user service
+   ├── workspace/file/preview handlers
+   ├── AGY service
+   ├── Daytona service
+   ├── inactivity manager
+   ├── SQLite runtime store
+   └── optional Supabase auth/data
+   │
+   │ Daytona REST API
+   ▼
+Per-user Daytona sandbox
+   ├── /home/daytona/persist
+   ├── AGY / OpenCode runtime
+   ├── generated workspace
+   └── dev server / preview / VNC / telemetry
 ```
 
----
+The repository also contains a Python agent layer under `agents/`. `AgentOrchestrator` routes four specialized agent personas through a shared `CodingCliDriver` interface; the current Go workspace path is the production-facing execution path used by the main web application.
 
-## 2. Core Subsystems
+![DELTA current runtime architecture](/images/docs/delta-runtime-architecture.jpg)
 
-### Subsystem A: Client Layer (Frontend)
-* **Framework**: React 18 + Vite + TypeScript.
-* **Styling**: Tailwind CSS v3 + Shadcn UI design primitives.
-* **Code Editor**: `@monaco-editor/react` (VS Code Dark Plus theme with file tree explorer & file save REST integration).
-* **Communication**: REST API for setup/file operations + WebSocket (`ws://localhost:8080/ws`) for real-time streaming.
-* **Layout**: Resizable 30% / 70% Split Workspace.
-  * **30% Left Pane**: Interactive chat thread, collapsible AGY reasoning/thoughts dropdown, tool execution badges (`[replace_file_content]`, `[run_command]`), and prompt input box (`Cmd+Enter`).
-  * **70% Right Pane**: Mode selector tabs:
-    1. **Live Preview**: Embedded `<iframe>` pointing to Daytona Preview URL (`https://<sandboxId>-<port>.daytona.app`).
-    2. **VS Code IDE**: File explorer sidebar + Monaco Editor connected to Daytona filesystem APIs.
-    3. **Terminal**: Live stream of raw Daytona sandbox process logs (stdout/stderr).
+## 2. Frontend architecture
 
----
+### 2.1 Application entry and view state
 
-### Subsystem B: Control Plane Layer (Golang Backend)
-* **Framework**: Golang (Gin Framework + Gorilla WebSockets).
-* **Architecture**: Decoupled service architecture (`services/daytona.go`, `services/agy.go`, `handlers/setup.go`, `handlers/workspace.go`, `handlers/websocket.go`).
-* **Responsibility**:
-  1. Verify Daytona API credentials.
-  2. Orchestrate Daytona Volume creation (`vol-user-auth-{userId}`) and sandbox container lifecycle.
-  3. Execute `agy` commands inside Daytona sandboxes via Daytona API (`/sandbox/{id}/exec`).
-  4. Parse `stream-json` events (thinking, tokens, tool starts/ends, dev server port binding).
-  5. Relay real-time events to connected browser clients via WebSocket Hub.
-  6. Serve file content reading/writing APIs (`/api/workspace/file-content` and `/api/workspace/file-save`).
+`frontend/src/App.tsx` owns top-level navigation and workspace state. The current views are:
 
----
+- `marketing`
+- `auth`
+- `setup`
+- `workspace`
 
-### Subsystem C: Infrastructure Layer (Daytona Sandboxes)
-* **Compute Engine**: Ephemeral Linux micro-VM containers provisioned in <200ms by Daytona SDK.
-* **Security Isolation**: Dedicated kernel, vCPU, RAM, and filesystem boundaries per user session.
-* **Persistence Volume**: Persistent storage volume attached at `/root/.gemini` per user.
-* **Network & Port Forwarding**: Automatic subdomains (`https://<sandboxId>-<port>.daytona.app`) for exposed dev server ports (3000, 5173, 8080).
+The app keeps practical workspace state in React and local storage: Daytona API/server hints, user id/email/name, auth token, sandbox id, active preview URL/port, chat messages, terminal logs, and the selected workspace settings.
 
----
+### 2.2 Marketing/docs surface
 
-### Subsystem D: Google Quota & Agent Engine (`agy`)
-* **Execution**: Headless execution mode (`agy --print "<prompt>" --output-format stream-json --dangerously-skip-permissions`).
-* **Authentication**: Device OAuth flow initiated via `agy --prompt '/auth'` inside Daytona.
-* **Quota Source**: User's personal Google Account AI quota (BYOQ model).
-* **Session Persistence**: OAuth refresh tokens, conversation histories, and settings saved directly to `/root/.gemini` inside the Daytona Volume.
+`frontend/src/components/marketing/LandingPage.tsx` is the public marketing page. Its docs section is interactive rather than a separate route and now covers implementation-backed sections for:
 
----
+- FDE/runtime flow
+- current HLD/LLD boundaries
+- database and RLS model
+- first-run setup
+- the four Python agent personas
+- AGY/OpenCode switching
+- persistence/secrets lifecycle
+- MCP/agent integrations
+- REST + WebSocket API surface
 
-## 3. Key Design Patterns & Flows
+The page uses architecture visuals stored under `frontend/public/images/docs/`.
 
-### 1. Bring Your Own Quota (BYOQ) & Volume Persistence
+### 2.3 Workspace components
+
+The implemented workspace is split into focused components:
+
+- `HeaderBar.tsx` — workspace chrome and status controls.
+- `ChatPane.tsx` — prompt entry, agent messages, tool/thought rendering, and AGY/OpenCode selector.
+- `FileTree.tsx` — workspace file navigation.
+- `PreviewPane.tsx` — preview/editor/terminal-style workspace display.
+- `SettingsModal.tsx` — workspace credentials, integrations, and preferences.
+- `TelemetryView.tsx` — runtime telemetry presentation.
+
+`frontend/src/config/api.ts` centralizes REST and WebSocket URL derivation. `frontend/src/config/supabase.ts` creates a Supabase client from Vite env vars or persisted configuration.
+
+## 3. Backend control plane
+
+### 3.1 Server initialization
+
+`backend/main.go` initializes:
+
+1. SQLite at `data/agy_cloud.db` unless `SQLITE_DB_PATH` overrides it.
+2. Gin + permissive CORS configuration.
+3. `DaytonaService`.
+4. `AGYService`.
+5. `UserService`.
+6. `SupabaseService`.
+7. a Gorilla WebSocket hub.
+8. an inactivity manager with a 30-minute threshold.
+
+All `/api/*` routes are wrapped by `AuthMiddleware`; a second middleware records sandbox activity when a sandbox id is present.
+
+### 3.2 Authentication
+
+`backend/handlers/auth.go` supports a hybrid model:
+
+- Supabase token verification when Supabase is configured.
+- local JWT validation through `UserService` as a fallback.
+- user context propagation through Gin request state.
+
+The implementation currently allows requests to continue when no token is present, so production authorization hardening is still required. This is documented here explicitly rather than presenting the middleware as a complete tenant boundary.
+
+### 3.3 Daytona service
+
+`backend/services/daytona.go` is an HTTP client wrapper around the Daytona REST surface. It handles:
+
+- API-key verification.
+- volume lookup/creation using a deterministic `vol-<userId>` name.
+- sandbox lookup/creation.
+- optional persistent volume mounting at `/home/daytona/persist`.
+- sandbox command/process execution.
+- workspace file operations.
+- preview URL/proxy helpers.
+- VNC controls.
+- telemetry retrieval.
+
+Sandbox creation uses a 30-minute auto-stop interval and labels sandbox resources with the application/user context.
+
+### 3.4 AGY service and CLI execution
+
+`backend/services/agy.go` owns bootstrap and agent execution. The main streaming entry point supports two UI-selected engines:
+
+```text
+cliEngine = agy        → AGY command runner
+cliEngine = opencode   → OpenCode command runner
 ```
-User Auth Flow:
-[Setup Wizard] -> [Exec agy /auth in Daytona] -> [Extract Live OAuth URL & Device Code]
-   -> [User Authorizes in Google] -> [User Pastes Code in UI] -> [Submit Code to agy]
-   -> [Tokens Cached to /root/.gemini in Daytona Volume]
-```
-* **Why this matters**: Platform operators incur **$0 in LLM API costs**. Every request utilizes the user's personal Google AI quota.
-* **Long-Term Persistence**: Because `/root/.gemini` is stored inside a Daytona Volume (`vol-user-auth-{userId}`), stopping or recreating sandboxes does not log the user out. `agy` automatically uses the cached refresh token to renew access tokens indefinitely.
 
----
+Both target the persistent workspace path:
 
-### 2. Real-Time Event Streaming Protocol
-WebSockets push strongly-typed JSON events to the frontend:
-
-```typescript
-type StreamEvent = {
-  type: "thought" | "tool_start" | "tool_end" | "token" | "port_detected" | "error" | "done";
-  content: string;
-  sandboxId: string;
-  metadata?: {
-    tool?: string;
-    path?: string;
-    port?: number;
-    previewUrl?: string;
-  };
-  timestamp: number;
-};
+```text
+/home/daytona/persist/workspace
 ```
 
----
+The service also installs/bootstrap-configures CLI support in the sandbox, initializes persisted Gemini/agent state, and turns command output into structured `StreamEvent` values.
 
-### 3. Strict Sandbox Execution Boundary
-* **No Host Execution**: All shell execution (`agy`, `git`, `npm`, `python`, file writes) is strictly routed through the Daytona Sandbox API (`/sandbox/{id}/exec`).
-* **No Dummy Fallbacks**: If Daytona Sandbox is unauthenticated or unreachable, execution is halted immediately with an error badge rather than generating mock code on the host machine.
+### 3.5 WebSocket event path
 
----
+`backend/handlers/websocket.go` implements a broadcast hub. `GET /ws` upgrades a browser connection and subscribes it to the hub.
 
-## 4. API Reference Summary
+Frontend code in `App.tsx` consumes these event types directly:
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/health` | Health check & service status. |
-| `POST` | `/api/setup/verify-daytona` | Validates Daytona API key. |
-| `POST` | `/api/setup/init-google-auth` | Provisions setup sandbox & runs `agy /auth` to extract live login URL/code. |
-| `POST` | `/api/setup/submit-auth-code` | Feeds manually pasted Google authorization code to `agy` inside Daytona. |
-| `POST` | `/api/workspace/create` | Provisions coding sandbox with mounted `/root/.gemini` volume. |
-| `GET` | `/api/workspace/file-content` | Reads file content directly from Daytona sandbox (`cat <path>`). |
-| `POST` | `/api/workspace/file-save` | Writes file content directly into Daytona sandbox (`cat << 'EOF' > <path>`). |
-| `POST` | `/api/workspace/prompt` | Submits prompt to `agy` inside Daytona in `stream-json` mode. |
-| `WS` | `/ws` | Gorilla WebSocket stream endpoint for live thoughts, tokens & preview URLs. |
+```text
+thought
+ tool_start
+token
+port_detected
+error
+done
+```
 
----
+`port_detected` carries the information that lets the frontend update the active preview port and URL; `thought`, `tool_start`, and `token` enrich the last agent message.
 
-## 5. Security & Isolation Matrix
+![Prompt-to-preview request lifecycle](/images/docs/delta-request-lifecycle.jpg)
 
-* **Compute Boundary**: Micro-VM container isolation per tenant.
-* **Storage Boundary**: Per-user Daytona Volume (`vol-user-auth-{userId}`).
-* **Credential Isolation**: Google OAuth tokens stay inside `/root/.gemini` within the user's isolated volume.
-* **CORS & Access Control**: Express/Gin CORS configured with explicit origin & header authorization rules.
+## 4. Agent layer
+
+The Python package under `agents/` is a separate modular orchestration layer:
+
+```text
+AgentOrchestrator
+ ├── AppDeveloperAgent
+ ├── LLMDeployerAgent
+ ├── AppDeployerAgent
+ └── AppMaintainerAgent
+         │
+         ▼
+    CodingCliDriver
+      ├── AgyCliDriver
+      ├── OpenCodeCliDriver
+      └── ClaudeCodeCliDriver (future-ready)
+```
+
+The orchestrator accepts `agent_mode`, `prompt`, `sandbox_id`, `api_key`, optional repository information, traffic profile, and server URL. It resolves the requested persona and delegates execution through the shared driver contract.
+
+![Agent and CLI architecture](/images/docs/delta-agent-cli-architecture.jpg)
+
+Important distinction: the Python layer is present and internally coherent, while `backend/services/agy.go` is the primary execution path reached by the current web workspace API. Documentation should not imply that the web UI directly calls the Python orchestrator unless that wiring is added later.
+
+## 5. Persistence model
+
+### 5.1 SQLite runtime persistence
+
+`backend/db/db.go` initializes the local database used by the current Go process. This path supports local/fallback operation and is the first persistence layer visible in the running server.
+
+### 5.2 Supabase cloud persistence
+
+`supabase/schema.sql` defines four cloud tables:
+
+| Table | Purpose |
+|---|---|
+| `public.profiles` | user profile and Daytona configuration |
+| `public.chat_messages` | persisted chat/tool/thought payloads |
+| `public.user_sandboxes` | Daytona sandbox identity and preview state |
+| `public.cloud_secrets` | provider/key-name secret records |
+
+RLS is enabled on all four tables and policies use `auth.uid() = user_id` (or profile id) as the ownership predicate.
+
+![Data, authentication, and isolation model](/images/docs/delta-data-security-model.jpg)
+
+## 6. Workspace lifecycle
+
+### Provision
+
+`POST /api/env/provision` and `POST /api/workspace/create` both resolve to the workspace creation path. The Daytona service attempts to reuse an existing sandbox, otherwise it ensures a per-user volume and creates a sandbox, optionally mounting that volume at `/home/daytona/persist`.
+
+### Activity and idle handling
+
+A 30-minute `InactivityManager` is created at backend startup. API middleware records sandbox activity so the manager can act on idle sandboxes.
+
+### File operations
+
+The backend proxies file list/read/write/mkdir/delete operations through the Daytona service. The frontend uses these handlers to back the file tree and editor UI.
+
+### Preview
+
+The backend exposes both:
+
+- `GET /api/workspace/preview-url`
+- `GET /api/preview/url`
+- `ANY /api/preview/proxy/:sandboxId/:port/*path`
+
+The frontend listens for `port_detected` events and updates the preview state accordingly.
+
+### VNC and telemetry
+
+The backend exposes VNC start/stop/status routes and telemetry routes that read from the Daytona sandbox. These are surfaced by the workspace UI rather than being standalone services.
+
+## 7. API reference
+
+### Auth
+
+| Method | Path | Implementation |
+|---|---|---|
+| POST | `/api/auth/register` | `handlers.Register` |
+| POST | `/api/auth/signup` | alias of register |
+| POST | `/api/auth/login` | `handlers.Login` |
+| POST | `/api/auth/logout` | lightweight success response |
+| GET | `/api/auth/me` | user/profile + active sandbox |
+| POST | `/api/auth/settings` | update user Daytona settings |
+| GET | `/api/auth/google/callback` | Google/AGY callback integration |
+
+### Setup and environment
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/env/provision` | provision/reuse workspace |
+| GET | `/api/env/status` | sandbox/auth status |
+| POST | `/api/env/auth/start` | start Google/AGY auth flow |
+| GET | `/api/env/auth/poll` | poll auth state |
+| POST | `/api/setup/verify-daytona` | verify Daytona credentials |
+| POST | `/api/setup/init-google-auth` | start Google/AGY auth setup |
+| POST | `/api/setup/submit-auth-code` | submit auth code |
+| POST | `/api/setup/save-google-key` | save Google credential/key data |
+| GET | `/api/setup/auth-status/:userId` | check auth state |
+
+### Workspace and files
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/workspace/create` | create workspace |
+| GET | `/api/workspace/status/:sandboxId` | sandbox status |
+| GET | `/api/workspace/files` | list files |
+| GET | `/api/workspace/file-content` | read file |
+| POST | `/api/workspace/file-save` | save file |
+| POST | `/api/workspace/prompt` | run AGY/OpenCode prompt |
+| POST | `/api/workspace/stop` | stop current prompt |
+| GET | `/api/workspace/logs` | sandbox logs |
+| POST | `/api/workspace/reset` | reset app state |
+| GET/POST | `/api/workspace/env` | read/write workspace env |
+| POST | `/api/workspace/recreate` | recreate workspace |
+| GET | `/api/workspace/preview-url` | preview link |
+| POST | `/api/workspace/vnc/start` | start VNC |
+| POST | `/api/workspace/vnc/stop` | stop VNC |
+| GET | `/api/workspace/vnc/status` | VNC status |
+| GET | `/api/workspace/telemetry` | sandbox metrics |
+
+### Low-level file aliases
+
+`/api/fs/list`, `/api/fs/read`, `/api/fs/write`, `/api/fs/mkdir`, and `/api/fs/delete` expose the same underlying workspace file operations.
+
+### Integrations and webhooks
+
+- `GET/POST /api/integrations/secrets`
+- `POST /api/webhooks/daytona`
+
+### Realtime
+
+`GET /ws` is the single WebSocket upgrade endpoint used by the frontend to receive real-time events.
+
+## 8. Security and isolation assessment
+
+The design has a useful sandbox boundary, but the current implementation should be described honestly as an MVP:
+
+1. **Strong boundary:** agent shell/process execution is routed to Daytona instead of the local browser host.
+2. **Tenant context exists:** request middleware populates `userId` when a token is accepted and activity records include user context.
+3. **RLS exists:** the Supabase schema includes per-user policies.
+4. **Development looseness remains:** CORS permits `*`, WebSocket origin checks return `true`, and the auth middleware currently allows unauthenticated requests to continue. Client-supplied ids are accepted by multiple endpoints. These are production-hardening items, not features to hide behind marketing copy.
+5. **Credential handling needs an audit:** the runtime stores Daytona settings locally and exposes secret-related endpoints. Before production, ensure keys are never returned to the browser unnecessarily and that encrypted secret records have a well-defined key-management path.
+
+## 9. Validation status
+
+The implementation has previously passed the frontend production build. Lint completed with warnings. `go test ./...` was not cleanly verified because the Go build cache under `/home/akshat/.cache/go-build` was read-only in the environment. Backend packages themselves reported no test files during that attempt.
+
+## 10. Source-of-truth rule
+
+When this file conflicts with `implementation_plan.md` or older sections of `detailed-implementation-plan.md`, prefer:
+
+1. current executable code,
+2. current route registration in `backend/main.go`,
+3. current schema in `supabase/schema.sql`,
+4. then planning documents as historical intent.
