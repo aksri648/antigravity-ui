@@ -52,11 +52,11 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
   // Signed Preview URL State (Direct Daytona Auth embedded URL for iframes)
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [fetchingSignedUrl, setFetchingSignedUrl] = useState(false);
+  const [, setFetchingSignedUrl] = useState(false);
 
   // VNC Desktop State (Daytona Computer Use & Graphical XFCE)
   const [vncRunning, setVncRunning] = useState(false);
-  const [vncStatus, setVncStatus] = useState<string>("stopped");
+  const [, setVncStatus] = useState<string>("stopped");
   const [vncLoading, setVncLoading] = useState(false);
   const [vncUrl, setVncUrl] = useState<string | null>(null);
 
@@ -79,7 +79,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
   // Fetch Daytona Signed Preview URL (Eliminates header requirements for iframes)
   const fetchSignedPreviewUrl = useCallback(async () => {
-    if (!sandboxId || !apiKey || sandboxId === "sb-daytona-demo") return;
+    if (!sandboxId || !apiKey) return;
     setFetchingSignedUrl(true);
     try {
       const res = await fetch(
@@ -102,7 +102,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
   // VNC Process Management
   const fetchVNCStatus = useCallback(async () => {
-    if (!sandboxId || !apiKey || sandboxId === "sb-daytona-demo") return;
+    if (!sandboxId || !apiKey) return;
     try {
       const res = await fetch(
         apiUrl("/api/workspace/vnc/status", { sandboxId, apiKey, serverUrl })

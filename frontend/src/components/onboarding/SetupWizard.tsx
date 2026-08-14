@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Key,
-  ShieldCheck,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
@@ -201,7 +200,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                 <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
                   isCurrent ? "bg-blue-600 text-white" : isDone ? "bg-emerald-600 text-white" : "bg-white/10 text-muted-foreground"
                 }`}>
-                  {isDone ? <CheckCircle2 className="h-3 w-3" /> : s.num}
+                  {isDone ? <CheckCircle2 className="h-3 w-3" /> : <Icon className="h-2.5 w-2.5" />}
                 </div>
                 <span className="truncate">{s.label}</span>
               </div>
@@ -398,13 +397,24 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
                   onChange={(e) => setAzureClientId(e.target.value)}
                   className="font-mono text-xs bg-black/60 border-border text-gray-200"
                 />
-                <Input
-                  type={showAzureSecret ? "text" : "password"}
-                  placeholder="Azure Client Secret"
-                  value={azureClientSecret}
-                  onChange={(e) => setAzureClientSecret(e.target.value)}
-                  className="font-mono text-xs bg-black/60 border-border text-gray-200"
-                />
+                <div className="flex gap-1.5">
+                  <Input
+                    type={showAzureSecret ? "text" : "password"}
+                    placeholder="Azure Client Secret"
+                    value={azureClientSecret}
+                    onChange={(e) => setAzureClientSecret(e.target.value)}
+                    className="font-mono text-xs bg-black/60 border-border text-gray-200"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAzureSecret(!showAzureSecret)}
+                    className="px-2 border-border shrink-0"
+                  >
+                    {showAzureSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  </Button>
+                </div>
                 <Input
                   placeholder="Azure Tenant ID"
                   value={azureTenantId}

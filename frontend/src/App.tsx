@@ -15,7 +15,7 @@ export function App() {
   const [userId, setUserId] = useState<string>(() => localStorage.getItem("daytona_user_id") || `user-${Math.random().toString(36).substring(2, 8)}`);
   const [userEmail, setUserEmail] = useState<string>(() => localStorage.getItem("user_email") || "");
   const [userName, setUserName] = useState<string>(() => localStorage.getItem("user_name") || "");
-  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
+  const [, setAuthToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
   
   // App Navigation Views: "marketing" | "auth" | "setup" | "workspace"
   const [currentView, setCurrentView] = useState<"marketing" | "auth" | "setup" | "workspace">("marketing");
@@ -81,31 +81,30 @@ export function App() {
 
   const fetchChatHistory = async () => {
     try {
-      const res = await fetch(apiUrl("/api/chat/history", { userId, sandboxId: sandboxId || "" }));
+      const res = await fetch(apiUrl("/api/chat/history", { userId }));
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const parsedMessages: ChatMessage[] = data.map((m: any) => ({
-            id: m.id || `msg-${Date.now()}`,
-            sender: m.sender || "agy",
-            text: m.text || "",
+        if (Array.isArray(data.messages) && data.messages.length > 0) {
+          const formatted: ChatMessage[] = data.messages.map((m: any) => ({
+            id: m.id ? String(m.id) : `hist-${Math.random()}`,
+            sender: m.sender === "user" ? "user" : "agy",
+            text: m.text,
             thoughts: m.thoughts || [],
             tools: m.tools || [],
-            isError: m.isError || false,
             timestamp: m.timestamp || Date.now(),
           }));
-          setMessages(parsedMessages);
+          setMessages(formatted);
         }
       }
-    } catch {
-      // Keep existing in-memory messages if fetch fails
+    } catch (err) {
+      console.warn("Failed to load chat history:", err);
     }
   };
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
     let isMounted = true;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connectWS = () => {
       if (!isMounted) return;
@@ -378,7 +377,7 @@ export function App() {
     }
 
     let currentSandbox = sandboxId;
-    if (!currentSandbox || currentSandbox === "sb-daytona-demo") {
+    if (!currentSandbox) {
       setIsProvisioning(true);
       try {
         const res = await fetch(apiUrl("/api/workspace/create"), {

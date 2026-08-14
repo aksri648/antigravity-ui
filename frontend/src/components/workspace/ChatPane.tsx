@@ -16,7 +16,6 @@ import {
   GitPullRequest,
   CheckCircle2,
   XCircle,
-  HelpCircle,
   FolderGit2,
   Activity,
   Zap,

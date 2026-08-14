@@ -8,7 +8,6 @@ import {
   Server,
   ArrowRight,
   Loader2,
-  CheckCircle2,
   AlertCircle,
   Zap,
   ShieldCheck,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Badge } from "../ui/badge";
 import { apiUrl } from "../../config/api";
 
 interface AuthViewProps {

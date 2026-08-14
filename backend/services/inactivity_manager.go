@@ -48,7 +48,7 @@ func NewInactivityManager(daytonaSvc *DaytonaService, broadcaster EventBroadcast
 
 // RecordActivity updates the last active timestamp for a sandbox
 func (im *InactivityManager) RecordActivity(sandboxId string, apiKey string, serverUrl string, userId string) {
-	if sandboxId == "" || sandboxId == "sb-daytona-demo" {
+	if sandboxId == "" {
 		return
 	}
 	im.mu.Lock()

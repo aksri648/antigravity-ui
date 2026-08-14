@@ -1,20 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Sparkles,
   Cpu,
-  ShieldCheck,
   ArrowRight,
   Zap,
   Code,
   Terminal,
   Globe,
   Layers,
-  Play,
   CheckCircle2,
   LogIn,
-  UserPlus,
   Server,
-  Activity,
+  Lock,
+  Box,
+  Database,
+  ChevronRight,
+  BookOpen,
+  Radio,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -26,271 +28,594 @@ interface LandingPageProps {
   onResetApp: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStartSetup, onLaunchWorkspace, onOpenAuth, onResetApp }) => {
+type ShowcaseTab = "ide" | "agents" | "opencode" | "preview";
+type DocSection = "overview" | "quickstart" | "agents" | "cliswitcher" | "secrets" | "mcp" | "api";
+
+export const LandingPage: React.FC<LandingPageProps> = ({
+  onStartSetup,
+  onLaunchWorkspace,
+  onOpenAuth,
+  onResetApp,
+}) => {
+  const [activeShowcase, setActiveShowcase] = useState<ShowcaseTab>("ide");
+  const [activeDocSection, setActiveDocSection] = useState<DocSection>("overview");
+
   return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col overflow-y-auto selection:bg-blue-500 selection:text-white">
-      
-      {/* Navigation Header with SaaS Sign In / Sign Up */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-md px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen w-full bg-[#0c0c0e] text-[#f4f4f6] flex flex-col overflow-y-auto selection:bg-emerald-500 selection:text-black">
+      {/* Top Banner Notice */}
+      <div className="w-full bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 border-b border-border/40 py-2 px-4 text-center text-xs font-medium text-gray-300">
+        <span className="inline-flex items-center gap-2">
+          <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-1.5 py-0">NEW</Badge>
+          <span>Multi-Agent Swarm with Pluggable CLI Drivers (Antigravity & OpenCode) and Daytona Secrets</span>
+          <a href="#docs" className="text-emerald-400 font-semibold underline hover:text-emerald-300 ml-1">
+            Read Docs →
+          </a>
+        </span>
+      </div>
+
+      {/* Floating Glass Navigation Header */}
+      <header className="sticky top-4 z-50 mx-auto w-[94%] max-w-7xl rounded-full border border-white/10 bg-[#16161a]/85 backdrop-blur-xl px-6 h-16 flex items-center justify-between shadow-2xl shadow-black/40">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-lg shadow-emerald-500/20">
             <Sparkles className="h-5 w-5" />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold tracking-tight text-white">AGY Cloud</span>
-            <Badge variant="outline" className="text-[10px] py-0 px-2 border-blue-500/40 text-blue-400 font-mono">
-              Multi-User SaaS
+            <span className="text-base font-extrabold tracking-tight text-white font-mono">AGY CLOUD</span>
+            <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0.5 px-2 border-emerald-500/40 text-emerald-400 font-mono">
+              v2.4 Production
             </Badge>
           </div>
         </div>
 
-        {/* Top Navbar Links & Auth Action Buttons */}
-        <div className="flex items-center gap-2.5">
-          <a href="#features" className="hidden sm:inline-block text-xs text-muted-foreground hover:text-white transition-colors mr-2">
-            Features
+        {/* Center Nav Links */}
+        <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-gray-300">
+          <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
+          <a href="#manifesto" className="hover:text-white transition-colors">Manifesto</a>
+          <a href="#features" className="hover:text-white transition-colors">Architecture</a>
+          <a href="#docs" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1">
+            <BookOpen className="h-3.5 w-3.5" /> Documentation
           </a>
+        </nav>
 
+        {/* Right CTA Actions */}
+        <div className="flex items-center gap-2.5">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onOpenAuth("signin")}
-            className="h-8 text-xs text-gray-200 hover:text-white hover:bg-accent gap-1.5 font-medium cursor-pointer"
+            className="h-9 text-xs text-gray-300 hover:text-white hover:bg-white/10 gap-1.5 font-medium rounded-full px-4"
           >
-            <LogIn className="h-3.5 w-3.5 text-blue-400" /> Log In
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenAuth("signup")}
-            className="h-8 text-xs gap-1.5 border-border text-white hover:bg-accent font-medium cursor-pointer"
-          >
-            <UserPlus className="h-3.5 w-3.5 text-indigo-400" /> Sign Up
+            <LogIn className="h-3.5 w-3.5 text-emerald-400" /> Sign In
           </Button>
 
           <Button
             size="sm"
             onClick={onLaunchWorkspace}
-            className="h-8 text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 font-medium cursor-pointer"
+            className="h-9 text-xs gap-1.5 bg-white text-zinc-950 hover:bg-emerald-400 hover:text-black shadow-md font-bold rounded-full px-5 transition-all"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Launch Workspace
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onResetApp}
-            className="hidden md:inline-flex h-8 text-xs text-muted-foreground hover:text-white"
-            title="Reset cached configuration"
-          >
-            Reset
+            Launch Workspace <ArrowRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-16 pb-20 px-6 max-w-6xl mx-auto text-center space-y-8 flex flex-col items-center">
+      {/* HERO SECTION */}
+      <section className="relative pt-20 pb-24 px-6 max-w-7xl mx-auto text-center flex flex-col items-center">
         {/* Glow backdrop */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/15 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-emerald-500/10 blur-[140px] rounded-full pointer-events-none" />
 
-        <Badge variant="default" className="gap-2 px-3 py-1 bg-blue-600/10 border border-blue-500/30 text-blue-400 text-xs shadow-inner">
-          <Sparkles className="h-3.5 w-3.5" /> Multi-User SaaS Platform • Powered by Google AI Quota & Daytona MicroVMs
-        </Badge>
+        <div className="flex items-center gap-2 mb-6">
+          <span className="font-mono text-xs tracking-wider uppercase text-emerald-400 font-semibold px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+            Autonomous Multi-Agent Cloud Platform
+          </span>
+        </div>
 
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.15]">
-          Cloud Software Development with <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">Your Google AI Quota</span>
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl leading-[1.08] text-balance">
+          Know your code.<br />
+          <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
+            So your agents can build anything.
+          </span>
         </h1>
 
-        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl leading-relaxed">
-          Execute Google Antigravity CLI (<code className="text-blue-400">agy</code>) headlessly inside isolated per-user Daytona micro-VM sandboxes. $0 LLM infrastructure costs, SQLite session persistence, Monaco IDE, and real-time live preview.
+        <p className="mt-6 text-base sm:text-xl text-gray-400 max-w-3xl leading-relaxed">
+          The next-generation Agentic Development Environment powered by isolated <strong>Daytona micro-VM sandboxes</strong>, persistent long-term storage volumes, zero-cost Google AI Quota, and 4 specialized autonomous agents.
         </p>
 
-        {/* Primary Call-To-Action SaaS Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
+        {/* Hero CTAs */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
           <Button
             size="lg"
-            onClick={onLaunchWorkspace}
-            className="h-12 px-8 text-sm gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-xl shadow-blue-600/25 transition-all hover:scale-105 cursor-pointer"
+            onClick={onStartSetup}
+            className="h-12 px-8 text-sm bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-full shadow-lg shadow-emerald-500/25 transition-all gap-2"
           >
-            <Sparkles className="h-4 w-4" /> Launch Cloud Workspace <ArrowRight className="h-4 w-4" />
+            Start Setup Wizard <ArrowRight className="h-4 w-4" />
           </Button>
 
           <Button
+            size="lg"
             variant="outline"
-            size="lg"
-            onClick={() => onOpenAuth("signup")}
-            className="h-12 px-6 text-sm gap-2 border-border bg-card/70 text-white hover:bg-accent transition-all cursor-pointer"
+            onClick={onLaunchWorkspace}
+            className="h-12 px-8 text-sm border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-full backdrop-blur-md gap-2"
           >
-            <UserPlus className="h-4 w-4 text-indigo-400" /> Create Account
+            <Sparkles className="h-4 w-4 text-emerald-400" /> Open Web IDE
           </Button>
 
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={() => onOpenAuth("signin")}
-            className="h-12 px-5 text-sm gap-1.5 text-muted-foreground hover:text-white"
+          <a
+            href="#docs"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white px-4 py-2"
           >
-            <LogIn className="h-4 w-4 text-blue-400" /> Log In
-          </Button>
+            <BookOpen className="h-4 w-4" /> Explore System Docs →
+          </a>
         </div>
 
-        {/* Feature Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-6 pt-6 text-xs text-muted-foreground border-t border-border/40 w-full max-w-3xl">
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Multi-User Isolation</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> BYOQ (Bring Your Own Quota)</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Persistent SQLite Database</span>
-          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Signed Preview &amp; VNC</span>
+        {/* Hero Image Showcase Card */}
+        <div className="relative mt-14 w-full max-w-6xl rounded-2xl border border-white/15 bg-black/60 p-2 shadow-2xl overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent z-10 pointer-events-none" />
+          <img
+            src="/images/hero_cloud_ide.jpg"
+            alt="AGY Cloud Autonomous IDE with Monaco editor, Daytona micro-VM terminal, and Live Web Preview"
+            className="w-full h-auto rounded-xl object-cover border border-white/10 shadow-inner"
+          />
         </div>
       </section>
 
-      {/* Product UI Wireframe Showcase */}
-      <section className="px-6 max-w-6xl mx-auto w-full pb-20">
-        <div className="rounded-2xl border border-border bg-card p-3 shadow-2xl space-y-2">
-          {/* Window Header */}
-          <div className="h-8 bg-black/60 rounded-t-xl border-b border-border/60 px-4 flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-red-500/80" />
-              <span className="h-3 w-3 rounded-full bg-yellow-500/80" />
-              <span className="h-3 w-3 rounded-full bg-emerald-500/80" />
-            </div>
-            <span className="font-mono text-[11px] text-gray-400">AGY Cloud SaaS — 30/70 Split Coding Workspace</span>
-            <Badge variant="outline" className="text-[10px] py-0 border-emerald-500/30 text-emerald-400">
-              Live SaaS Active
-            </Badge>
+      {/* SHOWCASE TABBED SECTION */}
+      <section id="showcase" className="px-6 py-20 max-w-7xl mx-auto w-full">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+          <div>
+            <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// INTERACTIVE CAPABILITIES</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-1">Engineered for Autonomous Execution</h2>
           </div>
 
-          {/* Interactive Split Mockup */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 h-96 rounded-b-xl overflow-hidden bg-black/80 font-sans text-xs">
-            {/* Left 30% Chat Pane */}
-            <div className="md:col-span-4 border-r border-border bg-card/60 p-4 flex flex-col justify-between space-y-4">
+          {/* Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-full">
+            {[
+              { id: "ide", label: "Split IDE & Preview", icon: Code },
+              { id: "agents", label: "4 Specialized Agents", icon: Cpu },
+              { id: "opencode", label: "Dual CLI Switcher", icon: Terminal },
+              { id: "preview", label: "Daytona Volume Sync", icon: Database },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeShowcase === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveShowcase(tab.id as ShowcaseTab)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                    isActive
+                      ? "bg-white text-black shadow-md font-bold"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Content Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-4">
+            {activeShowcase === "ide" && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-blue-400 font-semibold border-b border-border/60 pb-2">
-                  <Sparkles className="h-4 w-4" /> AGY Assistant (30% Width)
-                </div>
-                <div className="rounded-lg bg-muted/60 p-2.5 text-gray-300 text-[11px] border border-border/40">
-                  <p className="font-semibold text-white mb-1">User Prompt</p>
-                  "Build a full-stack real-time analytics dashboard with React &amp; Tailwind"
-                </div>
-                <div className="rounded-lg bg-blue-950/40 p-2.5 text-blue-200 text-[11px] border border-blue-500/20">
-                  <p className="font-semibold text-blue-400 mb-1 flex items-center gap-1">
-                    <Zap className="h-3 w-3" /> AGY Agent Stream
-                  </p>
-                  Provisioned microVM container • Generated frontend &amp; backend • Port 3000 detected
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 font-mono">30 / 70 Responsive Split View</Badge>
+                <h3 className="text-2xl font-bold text-white">Full-Stack Cloud Development with Zero Context Loss</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  Interact with autonomous coding agents on the left pane while viewing real-time Monaco file trees, live multi-port web previews (ports 3000, 5173, 8080), and full X11/VNC graphical desktops on the right.
+                </p>
+                <div className="rounded-xl border border-white/10 overflow-hidden mt-4">
+                  <img src="/images/hero_cloud_ide.jpg" alt="IDE Preview" className="w-full h-auto object-cover" />
                 </div>
               </div>
-              <div className="border border-border/60 rounded-md p-2 bg-black/40 text-[11px] text-muted-foreground flex items-center justify-between">
-                <span>Ask AGY agent...</span>
-                <Badge variant="default" className="text-[9px] py-0">Enter</Badge>
+            )}
+
+            {activeShowcase === "agents" && (
+              <div className="space-y-3">
+                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 font-mono">OpenAI Agents SDK Architecture</Badge>
+                <h3 className="text-2xl font-bold text-white">Decoupled Reasoning with Human-In-The-Loop Approvals</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  Four specialized agents interview you for requirements, draft structural blueprints, ask for approval before critical modifications, and generate comprehensive post-deployment connection snippets.
+                </p>
+                <div className="rounded-xl border border-white/10 overflow-hidden mt-4">
+                  <img src="/images/multi_agent_flow.jpg" alt="Agent Swarm Flow" className="w-full h-auto object-cover" />
+                </div>
               </div>
+            )}
+
+            {activeShowcase === "opencode" && (
+              <div className="space-y-3">
+                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-mono">Pluggable Coding CLI Drivers</Badge>
+                <h3 className="text-2xl font-bold text-white">Switch Between AGY and OpenCode in the Same Workspace</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  Toggle your underlying AI CLI execution runner with 1 click. Both engines operate inside the shared persistent directory (<code className="text-cyan-300 font-mono">/home/daytona/persist/workspace</code>), preserving every commit and edit seamlessly.
+                </p>
+                <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-gray-300 space-y-2">
+                  <div className="text-emerald-400">$ opencode run "Add Stripe checkout webhook handler"</div>
+                  <div className="text-gray-400">[OpenCode] Analyzing workspace dependencies in /home/daytona/persist/workspace...</div>
+                  <div className="text-cyan-400">[AGY Driver] Code modified in place. Dev server hot reloaded on port 5173.</div>
+                </div>
+              </div>
+            )}
+
+            {activeShowcase === "preview" && (
+              <div className="space-y-3">
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 font-mono">Encrypted Persistent Storage</Badge>
+                <h3 className="text-2xl font-bold text-white">30-Minute Inactivity Auto-Save & Cost Protection</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  Your codebase is continuously mirrored from the micro-VM sandbox to long-term persistent Daytona volumes. Inactive sandboxes pause and tear down after 30 minutes, restoring instantaneously on your next prompt.
+                </p>
+                <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-emerald-400 space-y-1">
+                  <div>✓ Volume: vol-user-892f3a mounted to /home/daytona/persist</div>
+                  <div>✓ Inactivity Watchdog: 30m countdown active</div>
+                  <div>✓ Daytona Secrets: API keys restored from cloud manager</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right Highlights Column */}
+          <div className="flex flex-col gap-4">
+            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <h4 className="text-lg font-bold text-white">$0 AI Quota Cost</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Connect your existing Google Account to execute unlimited high-speed Antigravity prompts with zero additional API subscription fees.
+              </p>
             </div>
 
-            {/* Right 70% Preview Pane */}
-            <div className="md:col-span-8 bg-card/40 p-4 flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between border-b border-border/60 pb-2 text-[11px]">
-                <div className="flex items-center gap-2 font-semibold text-gray-200">
-                  <Globe className="h-4 w-4 text-emerald-400" /> Daytona Sandbox Preview (70% Width)
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] py-0 border-emerald-500/30 text-emerald-400">
-                    Live HTTPS Preview
-                  </Badge>
-                </div>
+            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
+                <Lock className="h-5 w-5" />
               </div>
-              <div className="flex-1 rounded-lg border border-border/60 bg-black/60 flex items-center justify-center p-6 text-center space-y-2">
-                <div className="space-y-1">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-                    <Globe className="h-5 w-5" />
+              <h4 className="text-lg font-bold text-white">Daytona Cloud Secrets</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Configure your GitHub, Azure, RunPod, and Hugging Face tokens once. They are encrypted in Daytona Secrets Manager and restored forever.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400">
+                <Globe className="h-5 w-5" />
+              </div>
+              <h4 className="text-lg font-bold text-white">Multi-Port Live Proxy</h4>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Automatic port discovery with signed iframe URLs and built-in reverse proxy routing for instant, CORS-free web app previewing.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* MANIFESTO / EDITORIAL SECTION (SPOTIFY XIRP STYLE) */}
+      <section id="manifesto" className="px-6 py-28 max-w-4xl mx-auto w-full">
+        <div className="space-y-12 text-xl sm:text-3xl font-bold leading-snug text-gray-300">
+          <p>
+            AI coding tools solved the <span className="text-white">generation problem</span>. Code gets written faster, boilerplate disappears, and lines of code explode.
+          </p>
+          <p className="text-gray-500">
+            But something else happened. AI agents made confident decisions inside ephemeral containers that lacked persistent memory, real cloud tools, or live verification.
+          </p>
+          <p>
+            <span className="text-emerald-400">AGY Cloud is different.</span> It is an autonomous development platform that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, and cloud deployment pipelines.
+          </p>
+          <p className="text-white text-2xl sm:text-4xl font-extrabold leading-tight">
+            Your agents don't guess in the dark. They build, verify, deploy, and maintain.
+          </p>
+        </div>
+      </section>
+
+      {/* 4 SPECIALIZED AGENTS DEEP DIVE */}
+      <section id="features" className="px-6 py-20 max-w-7xl mx-auto w-full space-y-24">
+        {/* Agent 1 */}
+        <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex-1 space-y-4">
+            <span className="font-mono text-xs uppercase text-blue-400 font-semibold tracking-wider">// AGENT 01: APP DEVELOPER</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-white">Full-Stack Scaffolding & Requirements Interview</h3>
+            <p className="text-base text-gray-400 leading-relaxed">
+              Takes your high-level product idea, asks structured follow-up questions to nail down technical choices, drafts an architectural blueprint, and scaffolds complete full-stack web applications with hot-reloading dev servers.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-300 pt-2">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Interactive requirements clarifying interview</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Vite, React 19, Tailwind CSS, Go Gin, and FastAPI recipes</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Automatic dev server startup & live preview routing</li>
+            </ul>
+          </div>
+          <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
+            <img src="/images/hero_cloud_ide.jpg" alt="App Developer Agent" className="rounded-2xl w-full h-auto object-cover" />
+          </div>
+        </div>
+
+        {/* Agent 2 */}
+        <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+          <div className="flex-1 space-y-4">
+            <span className="font-mono text-xs uppercase text-purple-400 font-semibold tracking-wider">// AGENT 02: LLM DEPLOYER</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-white">Intelligent Cloud GPU & Serverless LLM Deployment</h3>
+            <p className="text-base text-gray-400 leading-relaxed">
+              Analyzes your model traffic characteristics (bursty vs steady enterprise vs dev) to deploy open-source models (vLLM, Ollama, TGI) across Azure AI Studio or RunPod Serverless, outputting client connection code snippets.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-300 pt-2">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Burst traffic → RunPod Serverless vLLM ($0 idle scale-to-zero)</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Steady traffic → Azure Managed Online Endpoint & AKS</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Generates ready-to-use Python and TypeScript SDK connection snippets</li>
+            </ul>
+          </div>
+          <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
+            <img src="/images/multi_agent_flow.jpg" alt="LLM Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+          </div>
+        </div>
+
+        {/* Agent 3 */}
+        <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="flex-1 space-y-4">
+            <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// AGENT 03: APP DEPLOYER</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-white">Automated Dockerization & Azure Cloud Deployment</h3>
+            <p className="text-base text-gray-400 leading-relaxed">
+              Inspects your project code, generates multi-stage production Dockerfiles with non-root security standards, provisions Azure Linux VMs or Azure Container Apps, and configures TLS domain certificates.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-300 pt-2">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Minimal multi-stage Docker build files</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Azure CLI (`az vm`, `az containerapp`) automation</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Production healthchecks and live verification testing</li>
+            </ul>
+          </div>
+          <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
+            <img src="/images/hero_cloud_ide.jpg" alt="App Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+          </div>
+        </div>
+
+        {/* Agent 4 */}
+        <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+          <div className="flex-1 space-y-4">
+            <span className="font-mono text-xs uppercase text-amber-400 font-semibold tracking-wider">// AGENT 04: APP MAINTAINER</span>
+            <h3 className="text-3xl sm:text-4xl font-black text-white">Git Repository Ingestion & Automated Pull Requests</h3>
+            <p className="text-base text-gray-400 leading-relaxed">
+              Clones any GitHub repository URL into the sandbox, creates an isolated feature/fix branch, executes modifications based on your prompt, runs test suites, and opens an automated GitHub Pull Request with structured diff summaries.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-300 pt-2">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> 1-click GitHub repository cloning & setup</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> Human-in-the-loop branch diff review gate</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> GitHub MCP & `gh pr create` automation</li>
+            </ul>
+          </div>
+          <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
+            <img src="/images/multi_agent_flow.jpg" alt="App Maintainer Agent" className="rounded-2xl w-full h-auto object-cover" />
+          </div>
+        </div>
+      </section>
+
+      {/* COMPREHENSIVE DOCUMENTATION SECTION */}
+      <section id="docs" className="px-6 py-24 max-w-7xl mx-auto w-full border-t border-white/10">
+        <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+          <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// DEVELOPER DOCUMENTATION & SPECIFICATION</span>
+          <h2 className="text-3xl sm:text-5xl font-black text-white">Everything You Need to Build & Scale</h2>
+          <p className="text-gray-400 text-sm sm:text-base">
+            Comprehensive architectural specs, quickstart guides, CLI driver references, and API endpoint documentation.
+          </p>
+        </div>
+
+        {/* Documentation Interactive Split */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Docs Navigation Sidebar */}
+          <div className="lg:col-span-1 space-y-1">
+            {[
+              { id: "overview", label: "Architecture Overview", icon: Layers },
+              { id: "quickstart", label: "Quickstart Setup", icon: Zap },
+              { id: "agents", label: "4 Autonomous Agents", icon: Cpu },
+              { id: "cliswitcher", label: "CLI Switcher (AGY / OpenCode)", icon: Terminal },
+              { id: "secrets", label: "Daytona Secrets & Volumes", icon: Database },
+              { id: "mcp", label: "MCP Server Integrations", icon: Box },
+              { id: "api", label: "REST & WebSocket API", icon: Radio },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isSelected = activeDocSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveDocSection(item.id as DocSection)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold transition-all text-left ${
+                    isSelected
+                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm"
+                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
                   </div>
-                  <h4 className="text-sm font-semibold text-white">Live App Running in Daytona MicroVM</h4>
-                  <p className="text-[11px] text-muted-foreground font-mono">https://3000-sb-user-workspace.daytona.app</p>
+                  <ChevronRight className={`h-3 w-3 transition-transform ${isSelected ? "text-emerald-400 translate-x-1" : "text-gray-600"}`} />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Docs Content Viewer */}
+          <div className="lg:col-span-3 rounded-3xl border border-white/10 bg-[#121216] p-6 sm:p-8 space-y-6">
+            {activeDocSection === "overview" && (
+              <div className="space-y-4">
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">System Architecture</Badge>
+                <h3 className="text-2xl font-bold text-white">Decoupled Agentic Micro-VM Architecture</h3>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  AGY Cloud uses a three-tier decoupled architecture:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Cpu className="h-3.5 w-3.5 text-purple-400" /> Tier 1: Agent Layer</h5>
+                    <p className="text-[11px] text-gray-400">OpenAI Agents SDK logic for requirements interview, reasoning, traffic analysis, and HITL approvals.</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Terminal className="h-3.5 w-3.5 text-cyan-400" /> Tier 2: CLI Drivers</h5>
+                    <p className="text-[11px] text-gray-400">Pluggable coding drivers for Antigravity (`agy`) and OpenCode (`opencode`) operating on shared workspace.</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Server className="h-3.5 w-3.5 text-emerald-400" /> Tier 3: Daytona Micro-VM</h5>
+                    <p className="text-[11px] text-gray-400">Isolated Linux micro-VM container with persistent volume symlinks, port routing, and Daytona Secrets.</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                <span>Tabs: Live Preview • VNC Desktop • Monaco Code • Terminal • OpenTelemetry</span>
-                <span className="text-emerald-400 flex items-center gap-1">● MicroVM Ready</span>
+            )}
+
+            {activeDocSection === "quickstart" && (
+              <div className="space-y-4">
+                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Getting Started</Badge>
+                <h3 className="text-2xl font-bold text-white">3-Step First-Run Onboarding</h3>
+                <p className="text-sm text-gray-300">Setting up your AGY Cloud environment takes under 60 seconds:</p>
+                <ol className="space-y-3 text-xs text-gray-300 list-decimal list-inside">
+                  <li><strong>Enter Daytona API Key:</strong> Get your key from <code className="text-emerald-400">app.daytona.io</code>.</li>
+                  <li><strong>Provide AI Model Credentials:</strong> Enter your Google AI Studio key or OpenAI API key.</li>
+                  <li><strong>Configure Cloud Integrations:</strong> Add optional GitHub Token, Azure Service Principal, RunPod API Key, or Hugging Face token.</li>
+                </ol>
+                <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-emerald-400">
+                  // Credentials automatically saved to Daytona Secrets Manager and restored on all future runs!
+                </div>
               </div>
-            </div>
+            )}
+
+            {activeDocSection === "agents" && (
+              <div className="space-y-4">
+                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Autonomous Swarm</Badge>
+                <h3 className="text-2xl font-bold text-white">The 4 Specialized Agents</h3>
+                <div className="space-y-3 text-xs text-gray-300">
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-blue-400">App Developer Agent:</strong> Interrogates user requirements, designs architecture, writes code, launches dev servers.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-purple-400">LLM Deployer Agent:</strong> Profiles traffic (bursty vs steady), provisions RunPod Serverless or Azure AKS, outputs connection snippets.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-emerald-400">App Deployer Agent:</strong> Generates multi-stage Dockerfiles, provisions Azure VMs / Container Apps, configures TLS.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-amber-400">App Maintainer Agent:</strong> Clones GitHub repos, creates fix branches, runs tests, and opens PRs via GitHub MCP.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeDocSection === "cliswitcher" && (
+              <div className="space-y-4">
+                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Modular CLI Drivers</Badge>
+                <h3 className="text-2xl font-bold text-white">Runtime CLI Switcher (AGY & OpenCode)</h3>
+                <p className="text-sm text-gray-300">
+                  You can switch between Antigravity CLI and OpenCode CLI at any point during your session:
+                </p>
+                <ul className="space-y-2 text-xs text-gray-300">
+                  <li>• Click the <strong>⚡ AGY</strong> or <strong>💻 OpenCode</strong> button in the Chat header.</li>
+                  <li>• Both CLIs execute inside the exact same persistent volume: <code className="text-cyan-300">/home/daytona/persist/workspace</code>.</li>
+                  <li>• All files, git commits, environment variables, and dev servers continue uninterrupted.</li>
+                </ul>
+              </div>
+            )}
+
+            {activeDocSection === "secrets" && (
+              <div className="space-y-4">
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Persistence & Security</Badge>
+                <h3 className="text-2xl font-bold text-white">Daytona Secrets & Volume Inactivity Watchdog</h3>
+                <p className="text-sm text-gray-300">
+                  How AGY Cloud protects your credentials and minimizes cloud costs:
+                </p>
+                <ul className="space-y-2 text-xs text-gray-300">
+                  <li>• <strong>Daytona Secrets API:</strong> Sensitive tokens are saved to Daytona Cloud Secrets Manager without plaintext exposure.</li>
+                  <li>• <strong>Persistent Volumes:</strong> <code className="text-emerald-400">/home/daytona/persist</code> is attached to your micro-VM.</li>
+                  <li>• <strong>30-Minute Auto-Teardown:</strong> Sandboxes inactive for &gt;30m automatically sync to persistent volume and delete the container.</li>
+                </ul>
+              </div>
+            )}
+
+            {activeDocSection === "mcp" && (
+              <div className="space-y-4">
+                <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Model Context Protocol</Badge>
+                <h3 className="text-2xl font-bold text-white">Bootstrapped MCP Servers</h3>
+                <p className="text-sm text-gray-300">
+                  Every Daytona sandbox automatically provisions <code className="text-amber-300">mcp_config.json</code> with:
+                </p>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-white">GitHub MCP:</strong> PR management, issue tracking, repo cloning.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-white">Azure MCP:</strong> Resource provisioning, VM creation, Container Apps.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-white">RunPod MCP:</strong> Serverless endpoint creation, GPU pod spinning.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-white">Hugging Face API:</strong> Model weights inspection, inference API.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeDocSection === "api" && (
+              <div className="space-y-4">
+                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Developer API</Badge>
+                <h3 className="text-2xl font-bold text-white">REST & WebSocket Endpoints</h3>
+                <div className="space-y-2 text-xs font-mono">
+                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
+                    <span className="text-emerald-400">POST /api/workspace/prompt</span>
+                    <span className="text-gray-400">Execute agent prompt with live token streaming</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
+                    <span className="text-blue-400">POST /api/integrations/secrets</span>
+                    <span className="text-gray-400">Save and sync credentials to Daytona Secrets</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
+                    <span className="text-purple-400">GET /ws</span>
+                    <span className="text-gray-400">Real-time WebSocket event broadcaster</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg border border-white/10 bg-black/60 flex items-center justify-between">
+                    <span className="text-amber-400">POST /api/webhooks/daytona</span>
+                    <span className="text-gray-400">Daytona lifecycle webhook receiver</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Architecture & SaaS Highlights */}
-      <section id="features" className="py-20 px-6 max-w-6xl mx-auto w-full space-y-12">
-        <div className="text-center space-y-3">
-          <Badge variant="outline" className="border-blue-500/40 text-blue-400 text-xs">
-            Platform Capabilities
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-            Enterprise Architecture for Autonomous Code Agents
+      {/* FINAL HIGH-IMPACT SPOTIFY-STYLE CTA BANNER */}
+      <section className="px-6 py-20 max-w-7xl mx-auto w-full">
+        <div className="w-full rounded-3xl bg-emerald-500 text-black p-8 sm:p-14 shadow-2xl space-y-6">
+          <span className="font-mono text-xs uppercase font-extrabold tracking-widest text-black/80">// GET STARTED TODAY</span>
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight max-w-3xl leading-tight">
+            Start with one project. See what your agents can build when they have real context.
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto">
-            Combining Daytona's microVM orchestrator with Google Antigravity CLI and multi-user SQLite persistence.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3 hover:border-blue-500/50 transition-all">
-            <div className="h-10 w-10 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">Multi-User Authentication</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              JWT-authenticated user sessions, dedicated SQLite sandbox databases, persistent chat history, and isolated environments per developer.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3 hover:border-blue-500/50 transition-all">
-            <div className="h-10 w-10 rounded-lg bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Cpu className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">Daytona MicroVM Sandboxes</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Sub-200ms isolated Linux container environments with cgroup-v2 boundaries, native OpenTelemetry collection, and signed preview URLs.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card p-6 space-y-3 hover:border-blue-500/50 transition-all">
-            <div className="h-10 w-10 rounded-lg bg-emerald-600/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <Activity className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-bold text-white">OpenTelemetry &amp; VNC Desktop</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Real-time CPU, RAM, and NVMe telemetry progress cards alongside interactive XFCE graphical desktop access for computer use.
-            </p>
+          <div className="flex flex-wrap items-center gap-4 pt-4">
+            <Button
+              size="lg"
+              onClick={onStartSetup}
+              className="h-12 px-8 text-sm bg-black text-white hover:bg-zinc-800 font-extrabold rounded-full shadow-xl transition-all"
+            >
+              Start Free Setup
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={onLaunchWorkspace}
+              className="h-12 px-8 text-sm border-2 border-black bg-transparent text-black hover:bg-black/10 font-extrabold rounded-full"
+            >
+              Launch Live Workspace
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* CTA Footer */}
-      <footer className="mt-auto border-t border-border/60 py-12 px-6 bg-card text-center space-y-6">
-        <div className="max-w-xl mx-auto space-y-3">
-          <h3 className="text-2xl font-bold text-white">Ready to Start Cloud Coding?</h3>
-          <p className="text-xs text-muted-foreground">
-            Sign up for your free account or sign in to access your Daytona sandbox microVM.
-          </p>
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-            <Button
-              size="lg"
-              onClick={() => onOpenAuth("signup")}
-              className="gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold cursor-pointer shadow-lg shadow-blue-600/20"
-            >
-              <UserPlus className="h-4 w-4" /> Create Free Account
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => onOpenAuth("signin")}
-              className="gap-2 border-border text-white hover:bg-accent cursor-pointer"
-            >
-              <LogIn className="h-4 w-4 text-blue-400" /> Sign In
-            </Button>
-          </div>
+      {/* Footer */}
+      <footer className="w-full border-t border-white/10 py-10 px-6 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-emerald-400" />
+          <span>AGY Cloud SaaS • Built with Google Antigravity & Daytona Micro-VMs</span>
         </div>
-        <p className="text-[11px] text-muted-foreground pt-6 border-t border-border/40">
-          AGY Cloud SaaS Platform • Powered by Antigravity CLI &amp; Daytona Micro-VMs
-        </p>
+        <div className="flex items-center gap-4">
+          <a href="#docs" className="hover:text-white transition-colors">Docs</a>
+          <a href="https://app.daytona.io" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Daytona Cloud</a>
+          <a href="https://github.com/aksri648/antigravity-ui" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
+          <button onClick={onResetApp} className="hover:text-red-400 transition-colors">Reset Data</button>
+        </div>
       </footer>
-
     </div>
   );
 };

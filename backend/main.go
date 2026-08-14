@@ -65,7 +65,7 @@ func main() {
 		if u, exists := c.Get("userId"); exists {
 			userId = u.(string)
 		}
-		if sandboxId != "" && sandboxId != "sb-daytona-demo" {
+		if sandboxId != "" {
 			inactivityMgr.RecordActivity(sandboxId, apiKey, serverUrl, userId)
 		}
 		c.Next()

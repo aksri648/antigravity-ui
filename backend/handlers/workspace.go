@@ -238,22 +238,26 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 			}
 		}
 
-		// If sandbox ID is missing, demo, or fallback, ensure a real Daytona sandbox is created
-		if req.SandboxID == "" || req.SandboxID == "sb-daytona-demo" || strings.HasPrefix(req.SandboxID, "sb-daytona-demo") {
-			vol, _ := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, req.ServerUrl, req.UserId)
-			volID := ""
-			if vol != nil {
-				volID = vol.ID
+		// If sandbox ID is missing, ensure a real Daytona sandbox is created
+		if req.SandboxID == "" {
+			var activeSb *models.DaytonaSandbox
+			activeSb, err := daytonaSvc.GetActiveSandbox(req.ApiKey, req.ServerUrl, req.UserId)
+			if err != nil || activeSb == nil {
+				vol, _ := daytonaSvc.GetOrCreateUserVolume(req.ApiKey, req.ServerUrl, req.UserId)
+				volID := ""
+				if vol != nil {
+					volID = vol.ID
+				}
+				activeSb, err = daytonaSvc.CreateSandbox(req.ApiKey, req.ServerUrl, req.UserId, volID)
 			}
-			sb, err := daytonaSvc.CreateSandbox(req.ApiKey, req.ServerUrl, req.UserId, volID)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create Daytona sandbox: " + err.Error()})
 				return
 			}
-			req.SandboxID = sb.ID
+			req.SandboxID = activeSb.ID
 			if userSvc != nil {
-				previewUrl := daytonaSvc.GetPreviewURL(sb.ID, 3000, req.ServerUrl)
-				userSvc.SaveUserSandbox(req.UserId, sb.ID, previewUrl, 3000)
+				previewUrl := daytonaSvc.GetPreviewURL(activeSb.ID, 3000, req.ServerUrl)
+				userSvc.SaveUserSandbox(req.UserId, activeSb.ID, previewUrl, 3000)
 			}
 		}
 

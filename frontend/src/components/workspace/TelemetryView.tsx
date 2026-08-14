@@ -10,13 +10,10 @@ import {
   RefreshCw,
   Zap,
   CheckCircle2,
-  AlertTriangle,
   Radio,
   Share2,
   ExternalLink,
   Loader2,
-  ChevronRight,
-  TrendingUp,
   Tag,
 } from "lucide-react";
 import { Button } from "../ui/button";

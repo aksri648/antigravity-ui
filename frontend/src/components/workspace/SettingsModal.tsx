@@ -5,7 +5,6 @@ import {
   Key,
   Server,
   ShieldCheck,
-  Layers,
   Terminal,
   Globe,
   RefreshCw,
@@ -19,7 +18,6 @@ import {
   Eye,
   EyeOff,
   FileText,
-  Sliders,
   Sparkles,
   Database,
   Copy,
@@ -60,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   apiKey,
   serverUrl,
   userId,
-  sandboxId = "sb-daytona-demo",
+  sandboxId = "",
   activePort,
   onUpdateConfig,
   onResetApp,
@@ -84,8 +82,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   // Google Auth Tab States
   const [checkingAuth, setCheckingAuth] = useState(false);
   const [authStatus, setAuthStatus] = useState<{ authenticated: boolean; email?: string } | null>(null);
-  const [initiatingAuth, setInitiatingAuth] = useState(false);
-  const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [pastedAuthCode, setPastedAuthCode] = useState("");
   const [submittingAuth, setSubmittingAuth] = useState(false);
   const [authSuccess, setAuthSuccess] = useState(false);
@@ -299,7 +295,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid https://www.googleapis.com/auth/cloud-platform")}&access_type=offline&prompt=consent&state=${encodeURIComponent(stateBase64)}`;
 
-    setAuthUrl(googleAuthUrl);
     setAuthSuccess(false);
 
     // Open clean centered Google sign-in popup
