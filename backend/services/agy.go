@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -253,15 +254,18 @@ echo "BOOTSTRAP_OK"
 // InitiateGoogleAuth generates the Google OAuth 2.0 Web Consent URL for Antigravity AI Quota
 func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId string, googleApiKey string, oauthClientId string) (*models.InitGoogleAuthResponse, error) {
 	if apiKey == "" {
-		apiKey = "dtn_default_key"
+		apiKey = os.Getenv("DAYTONA_API_KEY")
 	}
 	if serverUrl == "" {
-		serverUrl = "https://app.daytona.io/api"
+		serverUrl = os.Getenv("DAYTONA_SERVER_URL")
+		if serverUrl == "" {
+			serverUrl = "https://app.daytona.io/api"
+		}
 	}
 
-	clientId := "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
-	if oauthClientId != "" {
-		clientId = oauthClientId
+	clientId := oauthClientId
+	if clientId == "" {
+		clientId = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 	}
 
 	// 1. Ensure user volume exists in Daytona
@@ -295,7 +299,7 @@ func (s *AGYService) InitiateGoogleAuth(apiKey string, serverUrl string, userId 
 	authURL := urlRegex.FindString(output)
 
 	// Standard Google OAuth 2.0 Web Consent Authorization URL
-	if authURL == "" {
+	if authURL == "" && clientId != "" {
 		authURL = fmt.Sprintf("https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/userinfo.profile%%20https://www.googleapis.com/auth/userinfo.email%%20openid%%20https://www.googleapis.com/auth/cloud-platform&access_type=offline&prompt=consent", clientId)
 	}
 
@@ -314,7 +318,7 @@ func (s *AGYService) SubmitAuthCode(apiKey string, serverUrl string, sandboxId s
 		return nil, fmt.Errorf("authorization code cannot be empty")
 	}
 
-	clientId := "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+	clientId := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 
 	// 1. Perform token exchange directly inside the Daytona sandbox container via curl to Google Token API
 	exchangeCmd := fmt.Sprintf(`
@@ -329,9 +333,11 @@ if grep -q "access_token" /tmp/google_token_resp.json; then
   cp /tmp/google_token_resp.json /home/daytona/persist/gemini/oauth_creds.json
   cp /tmp/google_token_resp.json /root/.gemini/oauth_creds.json
   cp /tmp/google_token_resp.json /home/daytona/.gemini/oauth_creds.json 2>/dev/null || true
-  echo '{"active":"user@google.com","old":[]}' > /home/daytona/persist/gemini/google_accounts.json
-  echo '{"active":"user@google.com","old":[]}' > /root/.gemini/google_accounts.json
-  echo '{"active":"user@google.com","old":[]}' > /home/daytona/.gemini/google_accounts.json 2>/dev/null || true
+  EMAIL=$(grep -o '"email":"[^"]*"' /tmp/google_token_resp.json | cut -d'"' -f4)
+  if [ -z "$EMAIL" ]; then EMAIL="authenticated-user"; fi
+  echo "{\"active\":\"$EMAIL\",\"old\":[]}" > /home/daytona/persist/gemini/google_accounts.json
+  echo "{\"active\":\"$EMAIL\",\"old\":[]}" > /root/.gemini/google_accounts.json
+  echo "{\"active\":\"$EMAIL\",\"old\":[]}" > /home/daytona/.gemini/google_accounts.json 2>/dev/null || true
   echo "TOKEN_EXCHANGED_OK"
 else
   echo "TOKEN_EXCHANGE_FALLBACK"
@@ -362,10 +368,10 @@ func (s *AGYService) ExchangeGoogleAuthCode(apiKey string, serverUrl string, san
 	}
 
 	if clientId == "" {
-		clientId = "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
+		clientId = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 	}
 	if redirectURI == "" {
-		redirectURI = "http://localhost:8080/api/auth/google/callback"
+		redirectURI = os.Getenv("GOOGLE_OAUTH_REDIRECT_URI")
 	}
 
 	data := url.Values{}

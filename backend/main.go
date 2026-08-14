@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"backend/db"
@@ -32,9 +33,17 @@ func main() {
 
 	r := gin.Default()
 
-	// 2. CORS configuration for React frontend
+	// 2. CORS configuration for React frontend (dynamic via ALLOWED_ORIGINS env var or defaults)
+	allowedOrigins := []string{"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"}
+	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
+		allowedOrigins = strings.Split(envOrigins, ",")
+		for i := range allowedOrigins {
+			allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
+		}
+	}
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Daytona-Key"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -93,14 +102,50 @@ func main() {
 		api.DELETE("/chat/history", handlers.ClearChatHistoryHandler(userSvc))
 		api.GET("/runs", handlers.ListRunsHandler(userSvc))
 
-		// Environment & Setup Endpoints (Plan Spec §7.1)
+		// Environment & Setup Endpoints (Dynamic lookups)
 		api.POST("/env/provision", handlers.CreateWorkspace(daytonaSvc, userSvc))
 		api.GET("/env/status", func(c *gin.Context) {
-			c.JSON(200, gin.H{"sandbox_state": "running", "agy_authenticated": true})
+			userId := ""
+			if u, exists := c.Get("userId"); exists {
+				userId = u.(string)
+			}
+			if userId == "" {
+				userId = c.Query("userId")
+			}
+
+			sandboxState := "none"
+			isGoogleAuth := false
+			if userId != "" && userSvc != nil {
+				if sb, err := userSvc.GetActiveUserSandbox(userId); err == nil && sb != nil {
+					sandboxState = sb.State
+				}
+				if user, err := userSvc.GetUserByID(userId); err == nil && user != nil {
+					isGoogleAuth = user.IsGoogleAuthenticated
+				}
+			}
+
+			c.JSON(200, gin.H{
+				"sandbox_state":     sandboxState,
+				"agy_authenticated": isGoogleAuth,
+			})
 		})
 		api.POST("/env/auth/start", handlers.InitGoogleAuth(daytonaSvc, agySvc))
 		api.GET("/env/auth/poll", func(c *gin.Context) {
-			c.JSON(200, gin.H{"authenticated": true})
+			userId := ""
+			if u, exists := c.Get("userId"); exists {
+				userId = u.(string)
+			}
+			if userId == "" {
+				userId = c.Query("userId")
+			}
+
+			isAuth := false
+			if userId != "" && userSvc != nil {
+				if user, err := userSvc.GetUserByID(userId); err == nil && user != nil {
+					isAuth = user.IsGoogleAuthenticated
+				}
+			}
+			c.JSON(200, gin.H{"authenticated": isAuth})
 		})
 		api.POST("/setup/verify-daytona", handlers.VerifyDaytonaKey(daytonaSvc))
 		api.POST("/setup/init-google-auth", handlers.InitGoogleAuth(daytonaSvc, agySvc))

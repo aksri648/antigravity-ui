@@ -8,6 +8,7 @@ import (
 	"html"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"backend/db"
@@ -65,7 +66,13 @@ func InitGoogleAuth(daytonaSvc *services.DaytonaService, agySvc *services.AGYSer
 		}
 
 		if req.UserId == "" {
-			req.UserId = "default-user"
+			if u, exists := c.Get("userId"); exists {
+				req.UserId = u.(string)
+			}
+		}
+		if req.UserId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to initialize Google OAuth"})
+			return
 		}
 
 		resp, err := agySvc.InitiateGoogleAuth(req.ApiKey, req.ServerUrl, req.UserId, req.GoogleApiKey, req.OAuthClientId)
@@ -219,11 +226,11 @@ func GoogleOAuthCallback(daytonaSvc *services.DaytonaService, agySvc *services.A
 
 		redirectURI := state.RedirectURI
 		if redirectURI == "" {
-			redirectURI = "http://localhost:8080/api/auth/google/callback"
+			redirectURI = os.Getenv("GOOGLE_OAUTH_REDIRECT_URI")
 		}
 		clientId := state.ClientId
 		if clientId == "" {
-			clientId = "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com"
+			clientId = os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 		}
 
 		_, email, err := agySvc.ExchangeGoogleAuthCode(state.ApiKey, state.ServerUrl, state.SandboxId, code, clientId, state.ClientSecret, redirectURI)

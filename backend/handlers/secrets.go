@@ -61,7 +61,11 @@ func GetSecretsStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFun
 			userId = u.(string)
 		}
 		if userId == "" {
-			userId = c.DefaultQuery("userId", "default-user")
+			userId = c.Query("userId")
+		}
+		if userId == "" {
+			c.JSON(http.StatusOK, SecretStatus{})
+			return
 		}
 
 		status := SecretStatus{}
@@ -123,7 +127,8 @@ func SaveSecretsHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			userId = u.(string)
 		}
 		if userId == "" {
-			userId = "default-user"
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to save secrets"})
+			return
 		}
 
 		now := time.Now().Unix()

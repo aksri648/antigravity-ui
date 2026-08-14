@@ -334,13 +334,7 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 	}
 
 	if sandboxId == "" {
-		if activeSb, err := s.GetActiveSandbox(apiKey, serverUrl, "default-user"); err == nil && activeSb != nil && activeSb.ID != "" {
-			sandboxId = activeSb.ID
-		}
-	}
-
-	if sandboxId == "" {
-		return nil, fmt.Errorf("Daytona Sandbox ID required")
+		return nil, fmt.Errorf("Daytona Sandbox ID is required to execute commands")
 	}
 
 	// 1. Try Daytona CLI execution inside the sandbox container if installed locally
@@ -575,26 +569,26 @@ func (s *DaytonaService) GetSandboxTelemetry(apiKey string, serverUrl string, sa
 	data := &models.SandboxTelemetryData{
 		SandboxID: sandboxId,
 		Timestamp: time.Now().UnixMilli(),
-		Uptime:    "Active (Daytona MicroVM)",
-		ProcessCount: 8,
+		Uptime:    "0m",
+		ProcessCount: 0,
 		CPU: models.CPUTelemetry{
-			UtilizationPct: 12.5,
+			UtilizationPct: 0.0,
 			LimitCores:     2,
-			LoadAvg:        "0.15, 0.10, 0.05",
+			LoadAvg:        "0.00, 0.00, 0.00",
 		},
 		Memory: models.MemoryTelemetry{
-			UsageBytes:     524288000,
+			UsageBytes:     0,
 			LimitBytes:     4294967296,
-			UtilizationPct: 12.2,
-			UsageFormatted: "500.0 MB",
+			UtilizationPct: 0.0,
+			UsageFormatted: "0.0 MB",
 			LimitFormatted: "4.0 GB",
 		},
 		Filesystem: models.FilesystemTelemetry{
-			UsageBytes:     1073741824,
-			AvailableBytes: 20401094656,
+			UsageBytes:     0,
+			AvailableBytes: 0,
 			TotalBytes:     21474836480,
-			UtilizationPct: 5.0,
-			UsageFormatted: "1.0 GB",
+			UtilizationPct: 0.0,
+			UsageFormatted: "0.0 GB",
 			TotalFormatted: "20.0 GB",
 		},
 		MetricsList: make(map[string]float64),

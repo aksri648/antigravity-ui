@@ -112,7 +112,7 @@ func CreateWorkspace(daytonaSvc *services.DaytonaService, userSvc *services.User
 			if u, exists := c.Get("userId"); exists {
 				req.UserId = u.(string)
 			} else {
-				req.UserId = "default-user"
+				req.UserId = fmt.Sprintf("guest-%d", time.Now().UnixMilli())
 			}
 		}
 
@@ -240,9 +240,11 @@ func SendPrompt(daytonaSvc *services.DaytonaService, agySvc *services.AGYService
 		if req.UserId == "" {
 			if u, exists := c.Get("userId"); exists {
 				req.UserId = u.(string)
-			} else {
-				req.UserId = "default-user"
 			}
+		}
+		if req.UserId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to dispatch agent prompt"})
+			return
 		}
 
 		// If sandbox ID is missing, ensure a real Daytona sandbox is created
@@ -575,7 +577,13 @@ func RecreateWorkspace(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		}
 
 		if req.UserId == "" {
-			req.UserId = "default-user"
+			if u, exists := c.Get("userId"); exists {
+				req.UserId = u.(string)
+			}
+		}
+		if req.UserId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to recreate workspace"})
+			return
 		}
 
 		// Fetch user volume
@@ -729,9 +737,13 @@ func DeleteFileHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 // ListRunsHandler returns past agent runs from SQLite
 func ListRunsHandler(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId := c.DefaultQuery("userId", "default-user")
-		if u, exists := c.Get("userId"); exists {
+		userId := c.Query("userId")
+		if u, exists := c.Get("userId"); exists && userId == "" {
 			userId = u.(string)
+		}
+		if userId == "" {
+			c.JSON(http.StatusOK, []gin.H{})
+			return
 		}
 
 		query := `SELECT id, user_id, agy_conversation_id, title, status, created_at, updated_at FROM agent_runs WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`

@@ -11,12 +11,13 @@ import (
 // GetChatHistoryHandler returns persisted chat history for a user
 func GetChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId := c.DefaultQuery("userId", "")
+		userId := c.Query("userId")
 		if u, exists := c.Get("userId"); exists && userId == "" {
 			userId = u.(string)
 		}
 		if userId == "" {
-			userId = "default-user"
+			c.JSON(http.StatusOK, gin.H{"messages": []interface{}{}})
+			return
 		}
 		sandboxId := c.DefaultQuery("sandboxId", "")
 
@@ -53,9 +54,11 @@ func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
 		if req.UserId == "" {
 			if u, exists := c.Get("userId"); exists {
 				req.UserId = u.(string)
-			} else {
-				req.UserId = "default-user"
 			}
+		}
+		if req.UserId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to save chat message"})
+			return
 		}
 
 		err := userSvc.SaveChatMessage(req.UserId, req.SandboxId, req.Sender, req.Text, req.Thoughts, req.Tools, req.IsError)
@@ -71,12 +74,13 @@ func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
 // ClearChatHistoryHandler clears chat history for a user
 func ClearChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userId := c.DefaultQuery("userId", "")
+		userId := c.Query("userId")
 		if u, exists := c.Get("userId"); exists && userId == "" {
 			userId = u.(string)
 		}
 		if userId == "" {
-			userId = "default-user"
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is required to clear history"})
+			return
 		}
 		sandboxId := c.DefaultQuery("sandboxId", "")
 
