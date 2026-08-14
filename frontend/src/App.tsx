@@ -185,6 +185,10 @@ export function App() {
       }
     }
 
+    if (event.type === "done" || event.type === "error") {
+      setIsProcessing(false);
+    }
+
     setMessages((prev) => {
       if (prev.length === 0) return prev;
       const lastMsgIndex = prev.length - 1;
@@ -202,13 +206,18 @@ export function App() {
           { name: event.metadata?.tool || "tool_execution", path: event.metadata?.path },
         ];
       } else if (event.type === "token") {
-        updatedMsg.text += event.content + "\n";
+        updatedMsg.text = updatedMsg.text ? updatedMsg.text + "\n" + event.content : event.content;
       } else if (event.type === "error") {
         updatedMsg.text = event.content || "An error occurred during execution.";
         updatedMsg.isError = true;
-        setIsProcessing(false);
       } else if (event.type === "done") {
-        setIsProcessing(false);
+        if (!updatedMsg.text.trim()) {
+          if (updatedMsg.thoughts && updatedMsg.thoughts.length > 0) {
+            updatedMsg.text = updatedMsg.thoughts[updatedMsg.thoughts.length - 1];
+          } else {
+            updatedMsg.text = "Hello! I am Antigravity AI, ready to assist you with your coding tasks in your Daytona cloud sandbox.";
+          }
+        }
       }
 
       const newMessages = [...prev];

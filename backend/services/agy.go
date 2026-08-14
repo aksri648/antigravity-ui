@@ -328,13 +328,23 @@ func (s *AGYService) StreamPromptExec(
 	}
 
 	// 1. Run agy command directly inside persistent workspace directory with loaded environment
-	workDirCmd := `
-mkdir -p /home/daytona/persist/workspace /root/workspace
-[ -f /home/daytona/persist/gemini/.env ] && set -a && source /home/daytona/persist/gemini/.env && set +a 2>/dev/null || true
-[ -f /root/.gemini/.env ] && set -a && source /root/.gemini/.env && set +a 2>/dev/null || true
-cd /home/daytona/persist/workspace 2>/dev/null || cd /root/workspace
-`
-	cmdStr := fmt.Sprintf("%s && agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions", workDirCmd, strconv.Quote(prompt))
+	cmdStr := fmt.Sprintf(`#!/usr/bin/env bash
+mkdir -p /home/daytona/persist/workspace /home/daytona/workspace /home/daytona/persist/gemini
+[ -f /home/daytona/persist/gemini/.env ] && set -a && . /home/daytona/persist/gemini/.env && set +a 2>/dev/null || true
+[ -f /home/daytona/.gemini/.env ] && set -a && . /home/daytona/.gemini/.env && set +a 2>/dev/null || true
+
+export PATH="/usr/local/bin:/home/daytona/.local/bin:$PATH"
+cd /home/daytona/persist/workspace 2>/dev/null || cd /home/daytona/workspace 2>/dev/null || cd /home/daytona
+
+if command -v agy >/dev/null 2>&1; then
+  agy --print %s --output-format stream-json --print-timeout 15m --dangerously-skip-permissions
+elif command -v gemini >/dev/null 2>&1; then
+  gemini --print %s --output-format stream-json 2>&1
+else
+  echo "AGY CLI not found in PATH inside Daytona sandbox container."
+fi
+`, strconv.Quote(prompt), strconv.Quote(prompt))
+
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmdStr)
 
 	if err != nil {
