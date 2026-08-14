@@ -691,12 +691,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="font-bold text-white flex items-center gap-1.5"><Workflow className="h-4 w-4 text-emerald-400" /> 1. Requirement Scoping</h5>
-                    <p className="text-gray-400">Automated Q&A loop extracts client data formats, latency limits, cloud vendor requirements, and authentication mechanisms.</p>
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><Workflow className="h-4 w-4 text-emerald-400" /> 1. Requirement Scoping & Architecture</h5>
+                    <p className="text-gray-400">Interactive Q&A loop interviews for client constraints, API contracts, latency targets, and cloud infrastructure requirements.</p>
                   </div>
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
                     <h5 className="font-bold text-white flex items-center gap-1.5"><HardDrive className="h-4 w-4 text-cyan-400" /> 2. Persistent Sandbox Execution</h5>
-                    <p className="text-gray-400">Agents execute in isolated Daytona micro-VMs with zero host pollution, auto-persisting code to long-term volumes.</p>
+                    <p className="text-gray-400">Agents construct and test full-stack code in isolated Daytona micro-VMs with auto-mounted persistent storage at <code className="text-gray-300">/home/daytona/persist</code>.</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><Terminal className="h-4 w-4 text-purple-400" /> 3. Dual CLI Engine Swarm (AGY & OpenCode)</h5>
+                    <p className="text-gray-400">Seamlessly switch between Google Antigravity and OpenCode drivers in the same workspace directory without losing context or restarting services.</p>
+                  </div>
+                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><Zap className="h-4 w-4 text-amber-400" /> 4. Production Cloud Deployment</h5>
+                    <p className="text-gray-400">Automates Docker containerization, provisions Azure Compute Linux VMs, configures Azure AKS GPU clusters, and deploys RunPod serverless endpoints.</p>
                   </div>
                 </div>
               </div>
