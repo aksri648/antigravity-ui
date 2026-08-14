@@ -923,9 +923,6 @@ export function App() {
           <HeaderBar
             sandboxId={sandboxId}
             isProvisioning={isProvisioning}
-            userId={userId}
-            userEmail={userEmail}
-            userName={userName}
             isSidebarOpen={isSidebarOpen}
             onToggleSidebar={() => {
               setIsSidebarOpen((prev) => {
@@ -944,10 +941,6 @@ export function App() {
             }}
             activeProjectName={activeProject?.name}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onOpenAuth={(mode) => {
-              setAuthMode(mode);
-              setIsAuthModalOpen(true);
-            }}
             onStartSandbox={handleStartSandbox}
             onExitWorkspace={handleExitWorkspace}
           />
@@ -983,10 +976,6 @@ export function App() {
               userEmail={userEmail}
               userName={userName}
               onOpenSettings={() => setIsSettingsOpen(true)}
-              onOpenAuth={(mode) => {
-                setAuthMode(mode);
-                setIsAuthModalOpen(true);
-              }}
               onLogout={handleLogout}
             />
 

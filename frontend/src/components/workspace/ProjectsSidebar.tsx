@@ -17,8 +17,6 @@ import {
   Bot,
   Settings,
   LogOut,
-  LogIn,
-  UserPlus,
   Key,
 } from "lucide-react";
 import type { Project, Conversation } from "../../types";
@@ -44,7 +42,6 @@ interface ProjectsSidebarProps {
   userEmail?: string;
   userName?: string;
   onOpenSettings?: () => void;
-  onOpenAuth?: (mode: "signin" | "signup") => void;
   onLogout?: () => void;
 }
 
@@ -67,7 +64,6 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
   userEmail,
   userName,
   onOpenSettings,
-  onOpenAuth,
   onLogout,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -478,32 +474,7 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
                   </button>
                 )}
 
-                {!userEmail && onOpenAuth ? (
-                  <div className="pt-1 border-t border-white/10 flex flex-col gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        onOpenAuth("signin");
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-blue-400 hover:bg-blue-950/40 transition-colors text-left cursor-pointer font-medium"
-                    >
-                      <LogIn className="h-3.5 w-3.5" />
-                      <span>Log In to Account</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsUserMenuOpen(false);
-                        onOpenAuth("signup");
-                      }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-emerald-400 hover:bg-emerald-950/40 transition-colors text-left cursor-pointer font-medium"
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      <span>Sign Up for DELTA Cloud</span>
-                    </button>
-                  </div>
-                ) : onLogout ? (
+                {onLogout && (
                   <div className="pt-1 border-t border-white/10">
                     <button
                       type="button"
@@ -519,38 +490,38 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
                       <span>Sign Out</span>
                     </button>
                   </div>
-                ) : null}
+                )}
               </div>
             )}
 
-            {/* Sidebar Footer: User Avatar & Account Profile Setting Bar */}
+            {/* Sidebar Footer: User Circular Avatar & Profile */}
             <div className="p-2.5 border-t border-white/10 bg-[#121216]/90 flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                className="flex items-center gap-2 flex-1 min-w-0 p-1 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-left group"
+                className="flex items-center gap-2.5 flex-1 min-w-0 p-1.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-left group"
               >
-                {/* User Avatar Circle */}
+                {/* Modern Circular Avatar Icon with Status Dot */}
                 <div className="relative shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-black font-extrabold text-xs shadow-md shadow-emerald-500/20">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-black font-extrabold text-sm shadow-md shadow-emerald-500/20 ring-1 ring-white/20">
                     {userName
                       ? userName.substring(0, 2).toUpperCase()
                       : userEmail
                       ? userEmail.substring(0, 2).toUpperCase()
                       : "G"}
                   </div>
-                  <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#121216] ${userEmail ? "bg-emerald-400" : "bg-amber-400"}`} />
+                  <span className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#121216] ${userEmail ? "bg-emerald-400" : "bg-cyan-400"}`} />
                 </div>
 
                 {/* User Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-semibold text-white truncate group-hover:text-emerald-300 transition-colors">
-                      {userName || (userEmail ? userEmail.split("@")[0] : "Guest User")}
+                      {userName || (userEmail ? userEmail.split("@")[0] : "Active User")}
                     </span>
                   </div>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {userEmail || "Guest Mode"}
+                  <p className="text-[10px] text-gray-400 truncate font-mono">
+                    {userEmail || `id: ${userId.substring(0, 8)}`}
                   </p>
                 </div>
 
