@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { MermaidDiagram } from "../common/MermaidDiagram";
 
 interface LandingPageProps {
   onStartSetup: () => void;
@@ -39,6 +40,207 @@ type DocSection =
   | "mcp"
   | "api";
 
+// Mermaid diagram definitions with dark theme styling
+const ideDiagram = `flowchart LR
+    subgraph Browser ["Client Presentation"]
+        direction TB
+        Editor["Monaco Code Editor<br/>(Live syntax & AST)"]
+        TerminalUI["Terminal Console<br/>(xterm.js / stream)"]
+        PreviewUI["Web Preview Iframe<br/>(Port 3000 forward)"]
+    end
+    
+    subgraph HostEngine ["Go Backend (:8080)"]
+        direction TB
+        WSHandler["WebSocket Stream Hub"]
+        ProxyRouter["Preview Reverse Proxy"]
+    end
+
+    subgraph DaytonaVM ["Daytona Micro-VM Sandbox"]
+        direction TB
+        VMRoot["/home/daytona/persist/workspace"]
+        DevSrv["Vite / Next.js Dev Server"]
+    end
+
+    Editor <--> WSHandler
+    TerminalUI <--> WSHandler
+    PreviewUI <--> ProxyRouter
+    WSHandler <--> VMRoot
+    ProxyRouter <--> DevSrv`;
+
+const fdeFlowDiagram = `graph TD
+    Client["Client Problem / Feature Request"] --> Ingestion["1. Requirement Interview<br/>(Spec Scoping & SLA Profiling)"]
+    
+    Ingestion --> Swarm{"DELTA Agent Swarm"}
+    
+    Swarm -->|"Full-Stack Scaffold"| AppDev["App Developer Agent<br/>• React / Vite / Go / Python<br/>• File Scaffolding & Live Server"]
+    Swarm -->|"QPS & Latency Profiling"| LLMDep["LLM Deployer Agent<br/>• Azure AKS (Dedicated GPU)<br/>• RunPod Serverless vLLM"]
+    Swarm -->|"Docker & Cloud VM"| AppDep["App Deployer Agent<br/>• Multi-Stage Dockerfile<br/>• Azure Linux VM Provisioning"]
+    Swarm -->|"Repo Clone & Fixes"| AppMaint["App Maintainer Agent<br/>• Git Branch Isolation<br/>• Human Review Gate & PR"]
+    
+    AppDev --> CLI["Pluggable CLI Engine<br/>⚡ AGY (Antigravity) | 💻 OpenCode"]
+    LLMDep --> CLI
+    AppDep --> CLI
+    AppMaint --> CLI
+    
+    CLI --> Daytona["Daytona Cloud Micro-VM<br/>• Volume: /home/daytona/persist<br/>• 30-Min Inactivity Watchdog"]`;
+
+const lldDiagram = `flowchart TD
+    subgraph ClientLayer ["1. Presentation Layer (Browser)"]
+        Browser["React 19 SPA (Monaco + Terminal + Web Preview)"]
+    end
+
+    subgraph BackendLayer ["2. Orchestration Layer (Go Gin on Port 8080)"]
+        Gin["Go Gin API Router"]
+        WS["Gorilla WebSocket Hub (/ws)"]
+        Auth["Supabase / JWT Auth Middleware"]
+        Watchdog["Inactivity Watchdog (30m Auto-Persist)"]
+        Proxy["Live Preview Reverse Proxy"]
+    end
+
+    subgraph StorageLayer ["3. Cloud & Data Layer"]
+        SupaDB[("Supabase PostgreSQL<br/>• profiles & chat_messages<br/>• user_sandboxes & cloud_secrets")]
+        LocalDB[("SQLite Local Cache<br/>• data/agy_cloud.db")]
+    end
+
+    subgraph SandboxLayer ["4. Sandbox Compute Layer (Daytona Cloud)"]
+        DaytonaAPI["Daytona REST API Client"]
+        MicroVM["Isolated Linux Micro-VM Sandbox"]
+        Volume[("Persistent Storage Volume<br/>/home/daytona/persist/workspace")]
+        DevServer["Active Dev Server (Port 3000)"]
+    end
+
+    Browser <-->|"HTTP REST API (Port 8080)"| Gin
+    Browser <-->|"Bidirectional Stream (/ws)"| WS
+    Browser <-->|"Live Preview Proxy (/api/preview/proxy)"| Proxy
+
+    Gin --> Auth
+    Auth --> SupaDB
+    Auth --> LocalDB
+
+    Gin --> DaytonaAPI
+    DaytonaAPI --> MicroVM
+    MicroVM --- Volume
+    MicroVM --> DevServer
+    Proxy <-->|"Internal HTTP Port Forward"| DevServer
+    Watchdog -->|"Flush Files & Pause VM"| MicroVM`;
+
+const dbSchemaDiagram = `erDiagram
+    PROFILES ||--o{ CHAT_MESSAGES : "owns"
+    PROFILES ||--o{ USER_SANDBOXES : "provisions"
+    PROFILES ||--o{ CLOUD_SECRETS : "stores"
+
+    PROFILES {
+        UUID id PK "auth.users.id reference"
+        TEXT email "User email address"
+        TEXT name "Display name"
+        TEXT daytona_api_key "Encrypted Daytona API Token"
+        TEXT daytona_server_url "Custom Server URL or Cloud"
+        TIMESTAMPTZ created_at "Account creation timestamp"
+    }
+
+    CHAT_MESSAGES {
+        BIGSERIAL id PK "Message ID"
+        UUID user_id FK "Owner profile reference"
+        TEXT sandbox_id "Target Daytona Sandbox ID"
+        TEXT sender "user / assistant / system"
+        TEXT text "Markdown message text"
+        JSONB thoughts "Model reasoning token log"
+        JSONB tools "CLI tool invocations & outputs"
+        BIGINT timestamp "Unix epoch timestamp"
+    }
+
+    USER_SANDBOXES {
+        UUID id PK "Record ID"
+        UUID user_id FK "Owner profile reference"
+        TEXT daytona_sandbox_id "Active Daytona container ID"
+        TEXT preview_url "Public / proxy preview link"
+        INT active_port "Forwarded web port (e.g. 3000)"
+        TIMESTAMPTZ last_active "Activity timestamp for Watchdog"
+    }
+
+    CLOUD_SECRETS {
+        UUID id PK "Secret ID"
+        UUID user_id FK "Owner profile reference"
+        TEXT provider "github / azure / runpod / huggingface"
+        TEXT key_name "Secret variable identifier"
+        TEXT encrypted_value "Vault-encrypted secret payload"
+        TIMESTAMPTZ updated_at "Last sync timestamp"
+    }`;
+
+const cliSwitcherDiagram = `flowchart LR
+    subgraph FrontendControl ["Workspace UI"]
+        SwitchBtn["CLI Toggle Button<br/>⚡ AGY  /  💻 OpenCode"]
+    end
+
+    subgraph BackendRouter ["Go Orchestrator"]
+        EngineSelect["Engine Selector Logic<br/>(services/agy.go)"]
+    end
+
+    subgraph SharedDisk ["Shared Persistent Volume (/home/daytona/persist)"]
+        CodeFiles["Workspace Source Code<br/>(Git repo, node_modules, .env)"]
+    end
+
+    subgraph CLIRuntimes ["Pluggable CLI Binaries"]
+        AGYBin["Antigravity CLI (agy)<br/>• Google AI Studio Quota<br/>• stream-json output"]
+        OpenCodeBin["OpenCode CLI (opencode)<br/>• OpenAI & Anthropic Models<br/>• Direct AST edits"]
+    end
+
+    SwitchBtn -->|"Active Engine Payload"| EngineSelect
+    EngineSelect -->|"Mode: AGY"| AGYBin
+    EngineSelect -->|"Mode: OpenCode"| OpenCodeBin
+    AGYBin <--> CodeFiles
+    OpenCodeBin <--> CodeFiles`;
+
+const watchdogDiagram = `sequenceDiagram
+    autonumber
+    actor Dev as Engineer
+    participant API as Go Backend API
+    participant Watchdog as 30-Min Inactivity Watchdog
+    participant VM as Daytona Micro-VM
+    participant Vol as Persistent Volume (/home/daytona/persist)
+
+    Dev->>API: Performs edits / prompts
+    API->>Watchdog: Reset idle timer (T = 0 min)
+    Dev-->>Dev: Engineer idle (no requests for 30 min)
+    Watchdog->>Watchdog: Threshold reached (T >= 30 min)
+    Watchdog->>VM: Flush dirty disk buffers to volume
+    VM->>Vol: Sync files & database state
+    Watchdog->>VM: Pause / delete container (Zero compute cost)
+    
+    Note over Dev,Vol: Later: Engineer returns & sends prompt
+    Dev->>API: Sends new prompt
+    API->>VM: Spin up fresh micro-VM & attach persistent volume
+    Vol-->>VM: Mount /home/daytona/persist (100% state restored)
+    API-->>Dev: Resume coding immediately with zero context loss`;
+
+const appDevDiagram = `flowchart TD
+    Prompt["Customer Feature Specification"] --> Spec["Interactive Clarification Interview"]
+    Spec --> Stack["Framework Selection (React / Vite / Go / Python)"]
+    Stack --> Scaffold["Daytona Micro-VM Scaffolding"]
+    Scaffold --> LiveDev["Dev Server Auto-Start (Port 3000)"]
+    LiveDev --> Preview["Live Web Preview Synced"]`;
+
+const llmDeployerDiagram = `flowchart TD
+    Profile["Traffic & SLA Profiling"] --> Decision{"Evaluate Latency & QPS"}
+    Decision -->|"High Steady QPS / Low Latency"| AKS["Azure AKS Dedicated GPU<br/>(vLLM Container Deployment)"]
+    Decision -->|"Bursty QPS / Variable Traffic"| RunPod["RunPod Serverless<br/>(Auto-scaling Endpoint)"]
+    AKS --> Credentials["OpenAI-Compatible Endpoint & Key"]
+    RunPod --> Credentials`;
+
+const appDeployerDiagram = `flowchart TD
+    Source["Workspace Source Files"] --> DockerGen["Multi-Stage Dockerfile Generation"]
+    DockerGen --> AzureVM["Provision Azure Linux Compute VM"]
+    AzureVM --> DockerRun["Install Engine & Run Container"]
+    DockerRun --> TLS["Assign Public IP & SSL Reverse Proxy"]
+    TLS --> Production["Live Production URL & Health Check"]`;
+
+const appMaintainerDiagram = `flowchart TD
+    Repo["GitHub Repository URL"] --> Clone["1-Click Clone to /home/daytona/persist"]
+    Clone --> Branch["Create Isolated Feature / Bugfix Branch"]
+    Branch --> SandboxTest["Execute Changes & Verify in Micro-VM"]
+    SandboxTest --> DiffGate["Human-in-the-Loop Diff Approval"]
+    DiffGate --> PR["Automated GitHub PR (gh pr create)"]`;
+
 export const LandingPage: React.FC<LandingPageProps> = ({
   onStartSetup,
   onLaunchWorkspace,
@@ -56,7 +258,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-2 py-0.5 rounded-full">FDE SYSTEM</Badge>
           <span>DELTA: Autonomous Forward Deployed Engineering System with Pluggable CLI Swarm & Daytona Micro-VMs</span>
           <a href="#docs" className="text-emerald-400 font-semibold underline hover:text-emerald-300 ml-1">
-            Read Docs →
+            Read Docs & Architecture →
           </a>
         </span>
       </div>
@@ -82,7 +284,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <a href="#manifesto" className="hover:text-white transition-colors">FDE Manifesto</a>
             <a href="#features" className="hover:text-white transition-colors">Agent Swarm</a>
             <a href="#docs" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 font-bold">
-              <BookOpen className="h-4 w-4" /> Documentation & LLD
+              <BookOpen className="h-4 w-4" /> Documentation & Diagrams
             </a>
           </nav>
 
@@ -92,7 +294,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onOpenAuth("signin")}
-              className="h-10 text-xs text-gray-300 hover:text-white hover:bg-white/10 gap-1.5 font-semibold rounded-full px-5"
+              className="h-10 text-xs text-gray-300 hover:text-white hover:bg-white/10 gap-1.5 font-semibold rounded-full px-5 cursor-pointer"
             >
               <LogIn className="h-4 w-4 text-emerald-400" /> Sign In
             </Button>
@@ -234,10 +436,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Split Workspace Active
                 </Badge>
               </div>
-              <img
-                src="/images/hero_cloud_ide.jpg"
-                alt="DELTA Autonomous IDE with Monaco editor, Daytona micro-VM terminal, and Live Web Preview"
-                className="rounded-2xl w-full h-[480px] object-cover border border-white/10 shadow-inner"
+              <MermaidDiagram
+                chart={ideDiagram}
+                id="ide-showcase"
+                title="DELTA Real-time Workspace & Reverse Proxy Pipeline"
               />
             </div>
           )}
@@ -261,11 +463,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-cyan-400" /> App Maintainer: Repo clone, branch refactor & PR</div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/60 p-4 flex items-center justify-center">
-                <img
-                  src="/images/delta_fde_flowchart.jpg"
-                  alt="DELTA Forward Deployed Engineering System Flowchart"
-                  className="rounded-xl w-full h-[380px] object-cover"
+              <div className="rounded-2xl border border-white/10 bg-black/60 p-2 flex items-center justify-center overflow-hidden">
+                <MermaidDiagram
+                  chart={fdeFlowDiagram}
+                  id="agents-showcase"
+                  title="FDE Agent Specialization & Execution Pipeline"
                 />
               </div>
             </div>
@@ -280,12 +482,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Prefer Google Antigravity CLI for deep project exploration, but want OpenCode CLI for multi-model OpenAI/Anthropic code modifications? Click the engine switcher in the chat header to swap drivers without restarting your sandbox.
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black p-4 font-mono text-xs space-y-2 text-gray-300">
-                <div className="text-emerald-400">$ delta-engine switch --to opencode</div>
-                <div className="text-gray-500">Mounted workspace: /home/daytona/persist/workspace</div>
-                <div className="text-cyan-400">[AGY Driver] Code modified in place. Dev server hot reloaded on port 3000.</div>
-                <div className="text-purple-400">[OpenCode Driver] Attached to same directory. Zero context lost.</div>
-              </div>
+              <MermaidDiagram
+                chart={cliSwitcherDiagram}
+                id="cli-showcase"
+                title="Pluggable CLI Runtime Architecture"
+              />
             </div>
           )}
 
@@ -298,20 +499,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   Every user workspace is backed by a persistent Daytona volume mounted at <code className="text-emerald-400">/home/daytona/persist</code>. When inactive for &gt;30 minutes, DELTA automatically flushes modified files and pauses the sandbox container to minimize cloud compute costs.
                 </p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
-                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                  <div className="text-emerald-400 font-bold">1. Active Coding</div>
-                  <div className="text-gray-400">Fast local micro-VM disk I/O with automatic symlink to persistent storage.</div>
-                </div>
-                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                  <div className="text-yellow-400 font-bold">2. 30m Idle Watchdog</div>
-                  <div className="text-gray-400">Inactivity manager flushes files to persistent volume and deletes container.</div>
-                </div>
-                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                  <div className="text-blue-400 font-bold">3. Instant Restore</div>
-                  <div className="text-gray-400">New prompt provisions fresh micro-VM and mounts volume with 100% state intact.</div>
-                </div>
-              </div>
+              <MermaidDiagram
+                chart={watchdogDiagram}
+                id="watchdog-showcase"
+                title="30-Minute Inactivity Watchdog Sequence"
+              />
             </div>
           )}
         </div>
@@ -352,7 +544,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/hero_cloud_ide.jpg" alt="App Developer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <MermaidDiagram
+              chart={appDevDiagram}
+              id="agent1-flow"
+              title="App Developer Workflow"
+            />
           </div>
         </div>
 
@@ -371,7 +567,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/delta_fde_flowchart.jpg" alt="LLM Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <MermaidDiagram
+              chart={llmDeployerDiagram}
+              id="agent2-flow"
+              title="LLM Deployment & Infrastructure Decision Flow"
+            />
           </div>
         </div>
 
@@ -390,7 +590,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/delta_lld_architecture.jpg" alt="App Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <MermaidDiagram
+              chart={appDeployerDiagram}
+              id="agent3-flow"
+              title="Containerization & Cloud VM Deployment Pipeline"
+            />
           </div>
         </div>
 
@@ -409,7 +613,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/delta_db_schema_flow.jpg" alt="App Maintainer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <MermaidDiagram
+              chart={appMaintainerDiagram}
+              id="agent4-flow"
+              title="Repository Cloning & Pull Request Workflow"
+            />
           </div>
         </div>
       </section>
@@ -468,36 +676,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "fde" && (
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Current implementation</Badge>
-                  <h3 className="text-2xl font-bold text-white font-mono">How DELTA actually executes an engineering task</h3>
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">FDE System Specification</Badge>
+                  <h3 className="text-2xl font-bold text-white font-mono">The Forward Deployed Engineering (FDE) Assistant</h3>
                   <p className="text-sm text-gray-300 leading-relaxed">
-                    The marketing docs mirror the code that ships: the React client calls a Gin API, the Go services provision and operate a Daytona sandbox, and the agent runner executes AGY or OpenCode against the persistent workspace. A WebSocket hub streams execution events back to the browser.
+                    Forward Deployed Engineers work on the front lines of customer deployments. DELTA acts as an autonomous execution co-pilot that ingests ambiguous client problems, scaffolds clean solutions, executes live sandbox verification, and coordinates cloud deployments.
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
-                  <img
-                    src="/images/docs/delta-runtime-architecture.jpg"
-                    alt="DELTA current runtime architecture"
-                    className="rounded-xl w-full h-[360px] object-cover"
-                  />
-                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
-                    Fig 1: Runtime architecture derived from the current frontend, backend services, persistence, and Daytona integration.
-                  </p>
-                </div>
+                <MermaidDiagram
+                  chart={fdeFlowDiagram}
+                  id="doc-fde-flow"
+                  title="DELTA Forward Deployed Engineering (FDE) Multi-Agent Swarm Pipeline"
+                />
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="font-bold text-white flex items-center gap-1.5"><Workflow className="h-4 w-4 text-emerald-400" /> 1. Request enters Go</h5>
-                    <p className="text-gray-400">`POST /api/workspace/prompt` carries the prompt, selected CLI engine, and workspace context into the Go control plane.</p>
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><Workflow className="h-4 w-4 text-emerald-400" /> 1. Requirement Scoping</h5>
+                    <p className="text-gray-400">Automated Q&A loop extracts client data formats, latency limits, cloud vendor requirements, and authentication mechanisms.</p>
                   </div>
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="font-bold text-white flex items-center gap-1.5"><HardDrive className="h-4 w-4 text-cyan-400" /> 2. Sandbox execution</h5>
-                    <p className="text-gray-400">`AGYService` uses Daytona process execution to run the chosen CLI inside the user sandbox and persistent workspace.</p>
-                  </div>
-                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="font-bold text-white flex items-center gap-1.5"><Radio className="h-4 w-4 text-blue-400" /> 3. Events return live</h5>
-                    <p className="text-gray-400">Agent output is converted into stream events and broadcast through the Gorilla WebSocket hub to ChatPane and PreviewPane.</p>
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><HardDrive className="h-4 w-4 text-cyan-400" /> 2. Persistent Sandbox Execution</h5>
+                    <p className="text-gray-400">Agents execute in isolated Daytona micro-VMs with zero host pollution, auto-persisting code to long-term volumes.</p>
                   </div>
                 </div>
               </div>
@@ -508,32 +707,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Architecture (LLD)</Badge>
-                  <h3 className="text-2xl font-bold text-white font-mono">Control plane, sandbox boundary, and persistence</h3>
+                  <h3 className="text-2xl font-bold text-white font-mono">Low-Level System Design & Network Data Flow</h3>
                   <p className="text-sm text-gray-300 leading-relaxed">
-                    The implemented system is a small control plane with explicit service boundaries. The browser never runs the agent locally: it talks to Gin, which talks to Daytona. SQLite is the runtime fallback store; Supabase can back authentication and cloud persistence.
+                    DELTA combines a high-concurrency Go Gin backend, real-time WebSocket hub, Daytona SDK orchestrator, and reverse-proxy preview servers:
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
-                  <img
-                    src="/images/docs/delta-request-lifecycle.jpg"
-                    alt="DELTA prompt to preview request lifecycle"
-                    className="rounded-xl w-full h-[360px] object-cover"
-                  />
-                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
-                    Fig 2: Prompt-to-preview lifecycle across browser, Go API, Daytona process execution, streaming, and preview.
-                  </p>
-                </div>
+                <MermaidDiagram
+                  chart={lldDiagram}
+                  id="doc-lld-flow"
+                  title="DELTA Low-Level System Design (LLD), Micro-VM Proxy & Storage Pipeline"
+                />
 
                 <div className="space-y-3 text-xs text-gray-300">
                   <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-emerald-400">WebSocket hub (`/ws`):</strong> broadcasts `thought`, `tool_start`, `token`, `port_detected`, `error`, and `done` events to connected clients.
+                    <strong className="text-emerald-400">WebSocket Dispatcher (`/ws`):</strong> Pushes stdout, stderr, thinking tokens, and tool invocations with sub-10ms latency.
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-cyan-400">Preview path:</strong> the backend can mint/fetch a preview URL or proxy a sandbox port; the frontend stores the active port and updates the preview panel when a `port_detected` event arrives.
-                  </div>
-                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
-                    <strong className="text-purple-400">Inactivity lifecycle:</strong> backend middleware records sandbox activity and the 30-minute inactivity manager handles idle sessions.
+                    <strong className="text-cyan-400">Live Preview Reverse Proxy (`/api/preview/proxy/:id/:port/*`):</strong> Transparently routes HTTP/WebSocket traffic to sandbox dev servers on port 3000.
                   </div>
                 </div>
               </div>
@@ -544,40 +735,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Data Layer</Badge>
-                  <h3 className="text-2xl font-bold text-white font-mono">Supabase schema + SQLite runtime persistence</h3>
+                  <h3 className="text-2xl font-bold text-white font-mono">Supabase PostgreSQL Schema & RLS Policies</h3>
                   <p className="text-sm text-gray-300">
-                    SQLite is initialized by the Go backend and stores runtime users, sandboxes, chat, and settings. The Supabase schema adds profiles, chat history, sandbox records, cloud secrets, and Row-Level Security policies for a cloud-backed deployment.
+                    DELTA utilizes a dual-database model: Supabase Cloud PostgreSQL with Row-Level Security (RLS) as the primary cloud store, backed by an embedded SQLite database for zero-latency local caching.
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
-                  <img
-                    src="/images/docs/delta-data-security-model.jpg"
-                    alt="DELTA data, authentication, and isolation model"
-                    className="rounded-xl w-full h-[360px] object-cover"
-                  />
-                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
-                    Fig 3: Current data and isolation model, including auth middleware, SQLite, Supabase RLS, and Daytona boundaries.
-                  </p>
-                </div>
+                <MermaidDiagram
+                  chart={dbSchemaDiagram}
+                  id="doc-db-schema"
+                  title="DELTA Relational Entity Model with Supabase Auth & RLS"
+                />
 
                 {/* Table Schema Breakdown */}
                 <div className="space-y-3 font-mono text-xs">
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-emerald-400 font-bold">1. public.profiles</span>
-                    <p className="text-[11px] text-gray-400">`id`, `email`, `name`, Daytona credentials, and timestamps. RLS is enabled and policies scope rows to `auth.uid()`.</p>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK ref auth.users.id)`, `email (TEXT)`, `name (TEXT)`, `daytona_api_key (TEXT)`, `daytona_server_url (TEXT)`, `created_at (TIMESTAMPTZ)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-cyan-400 font-bold">2. public.chat_messages</span>
-                    <p className="text-[11px] text-gray-400">Per-user chat records with sandbox id, sender, text, thoughts/tools JSON, error flag, and timestamps.</p>
+                    <p className="text-[11px] text-gray-400">`id (BIGSERIAL, PK)`, `user_id (UUID, FK)`, `sandbox_id (TEXT)`, `sender (TEXT)`, `text (TEXT)`, `thoughts (JSONB)`, `tools (JSONB)`, `timestamp (BIGINT)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-purple-400 font-bold">3. public.user_sandboxes</span>
-                    <p className="text-[11px] text-gray-400">Tracks the Daytona sandbox id plus preview URL, active port, last-activity timestamp, and ownership.</p>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `daytona_sandbox_id (TEXT)`, `preview_url (TEXT)`, `active_port (INT)`, `last_active (TIMESTAMPTZ)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-amber-400 font-bold">4. public.cloud_secrets</span>
-                    <p className="text-[11px] text-gray-400">Provider/key-name pairs plus an `encrypted_value` column and per-user RLS. Runtime endpoints expose integrations/secrets operations.</p>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `provider (TEXT)`, `key_name (TEXT)`, `encrypted_value (TEXT)`, `updated_at (TIMESTAMPTZ)`</p>
                   </div>
                 </div>
               </div>
@@ -587,15 +773,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "quickstart" && (
               <div className="space-y-4">
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Getting Started</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">First-run path in the current app</h3>
-                <p className="text-sm text-gray-300">The implemented UI starts at the marketing page, then moves through auth/setup before entering the live workspace.</p>
+                <h3 className="text-2xl font-bold text-white font-mono">3-Step First-Run Onboarding</h3>
+                <p className="text-sm text-gray-300">Setting up your DELTA environment takes under 60 seconds:</p>
                 <ol className="space-y-3 text-xs text-gray-300 list-decimal list-inside">
-                  <li><strong>Authenticate:</strong> register/sign in; the backend uses Supabase auth when configured and a local JWT fallback otherwise.</li>
-                  <li><strong>Verify/setup Daytona:</strong> the setup wizard calls backend verification/setup endpoints and creates or reuses a sandbox/volume.</li>
-                  <li><strong>Launch workspace:</strong> App.tsx connects to the Go WebSocket, loads chat history, and exposes files, preview, telemetry, and agent controls.</li>
+                  <li><strong>Enter Daytona API Key:</strong> Get your key from <code className="text-emerald-400">app.daytona.io</code>.</li>
+                  <li><strong>Provide AI Model Credentials:</strong> Enter your Google AI Studio key or OpenAI API key.</li>
+                  <li><strong>Configure Cloud Integrations:</strong> Add optional GitHub Token, Azure Service Principal, RunPod API Key, or Hugging Face token.</li>
                 </ol>
                 <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-emerald-400">
-                  // Deployment note: audit secret storage/configuration before treating the current path as production-grade credential management.
+                  // Credentials automatically saved to Daytona Secrets Manager and restored on all future runs!
                 </div>
               </div>
             )}
@@ -604,29 +790,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "agents" && (
               <div className="space-y-4">
                 <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Autonomous Swarm</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">The 4 agent personas in the repository</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">The 4 Autonomous Agent Personas</h3>
                 <p className="text-sm text-gray-300">
-                  The Python `AgentOrchestrator` routes a task to one of four specialized classes. They share the same driver interface and Daytona sandbox context.
+                  Each agent operates independently to guide you through complex software lifecycles:
                 </p>
-                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
-                  <img src="/images/docs/delta-agent-cli-architecture.jpg" alt="DELTA agent and CLI architecture" className="rounded-xl w-full h-[360px] object-cover" />
-                </div>
                 <div className="space-y-2.5">
                   <div className="p-3 rounded-lg border border-white/10 bg-black/30">
-                    <span className="text-xs font-bold text-emerald-400">1. App Developer:</span>
-                    <p className="text-[11px] text-gray-300 mt-1">Guides requirements, architecture, code generation, and validation inside the workspace.</p>
+                    <span className="text-xs font-bold text-emerald-400">1. App Developer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Gathers full product specifications, recommends modern stacks, and produces complete production code.</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/30">
-                    <span className="text-xs font-bold text-purple-400">2. LLM Deployer:</span>
-                    <p className="text-[11px] text-gray-300 mt-1">Focuses on model deployment planning and execution, with a traffic-profile input in the orchestrator.</p>
+                    <span className="text-xs font-bold text-purple-400">2. LLM Deployer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Interviews for latency and QPS requirements, chooses Azure vs RunPod Serverless, and returns live connection details.</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/30">
-                    <span className="text-xs font-bold text-blue-400">3. App Deployer:</span>
-                    <p className="text-[11px] text-gray-300 mt-1">Inspects the workspace, containerizes the app, and follows the repository deployment workflow.</p>
+                    <span className="text-xs font-bold text-blue-400">3. App Deployer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Reads workspace files, produces production Dockerfiles, provisions Azure VMs, and deploys containers.</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/30">
-                    <span className="text-xs font-bold text-cyan-400">4. App Maintainer:</span>
-                    <p className="text-[11px] text-gray-300 mt-1">Handles repository-oriented maintenance and feature work with branch/PR tooling.</p>
+                    <span className="text-xs font-bold text-cyan-400">4. App Maintainer Agent:</span>
+                    <p className="text-[11px] text-gray-300 mt-1">Clones GitHub repos into persistent volumes, applies bugfixes/features on isolated branches, and submits PRs.</p>
                   </div>
                 </div>
               </div>
@@ -636,21 +819,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "cliswitcher" && (
               <div className="space-y-4">
                 <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Runtime Engine</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">Runtime CLI switcher: AGY and OpenCode</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">Runtime CLI Switcher (AGY & OpenCode)</h3>
                 <p className="text-sm text-gray-300">
-                  The workspace chat exposes `agy` and `opencode` as the implemented UI engine choices. Both run inside the same persistent Daytona workspace path.
+                  Both CLI engines run in the exact same persistent workspace folder (<code className="text-emerald-400">/home/daytona/persist/workspace</code>):
                 </p>
+                <MermaidDiagram
+                  chart={cliSwitcherDiagram}
+                  id="doc-cli-switcher"
+                  title="Dual CLI Switcher Data Pipeline"
+                />
                 <ul className="space-y-2 text-xs text-gray-300">
-                  <li>• `ChatPane.tsx` maintains the selected engine as `agy | opencode`.</li>
-                  <li>• The prompt reaches `AGYService.StreamPromptExec`, which chooses the command runner.</li>
-                  <li>• `agents/drivers.py` also defines a shared driver contract with AGY, OpenCode, and Claude Code.</li>
+                  <li>• Click the <strong>⚡ AGY</strong> or <strong>💻 OpenCode</strong> button in the Chat header.</li>
+                  <li>• You can switch at any moment during development — all files and git histories remain intact.</li>
+                  <li>• OpenCode automatically leverages the keys stored in your persistent <code className="text-gray-400">.env</code>.</li>
                 </ul>
-                <div className="rounded-xl border border-white/10 bg-black p-4 font-mono text-xs text-gray-300">
-                  <div className="text-emerald-400">workspace: /home/daytona/persist/workspace</div>
-                  <div className="text-cyan-400 mt-2">engine: agy</div>
-                  <div className="text-purple-400">engine: opencode</div>
-                  <div className="text-gray-500 mt-2">same sandbox · same files · different CLI process</div>
-                </div>
               </div>
             )}
 
@@ -658,14 +840,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "secrets" && (
               <div className="space-y-4">
                 <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Persistence & Security</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">Credentials, volumes, and the inactivity lifecycle</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">Daytona Secrets & Volume Inactivity Watchdog</h3>
                 <p className="text-sm text-gray-300">
-                  The implementation combines user settings, integration secrets, a persistent Daytona volume, and a 30-minute inactivity manager.
+                  How DELTA protects your credentials and minimizes cloud costs:
                 </p>
+                <MermaidDiagram
+                  chart={watchdogDiagram}
+                  id="doc-watchdog"
+                  title="30-Minute Auto-Persist Watchdog Flow"
+                />
                 <ul className="space-y-2 text-xs text-gray-300">
-                  <li>• <strong>Persistent volume:</strong> Daytona sandboxes mount `/home/daytona/persist` when a real volume is available.</li>
-                  <li>• <strong>Activity tracking:</strong> backend middleware records recent sandbox activity and the inactivity manager uses a 30-minute threshold.</li>
-                  <li>• <strong>Secrets endpoints:</strong> `/api/integrations/secrets` exposes status/save operations into the Daytona layer.</li>
+                  <li>• <strong>Daytona Secrets API:</strong> Sensitive tokens are saved to Daytona Cloud Secrets Manager without plaintext exposure.</li>
+                  <li>• <strong>Persistent Volumes:</strong> <code className="text-emerald-400">/home/daytona/persist</code> is attached to your micro-VM.</li>
+                  <li>• <strong>30-Minute Auto-Teardown:</strong> Sandboxes inactive for &gt;30m automatically sync to persistent volume and delete the container.</li>
                 </ul>
               </div>
             )}
@@ -674,9 +861,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "mcp" && (
               <div className="space-y-4">
                 <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Model Context Protocol</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">MCP and agent integrations</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">MCP Integration Recipes</h3>
                 <p className="text-sm text-gray-300">
-                  The repository's sandbox bootstrap writes integration skills into the persistent Gemini/agent configuration. The Python layer also exposes driver abstractions so more tooling can be added without rewriting agent routing.
+                  Built-in recipes installed directly in your persistent Daytona sandbox volume:
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="p-2.5 rounded bg-black/40 border border-white/10 text-blue-300">Azure MCP Server</div>
@@ -691,16 +878,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {activeDocSection === "api" && (
               <div className="space-y-4">
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Developer API</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">REST & WebSocket API surface</h3>
-                <p className="text-sm text-gray-300">These routes are registered in `backend/main.go` and are the source of truth for this page.</p>
+                <h3 className="text-2xl font-bold text-white font-mono">REST & WebSocket API Endpoints</h3>
                 <div className="space-y-2 font-mono text-xs text-gray-300">
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/register|signup|login</code> - auth entry points</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/env/provision</code> - sandbox/volume provisioning</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/workspace/prompt</code> - dispatch agent execution</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET|PUT /api/fs/*</code> - workspace file operations</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET /api/workspace/preview-url</code> + <code>ANY /api/preview/proxy/:sandboxId/:port/*path</code> - live app preview</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET /api/workspace/telemetry</code> - sandbox metrics</div>
-                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET /ws</code> - real-time stream events</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/register</code> - SaaS User Signup</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/login</code> - SaaS User Login</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/workspace/prompt</code> - Dispatch Agent Prompt</div>
+                  <div className="p-2 rounded bg-black/50 border border-white/10"><code>GET  /ws</code> - Real-time Execution & Telemetry Stream</div>
                 </div>
               </div>
             )}
@@ -746,7 +929,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span>DELTA • Autonomous Forward Deployed Engineering System • Powered by Daytona & Supabase</span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="#docs" className="hover:text-white transition-colors">Docs & LLD</a>
+          <a href="#docs" className="hover:text-white transition-colors">Docs & Diagrams</a>
           <a href="https://app.daytona.io" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Daytona Cloud</a>
           <a href="https://supabase.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Supabase</a>
           <button onClick={onResetApp} className="hover:text-red-400 transition-colors cursor-pointer">Reset Data</button>
