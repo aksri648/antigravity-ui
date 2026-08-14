@@ -30,20 +30,20 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const isGuest = !userEmail && !userName;
 
   return (
-    <header className="h-13 border-b border-border bg-card px-4 flex items-center justify-between">
+    <header className="h-14 border-b border-white/10 bg-[#121216] px-4 sm:px-6 flex items-center justify-between">
       {/* Brand & Title */}
       <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md">
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-md shadow-emerald-500/20">
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold tracking-tight text-white">AGY Cloud SaaS</h1>
-            <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-blue-500/40 text-blue-400 font-mono">
-              Multi-User
+            <h1 className="text-sm font-extrabold tracking-tight text-white font-mono">AGY CLOUD</h1>
+            <Badge variant="outline" className="text-[10px] py-0 px-2 border-emerald-500/40 text-emerald-400 font-mono">
+              SaaS IDE
             </Badge>
           </div>
-          <p className="text-[10px] text-muted-foreground">Autonomous Code Agent + Daytona MicroVMs</p>
+          <p className="text-[10px] text-gray-400">Autonomous Code Agents • Daytona MicroVMs</p>
         </div>
       </div>
 

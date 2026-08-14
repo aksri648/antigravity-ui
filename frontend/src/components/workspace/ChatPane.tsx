@@ -127,26 +127,26 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   };
 
   return (
-    <div className="flex h-full flex-col bg-[#141416] border-r border-border/80">
+    <div className="flex h-full flex-col bg-[#0f0f12] border-r border-white/10">
       {/* Top Header with CLI Switcher */}
-      <div className="h-11 px-3 border-b border-border/80 flex items-center justify-between bg-[#18181b]/95">
-        <div className="flex items-center gap-2 text-xs font-semibold text-white">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600/20 text-blue-400 border border-blue-500/30">
+      <div className="h-12 px-3.5 border-b border-white/10 flex items-center justify-between bg-[#141418]">
+        <div className="flex items-center gap-2 text-xs font-bold text-white font-mono">
+          <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
             <Bot className="h-3.5 w-3.5" />
           </div>
-          <span>AGY Multi-Agent</span>
+          <span>AGY AGENT</span>
         </div>
 
         {/* Switch CLI Button / Selector */}
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center bg-black/60 border border-border/80 rounded-lg p-0.5 text-[10px]">
+          <div className="flex items-center bg-black/60 border border-white/15 rounded-lg p-0.5 text-[10px]">
             <button
               type="button"
               onClick={() => handleEngineToggle("agy")}
-              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
                 selectedEngine === "agy"
-                  ? "bg-blue-600 text-white font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-emerald-500 text-black font-extrabold shadow-sm"
+                  : "text-gray-400 hover:text-white"
               }`}
               title="Execute using Antigravity CLI (agy) inside ~/workspace"
             >
@@ -155,10 +155,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             <button
               type="button"
               onClick={() => handleEngineToggle("opencode")}
-              className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+              className={`px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer ${
                 selectedEngine === "opencode"
-                  ? "bg-cyan-600 text-white font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-white"
+                  ? "bg-cyan-500 text-black font-extrabold shadow-sm"
+                  : "text-gray-400 hover:text-white"
               }`}
               title="Execute using OpenCode CLI inside ~/workspace"
             >
