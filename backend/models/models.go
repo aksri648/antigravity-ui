@@ -334,3 +334,55 @@ type OTelSpan struct {
 	Timestamp  int64  `json:"timestamp"`
 }
 
+// LLM Deployment Information Models (Read-only observability)
+type LLMDeployment struct {
+	ID             string    `json:"id"`
+	UserID         string    `json:"userId"`
+	ProjectID      string    `json:"projectId,omitempty"`
+	SandboxID      string    `json:"sandboxId,omitempty"`
+	ModelName      string    `json:"modelName"`
+	Provider       string    `json:"provider"`
+	EndpointURL    string    `json:"endpointUrl"`
+	GPUType        string    `json:"gpuType"`
+	TrafficProfile string    `json:"trafficProfile"`
+	CostEstimate   string    `json:"costEstimate"`
+	Status         string    `json:"status"` // "RUNNING", "PROVISIONING", "STOPPED", "FAILED"
+	LatencyMs      int       `json:"latencyMs"`
+	ThroughputTPS  float64   `json:"throughputTps"`
+	ContextLength  int       `json:"contextLength"`
+	Quantization   string    `json:"quantization"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+// Application Deployment Information Models (Read-only observability)
+type AppDeployment struct {
+	ID                string    `json:"id"`
+	UserID            string    `json:"userId"`
+	ProjectID         string    `json:"projectId,omitempty"`
+	SandboxID         string    `json:"sandboxId,omitempty"`
+	AppName           string    `json:"appName"`
+	Provider          string    `json:"provider"`
+	PublicURL         string    `json:"publicUrl"`
+	Port              int       `json:"port"`
+	ImageTag          string    `json:"imageTag"`
+	InstanceType      string    `json:"instanceType"`
+	Status            string    `json:"status"` // "DEPLOYED", "BUILDING", "HEALTHY", "FAILED"
+	SSLEnabled        bool      `json:"sslEnabled"`
+	Replicas          int       `json:"replicas"`
+	CPUUtilization    float64   `json:"cpuUtilization"`
+	MemoryUtilization float64   `json:"memoryUtilization"`
+	Uptime            string    `json:"uptime"`
+	CreatedAt         time.Time `json:"createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt"`
+}
+
+type DeploymentSummary struct {
+	TotalLLMDeployments int             `json:"totalLlmDeployments"`
+	ActiveLLMCount      int             `json:"activeLlmCount"`
+	TotalAppDeployments int             `json:"totalAppDeployments"`
+	ActiveAppCount      int             `json:"activeAppCount"`
+	LLMDeployments      []LLMDeployment `json:"llmDeployments"`
+	AppDeployments      []AppDeployment `json:"appDeployments"`
+}
+

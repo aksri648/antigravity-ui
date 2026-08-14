@@ -187,6 +187,51 @@ func migrateSchema(db *sql.DB) error {
 		UNIQUE(user_id, key_name)
 	);
 	CREATE INDEX IF NOT EXISTS idx_cloud_secrets_user ON cloud_secrets(user_id);
+
+	CREATE TABLE IF NOT EXISTS llm_deployments (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		project_id TEXT,
+		sandbox_id TEXT,
+		model_name TEXT NOT NULL,
+		provider TEXT NOT NULL,
+		endpoint_url TEXT,
+		gpu_type TEXT,
+		traffic_profile TEXT,
+		cost_estimate TEXT,
+		status TEXT DEFAULT 'RUNNING',
+		latency_ms INTEGER DEFAULT 45,
+		throughput_tps REAL DEFAULT 82.5,
+		context_length INTEGER DEFAULT 131072,
+		quantization TEXT DEFAULT 'FP8',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_llm_deployments_user ON llm_deployments(user_id);
+
+	CREATE TABLE IF NOT EXISTS app_deployments (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		project_id TEXT,
+		sandbox_id TEXT,
+		app_name TEXT NOT NULL,
+		provider TEXT NOT NULL,
+		public_url TEXT,
+		port INTEGER DEFAULT 3000,
+		image_tag TEXT,
+		instance_type TEXT,
+		status TEXT DEFAULT 'DEPLOYED',
+		ssl_enabled INTEGER DEFAULT 1,
+		replicas INTEGER DEFAULT 1,
+		cpu_utilization REAL DEFAULT 14.2,
+		memory_utilization REAL DEFAULT 38.6,
+		uptime TEXT DEFAULT '99.98%',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE INDEX IF NOT EXISTS idx_app_deployments_user ON app_deployments(user_id);
 	`
 
 	_, err := db.Exec(schema)

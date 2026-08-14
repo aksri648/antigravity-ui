@@ -19,6 +19,7 @@ import {
   Square,
   Sparkles,
   Activity,
+  Layers,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
@@ -26,6 +27,7 @@ import { Badge } from "../ui/badge";
 import { FileTree } from "./FileTree";
 import type { FileNode } from "./FileTree";
 import { TelemetryView } from "./TelemetryView";
+import { DeploymentsView } from "./DeploymentsView";
 import { apiUrl } from "../../config/api";
 
 interface PreviewPaneProps {
@@ -36,6 +38,8 @@ interface PreviewPaneProps {
   activePort: number;
   terminalLogs: string[];
   onPortChange: (port: number) => void;
+  userId?: string;
+  projectId?: string;
 }
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
@@ -46,8 +50,10 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   activePort,
   terminalLogs,
   onPortChange,
+  userId,
+  projectId,
 }) => {
-  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal" | "telemetry">("preview");
+  const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal" | "telemetry" | "deployments">("preview");
   const [iframeKey, setIframeKey] = useState(0);
 
   // Signed Preview URL State (Direct Daytona Auth embedded URL for iframes)
@@ -409,6 +415,15 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
             className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
           >
             <Activity className="h-3.5 w-3.5 text-cyan-400" /> Telemetry & OTEL
+          </Button>
+
+          <Button
+            variant={activeTab === "deployments" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("deployments")}
+            className="h-7 text-xs gap-1.5 px-3 font-medium rounded-xl border border-transparent hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_0_12px_rgba(255,255,255,0.05)] transition-all"
+          >
+            <Layers className="h-3.5 w-3.5 text-purple-400" /> Deployments
           </Button>
         </div>
 
@@ -866,6 +881,11 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         {/* MODE 4: OPEN TELEMETRY OBSERVABILITY DASHBOARD */}
         {activeTab === "telemetry" && (
           <TelemetryView sandboxId={sandboxId} apiKey={apiKey} serverUrl={serverUrl} />
+        )}
+
+        {/* MODE 5: LLM & APPLICATION DEPLOYMENTS OBSERVABILITY */}
+        {activeTab === "deployments" && (
+          <DeploymentsView userId={userId} projectId={projectId} sandboxId={sandboxId} />
         )}
       </div>
     </div>

@@ -1002,6 +1002,8 @@ export function App() {
                 previewUrl={previewUrl}
                 activePort={activePort}
                 terminalLogs={terminalLogs}
+                userId={userId}
+                projectId={activeProject?.id}
                 onPortChange={(port) => {
                   setActivePort(port);
                   if (sandboxId) {

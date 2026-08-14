@@ -200,6 +200,11 @@ func main() {
 		api.GET("/integrations/secrets", handlers.GetSecretsStatusHandler(daytonaSvc))
 		api.POST("/integrations/secrets", handlers.SaveSecretsHandler(daytonaSvc))
 
+		// LLM & Application Deployments (Observability & Management)
+		api.GET("/deployments/llm", handlers.ListLLMDeploymentsHandler(userSvc))
+		api.GET("/deployments/app", handlers.ListAppDeploymentsHandler(userSvc))
+		api.GET("/deployments/summary", handlers.GetDeploymentSummaryHandler(userSvc))
+
 		// Daytona Webhooks
 		api.POST("/webhooks/daytona", handlers.DaytonaWebhookHandler(daytonaSvc, wsHub))
 	}
