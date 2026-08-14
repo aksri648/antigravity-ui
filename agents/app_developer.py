@@ -22,6 +22,7 @@ class AppDeveloperAgent:
         "llamaindex_rag": "https://docs.llamaindex.ai/en/stable/",
         "pgvector": "https://github.com/pgvector/pgvector",
         "qdrant_vector_db": "https://qdrant.tech/documentation/",
+        "chroma_vector_db": "https://docs.trychroma.com/",
         # Model Providers, Function Calling & Structured Outputs
         "openai_structured_outputs": "https://platform.openai.com/docs/guides/structured-outputs",
         "openai_function_calling": "https://platform.openai.com/docs/guides/function-calling",

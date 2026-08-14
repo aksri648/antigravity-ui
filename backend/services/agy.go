@@ -170,6 +170,7 @@ description: Full-stack application creation, architecture planning, code genera
   - LlamaIndex (Advanced RAG): https://docs.llamaindex.ai/en/stable/
   - pgvector (PostgreSQL Vector Search): https://github.com/pgvector/pgvector
   - Qdrant Vector Search Engine: https://qdrant.tech/documentation/
+  - Chroma DB (Embeddings & Vector Store): https://docs.trychroma.com/
 - **Model Providers, Function Calling & Structured Outputs**:
   - OpenAI Structured Outputs & Function Calling: https://platform.openai.com/docs/guides/structured-outputs
   - Anthropic Claude Tool Use: https://docs.anthropic.com/en/docs/build-with-claude/tool-use
