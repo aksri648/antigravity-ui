@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,8 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware validates JWT token from Authorization header or query param
-func AuthMiddleware(userSvc *services.UserService) gin.HandlerFunc {
+// AuthMiddleware validates JWT token from Authorization header or query param via Supabase or SQLite
+func AuthMiddleware(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		tokenStr := ""
@@ -23,6 +24,24 @@ func AuthMiddleware(userSvc *services.UserService) gin.HandlerFunc {
 		}
 
 		if tokenStr != "" {
+			// 1. Try Supabase Token Verification if configured
+			if supabaseSvc != nil && supabaseSvc.IsConfigured() {
+				if supaUser, err := supabaseSvc.VerifyToken(tokenStr); err == nil && supaUser != nil {
+					c.Set("userId", supaUser.ID)
+					c.Set("email", supaUser.Email)
+					c.Set("name", supaUser.Name)
+					if supaUser.DaytonaApiKey != "" {
+						c.Set("daytonaApiKey", supaUser.DaytonaApiKey)
+					}
+					if supaUser.DaytonaServerUrl != "" {
+						c.Set("daytonaServerUrl", supaUser.DaytonaServerUrl)
+					}
+					c.Next()
+					return
+				}
+			}
+
+			// 2. Fallback to local JWT verification
 			claims, err := userSvc.ValidateJWT(tokenStr)
 			if err == nil && claims != nil {
 				c.Set("userId", (*claims)["userId"])
@@ -37,18 +56,29 @@ func AuthMiddleware(userSvc *services.UserService) gin.HandlerFunc {
 			}
 		}
 
-		// Allow request to continue (handlers check for userId or fallback to default)
+		// Allow request to continue
 		c.Next()
 	}
 }
 
-// Register handles SaaS user signup
-func Register(userSvc *services.UserService) gin.HandlerFunc {
+// Register handles SaaS user signup via Supabase Auth or SQLite
+func Register(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.RegisterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 			return
+		}
+
+		// If Supabase Auth is configured, sign up through Supabase
+		if supabaseSvc != nil && supabaseSvc.IsConfigured() {
+			supaResp, err := supabaseSvc.SignUp(req.Email, req.Password, req.Name, req.DaytonaApiKey, req.DaytonaServerUrl)
+			if err == nil && supaResp != nil {
+				// Mirror to local SQLite database
+				_, _ = userSvc.Register(req)
+				c.JSON(http.StatusCreated, supaResp)
+				return
+			}
 		}
 
 		resp, err := userSvc.Register(req)
@@ -61,13 +91,22 @@ func Register(userSvc *services.UserService) gin.HandlerFunc {
 	}
 }
 
-// Login handles SaaS user sign in
-func Login(userSvc *services.UserService) gin.HandlerFunc {
+// Login handles SaaS user sign in via Supabase Auth or SQLite
+func Login(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.LoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid login credentials"})
 			return
+		}
+
+		// If Supabase Auth is configured, authenticate through Supabase
+		if supabaseSvc != nil && supabaseSvc.IsConfigured() {
+			supaResp, err := supabaseSvc.SignIn(req.Email, req.Password)
+			if err == nil && supaResp != nil {
+				c.JSON(http.StatusOK, supaResp)
+				return
+			}
 		}
 
 		resp, err := userSvc.Login(req)
@@ -81,11 +120,10 @@ func Login(userSvc *services.UserService) gin.HandlerFunc {
 }
 
 // GetMe returns current authenticated user profile and their active Daytona sandbox
-func GetMe(userSvc *services.UserService) gin.HandlerFunc {
+func GetMe(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIdVal, exists := c.Get("userId")
 		if !exists {
-			// Check query or param
 			userIdVal = c.DefaultQuery("userId", "")
 		}
 
@@ -97,8 +135,19 @@ func GetMe(userSvc *services.UserService) gin.HandlerFunc {
 
 		user, err := userSvc.GetUserByID(userId)
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-			return
+			// Construct profile from context if created via Supabase
+			email, _ := c.Get("email")
+			name, _ := c.Get("name")
+			daytonaApiKey, _ := c.Get("daytonaApiKey")
+			daytonaServerUrl, _ := c.Get("daytonaServerUrl")
+
+			user = &models.User{
+				ID:               userId,
+				Email:            fmt.Sprintf("%v", email),
+				Name:             fmt.Sprintf("%v", name),
+				DaytonaApiKey:    fmt.Sprintf("%v", daytonaApiKey),
+				DaytonaServerUrl: fmt.Sprintf("%v", daytonaServerUrl),
+			}
 		}
 
 		activeSandbox, _ := userSvc.GetActiveUserSandbox(userId)
@@ -110,102 +159,31 @@ func GetMe(userSvc *services.UserService) gin.HandlerFunc {
 	}
 }
 
-// UpdateSettings updates user credentials in SQLite
+// UpdateSettings updates user settings including Daytona credentials
 func UpdateSettings(userSvc *services.UserService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIdVal, exists := c.Get("userId")
-		userId := ""
-		if exists {
-			userId = userIdVal.(string)
-		} else {
-			userId = c.DefaultQuery("userId", "default-user")
+		if !exists {
+			userIdVal = c.DefaultQuery("userId", "")
+		}
+
+		userId, ok := userIdVal.(string)
+		if !ok || userId == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized session"})
+			return
 		}
 
 		var req models.UpdateSettingsRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 			return
 		}
 
-		err := userSvc.UpdateUserSettings(userId, req.ApiKey, req.ServerUrl, "", false)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update settings: " + err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"message": "User settings updated in SQLite database",
-		})
-	}
-}
-
-// GetChatHistoryHandler returns chat history from SQLite for user's sandbox
-func GetChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userId := c.DefaultQuery("userId", "default-user")
-		sandboxId := c.Query("sandboxId")
-
-		if u, exists := c.Get("userId"); exists {
-			userId = u.(string)
-		}
-
-		messages, err := userSvc.GetChatHistory(userId, sandboxId)
-		if err != nil {
-			c.JSON(http.StatusOK, []models.ChatMessageDTO{})
-			return
-		}
-
-		c.JSON(http.StatusOK, messages)
-	}
-}
-
-// SaveChatMessageHandler stores user or agy messages in SQLite
-func SaveChatMessageHandler(userSvc *services.UserService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req struct {
-			UserId    string                   `json:"userId"`
-			SandboxID string                   `json:"sandboxId"`
-			Sender    string                   `json:"sender"`
-			Text      string                   `json:"text"`
-			Thoughts  []string                 `json:"thoughts,omitempty"`
-			Tools     []map[string]interface{} `json:"tools,omitempty"`
-			IsError   bool                     `json:"isError,omitempty"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
-			return
-		}
-
-		if u, exists := c.Get("userId"); exists {
-			req.UserId = u.(string)
-		}
-		if req.UserId == "" {
-			req.UserId = "default-user"
-		}
-
-		err := userSvc.SaveChatMessage(req.UserId, req.SandboxID, req.Sender, req.Text, req.Thoughts, req.Tools, req.IsError)
-		if err != nil {
+		if err := userSvc.UpdateUserSettings(userId, req.ApiKey, req.ServerUrl, "", false); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"success": true})
-	}
-}
-
-// ClearChatHistoryHandler deletes chat history for the user's sandbox
-func ClearChatHistoryHandler(userSvc *services.UserService) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userId := c.DefaultQuery("userId", "default-user")
-		sandboxId := c.Query("sandboxId")
-
-		if u, exists := c.Get("userId"); exists {
-			userId = u.(string)
-		}
-
-		userSvc.ClearChatHistory(userId, sandboxId)
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Chat history cleared"})
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Settings updated successfully"})
 	}
 }

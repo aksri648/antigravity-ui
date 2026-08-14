@@ -45,6 +45,10 @@ func main() {
 	daytonaSvc := services.NewDaytonaService()
 	agySvc := services.NewAGYService(daytonaSvc)
 	userSvc := services.NewUserService(daytonaSvc)
+	supabaseSvc := services.NewSupabaseService()
+	if supabaseSvc.IsConfigured() {
+		log.Printf("⚡ Supabase integration active and connected for DB & Auth")
+	}
 
 	wsHub := handlers.NewHub()
 	go wsHub.Run()
@@ -53,7 +57,7 @@ func main() {
 
 	// 4. API Routes
 	api := r.Group("/api")
-	api.Use(handlers.AuthMiddleware(userSvc))
+	api.Use(handlers.AuthMiddleware(userSvc, supabaseSvc))
 	api.Use(func(c *gin.Context) {
 		sandboxId := c.Param("sandboxId")
 		if sandboxId == "" {
@@ -74,12 +78,12 @@ func main() {
 		// Health status
 		api.GET("/health", handlers.HealthCheck(daytonaSvc))
 
-		// Multi-User SaaS Authentication Endpoints
-		api.POST("/auth/register", handlers.Register(userSvc))
-		api.POST("/auth/signup", handlers.Register(userSvc))
-		api.POST("/auth/login", handlers.Login(userSvc))
+		// Multi-User SaaS Authentication Endpoints (Supabase & SQLite)
+		api.POST("/auth/register", handlers.Register(userSvc, supabaseSvc))
+		api.POST("/auth/signup", handlers.Register(userSvc, supabaseSvc))
+		api.POST("/auth/login", handlers.Login(userSvc, supabaseSvc))
 		api.POST("/auth/logout", func(c *gin.Context) { c.JSON(200, gin.H{"success": true}) })
-		api.GET("/auth/me", handlers.GetMe(userSvc))
+		api.GET("/auth/me", handlers.GetMe(userSvc, supabaseSvc))
 		api.POST("/auth/settings", handlers.UpdateSettings(userSvc))
 		api.GET("/auth/google/callback", handlers.GoogleOAuthCallback(daytonaSvc, agySvc, userSvc))
 
