@@ -4,19 +4,18 @@ import {
   Cpu,
   ArrowRight,
   Zap,
-  Code,
   Terminal,
-  Globe,
   Layers,
   CheckCircle2,
   LogIn,
-  Server,
   Lock,
   Box,
   Database,
   ChevronRight,
   BookOpen,
   Radio,
+  Workflow,
+  HardDrive,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -29,7 +28,16 @@ interface LandingPageProps {
 }
 
 type ShowcaseTab = "ide" | "agents" | "opencode" | "preview";
-type DocSection = "overview" | "quickstart" | "agents" | "cliswitcher" | "secrets" | "mcp" | "api";
+type DocSection =
+  | "fde"
+  | "overview"
+  | "database"
+  | "quickstart"
+  | "agents"
+  | "cliswitcher"
+  | "secrets"
+  | "mcp"
+  | "api";
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onStartSetup,
@@ -38,22 +46,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onResetApp,
 }) => {
   const [activeShowcase, setActiveShowcase] = useState<ShowcaseTab>("ide");
-  const [activeDocSection, setActiveDocSection] = useState<DocSection>("overview");
+  const [activeDocSection, setActiveDocSection] = useState<DocSection>("fde");
 
   return (
     <div className="min-h-screen w-full bg-[#0c0c0e] text-[#f4f4f6] flex flex-col overflow-y-auto selection:bg-emerald-500 selection:text-black">
       {/* Top Banner Notice */}
       <div className="w-full bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-purple-500/20 border-b border-white/10 py-2.5 px-4 text-center text-xs font-medium text-gray-300">
         <span className="inline-flex items-center gap-2">
-          <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-2 py-0.5 rounded-full">NEW</Badge>
-          <span>Multi-Agent Swarm with Pluggable CLI Drivers (Antigravity & OpenCode) and Daytona Secrets</span>
+          <Badge className="bg-emerald-500 text-black font-bold text-[10px] px-2 py-0.5 rounded-full">FDE SYSTEM</Badge>
+          <span>DELTA: Autonomous Forward Deployed Engineering System with Pluggable CLI Swarm & Daytona Micro-VMs</span>
           <a href="#docs" className="text-emerald-400 font-semibold underline hover:text-emerald-300 ml-1">
             Read Docs →
           </a>
         </span>
       </div>
 
-      {/* Floating Glass Navigation Header Container with generous top gap and padding */}
+      {/* Floating Glass Navigation Header Container */}
       <div className="sticky top-0 z-50 pt-5 pb-2 px-4 sm:px-8 w-full max-w-7xl mx-auto pointer-events-none">
         <header className="pointer-events-auto mx-auto w-full rounded-full border border-white/15 bg-[#16161a]/90 backdrop-blur-2xl px-6 sm:px-8 h-20 flex items-center justify-between shadow-2xl shadow-black/60 transition-all">
           <div className="flex items-center gap-3.5">
@@ -63,7 +71,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-lg font-black tracking-tight text-white font-mono">DELTA</span>
               <Badge variant="outline" className="hidden sm:inline-flex text-[10px] py-0.5 px-2.5 border-emerald-500/40 text-emerald-400 font-mono">
-                v2.4 Production
+                FDE Platform v2.4
               </Badge>
             </div>
           </div>
@@ -71,10 +79,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Center Nav Links */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-bold text-gray-300">
             <a href="#showcase" className="hover:text-white transition-colors">Showcase</a>
-            <a href="#manifesto" className="hover:text-white transition-colors">Manifesto</a>
-            <a href="#features" className="hover:text-white transition-colors">Architecture</a>
+            <a href="#manifesto" className="hover:text-white transition-colors">FDE Manifesto</a>
+            <a href="#features" className="hover:text-white transition-colors">Agent Swarm</a>
             <a href="#docs" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1.5 font-bold">
-              <BookOpen className="h-4 w-4" /> Documentation
+              <BookOpen className="h-4 w-4" /> Documentation & LLD
             </a>
           </nav>
 
@@ -106,12 +114,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-emerald-500/10 blur-[140px] rounded-full pointer-events-none" />
 
         <div className="flex items-center gap-2 mb-6">
-          <span className="font-mono text-xs tracking-wider uppercase text-emerald-400 font-semibold px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-            Autonomous Multi-Agent Cloud Platform
+          <span className="font-mono text-xs tracking-wider uppercase text-emerald-400 font-semibold px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 flex items-center gap-1.5">
+            <Workflow className="h-3.5 w-3.5" /> Forward Deployed Engineering (FDE) System
           </span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl leading-[1.08] text-balance">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white max-w-5xl leading-[1.08] text-balance font-mono">
           Know your code.<br />
           <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
             So your agents can build anything.
@@ -119,7 +127,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </h1>
 
         <p className="mt-6 text-base sm:text-xl text-gray-400 max-w-3xl leading-relaxed">
-          The next-generation Agentic Development Environment powered by isolated <strong>Daytona micro-VM sandboxes</strong>, persistent long-term storage volumes, zero-cost Google AI Quota, and 4 specialized autonomous agents.
+          The ultimate intelligent assistant for <strong>Forward Deployed Engineers</strong>. DELTA automates end-to-end customer solution delivery—from technical requirements and code generation to cloud infrastructure deployment—using isolated <strong>Daytona micro-VM sandboxes</strong> and pluggable CLI swarms.
         </p>
 
         {/* Hero CTAs */}
@@ -127,7 +135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <Button
             size="lg"
             onClick={onStartSetup}
-            className="h-12 px-8 text-sm bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-full shadow-lg shadow-emerald-500/25 transition-all gap-2"
+            className="h-12 px-8 text-sm bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-full shadow-lg shadow-emerald-500/25 transition-all gap-2 cursor-pointer"
           >
             Start Setup Wizard <ArrowRight className="h-4 w-4" />
           </Button>
@@ -136,175 +144,193 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             size="lg"
             variant="outline"
             onClick={onLaunchWorkspace}
-            className="h-12 px-8 text-sm border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-full backdrop-blur-md gap-2"
+            className="h-12 px-8 text-sm border-white/20 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-full backdrop-blur-md gap-2 cursor-pointer"
           >
-            <Sparkles className="h-4 w-4 text-emerald-400" /> Open Web IDE
+            Launch Live Workspace
           </Button>
-
-          <a
-            href="#docs"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white px-4 py-2"
-          >
-            <BookOpen className="h-4 w-4" /> Explore System Docs →
-          </a>
         </div>
 
-        {/* Hero Image Showcase Card */}
-        <div className="relative mt-14 w-full max-w-6xl rounded-2xl border border-white/15 bg-black/60 p-2 shadow-2xl overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0e] via-transparent to-transparent z-10 pointer-events-none" />
-          <img
-            src="/images/hero_cloud_ide.jpg"
-            alt="AGY Cloud Autonomous IDE with Monaco editor, Daytona micro-VM terminal, and Live Web Preview"
-            className="w-full h-auto rounded-xl object-cover border border-white/10 shadow-inner"
-          />
-        </div>
-      </section>
-
-      {/* SHOWCASE TABBED SECTION */}
-      <section id="showcase" className="px-6 py-20 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
-          <div>
-            <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// INTERACTIVE CAPABILITIES</span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-white mt-1">Engineered for Autonomous Execution</h2>
+        {/* Micro Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-6 mt-12 text-xs text-gray-400">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <span>4 Specialized Autonomous Agents</span>
           </div>
-
-          {/* Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-white/5 border border-white/10 rounded-full">
-            {[
-              { id: "ide", label: "Split IDE & Preview", icon: Code },
-              { id: "agents", label: "4 Specialized Agents", icon: Cpu },
-              { id: "opencode", label: "Dual CLI Switcher", icon: Terminal },
-              { id: "preview", label: "Daytona Volume Sync", icon: Database },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeShowcase === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveShowcase(tab.id as ShowcaseTab)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                    isActive
-                      ? "bg-white text-black shadow-md font-bold"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <span>Pluggable Drivers: AGY ⚡ & OpenCode 💻</span>
           </div>
-        </div>
-
-        {/* Tab Content Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-4">
-            {activeShowcase === "ide" && (
-              <div className="space-y-3">
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 font-mono">30 / 70 Responsive Split View</Badge>
-                <h3 className="text-2xl font-bold text-white">Full-Stack Cloud Development with Zero Context Loss</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  Interact with autonomous coding agents on the left pane while viewing real-time Monaco file trees, live multi-port web previews (ports 3000, 5173, 8080), and full X11/VNC graphical desktops on the right.
-                </p>
-                <div className="rounded-xl border border-white/10 overflow-hidden mt-4">
-                  <img src="/images/hero_cloud_ide.jpg" alt="IDE Preview" className="w-full h-auto object-cover" />
-                </div>
-              </div>
-            )}
-
-            {activeShowcase === "agents" && (
-              <div className="space-y-3">
-                <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 font-mono">OpenAI Agents SDK Architecture</Badge>
-                <h3 className="text-2xl font-bold text-white">Decoupled Reasoning with Human-In-The-Loop Approvals</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  Four specialized agents interview you for requirements, draft structural blueprints, ask for approval before critical modifications, and generate comprehensive post-deployment connection snippets.
-                </p>
-                <div className="rounded-xl border border-white/10 overflow-hidden mt-4">
-                  <img src="/images/multi_agent_flow.jpg" alt="Agent Swarm Flow" className="w-full h-auto object-cover" />
-                </div>
-              </div>
-            )}
-
-            {activeShowcase === "opencode" && (
-              <div className="space-y-3">
-                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-mono">Pluggable Coding CLI Drivers</Badge>
-                <h3 className="text-2xl font-bold text-white">Switch Between AGY and OpenCode in the Same Workspace</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  Toggle your underlying AI CLI execution runner with 1 click. Both engines operate inside the shared persistent directory (<code className="text-cyan-300 font-mono">/home/daytona/persist/workspace</code>), preserving every commit and edit seamlessly.
-                </p>
-                <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-gray-300 space-y-2">
-                  <div className="text-emerald-400">$ opencode run "Add Stripe checkout webhook handler"</div>
-                  <div className="text-gray-400">[OpenCode] Analyzing workspace dependencies in /home/daytona/persist/workspace...</div>
-                  <div className="text-cyan-400">[AGY Driver] Code modified in place. Dev server hot reloaded on port 5173.</div>
-                </div>
-              </div>
-            )}
-
-            {activeShowcase === "preview" && (
-              <div className="space-y-3">
-                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 font-mono">Encrypted Persistent Storage</Badge>
-                <h3 className="text-2xl font-bold text-white">30-Minute Inactivity Auto-Save & Cost Protection</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  Your codebase is continuously mirrored from the micro-VM sandbox to long-term persistent Daytona volumes. Inactive sandboxes pause and tear down after 30 minutes, restoring instantaneously on your next prompt.
-                </p>
-                <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-emerald-400 space-y-1">
-                  <div>✓ Volume: vol-user-892f3a mounted to /home/daytona/persist</div>
-                  <div>✓ Inactivity Watchdog: 30m countdown active</div>
-                  <div>✓ Daytona Secrets: API keys restored from cloud manager</div>
-                </div>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <span>Daytona Micro-VMs & Persistent Volumes</span>
           </div>
-
-          {/* Right Highlights Column */}
-          <div className="flex flex-col gap-4">
-            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-400">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <h4 className="text-lg font-bold text-white">$0 AI Quota Cost</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Connect your existing Google Account to execute unlimited high-speed Antigravity prompts with zero additional API subscription fees.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
-                <Lock className="h-5 w-5" />
-              </div>
-              <h4 className="text-lg font-bold text-white">Daytona Cloud Secrets</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Configure your GitHub, Azure, RunPod, and Hugging Face tokens once. They are encrypted in Daytona Secrets Manager and restored forever.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-[#141418] p-6 space-y-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 text-purple-400">
-                <Globe className="h-5 w-5" />
-              </div>
-              <h4 className="text-lg font-bold text-white">Multi-Port Live Proxy</h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Automatic port discovery with signed iframe URLs and built-in reverse proxy routing for instant, CORS-free web app previewing.
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <span>Supabase Cloud Auth & PostgREST DB</span>
           </div>
         </div>
       </section>
 
-      {/* MANIFESTO / EDITORIAL SECTION (SPOTIFY XIRP STYLE) */}
+      {/* SHOWCASE SECTION */}
+      <section id="showcase" className="px-6 py-16 max-w-7xl mx-auto w-full">
+        {/* Showcase Switcher Pills */}
+        <div className="flex justify-center mb-8">
+          <div className="flex rounded-full bg-[#16161a] p-1.5 border border-white/10 gap-1 shadow-lg">
+            <button
+              onClick={() => setActiveShowcase("ide")}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeShowcase === "ide"
+                  ? "bg-white text-black shadow-md"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Split IDE & Preview
+            </button>
+            <button
+              onClick={() => setActiveShowcase("agents")}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeShowcase === "agents"
+                  ? "bg-white text-black shadow-md"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              4 Specialized Agents
+            </button>
+            <button
+              onClick={() => setActiveShowcase("opencode")}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeShowcase === "opencode"
+                  ? "bg-white text-black shadow-md"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Dual CLI Switcher
+            </button>
+            <button
+              onClick={() => setActiveShowcase("preview")}
+              className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                activeShowcase === "preview"
+                  ? "bg-white text-black shadow-md"
+                  : "text-gray-400 hover:text-white"
+              }`}
+            >
+              Daytona Volume Sync
+            </button>
+          </div>
+        </div>
+
+        {/* Showcase Preview Box */}
+        <div className="rounded-3xl border border-white/10 bg-[#121216] p-4 sm:p-6 shadow-2xl overflow-hidden relative">
+          {activeShowcase === "ide" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
+                  <div className="h-3 w-3 rounded-full bg-green-500/80" />
+                  <span className="text-xs font-mono text-gray-400 ml-2">delta-workspace / live-stream</span>
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                  Split Workspace Active
+                </Badge>
+              </div>
+              <img
+                src="/images/hero_cloud_ide.jpg"
+                alt="DELTA Autonomous IDE with Monaco editor, Daytona micro-VM terminal, and Live Web Preview"
+                className="rounded-2xl w-full h-[480px] object-cover border border-white/10 shadow-inner"
+              />
+            </div>
+          )}
+
+          {activeShowcase === "agents" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+              <div className="space-y-6 flex flex-col justify-center">
+                <Badge className="w-fit bg-purple-500/20 text-purple-300 border-purple-500/30">
+                  Autonomous Swarm
+                </Badge>
+                <h3 className="text-3xl font-extrabold text-white leading-tight font-mono">
+                  4 AI Personas Built for Forward Deployed Engineers
+                </h3>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  Rather than a generic chatbot, DELTA deploys 4 purpose-built engineering agents that conduct technical requirement interviews, recommend production clouds, package containers, and submit verified pull requests.
+                </p>
+                <div className="space-y-2 font-mono text-xs text-gray-400">
+                  <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-400" /> App Developer: Spec interview & full-stack code</div>
+                  <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-purple-400" /> LLM Deployer: Azure AKS vs RunPod Serverless</div>
+                  <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-blue-400" /> App Deployer: Dockerization & Azure Linux VM</div>
+                  <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-cyan-400" /> App Maintainer: Repo clone, branch refactor & PR</div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/60 p-4 flex items-center justify-center">
+                <img
+                  src="/images/delta_fde_flowchart.jpg"
+                  alt="DELTA Forward Deployed Engineering System Flowchart"
+                  className="rounded-xl w-full h-[380px] object-cover"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeShowcase === "opencode" && (
+            <div className="p-6 space-y-6">
+              <div className="max-w-2xl space-y-3">
+                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Pluggable CLI Engine</Badge>
+                <h3 className="text-2xl font-bold text-white font-mono">Switch Between AGY and OpenCode in the Same Workspace</h3>
+                <p className="text-sm text-gray-300">
+                  Prefer Google Antigravity CLI for deep project exploration, but want OpenCode CLI for multi-model OpenAI/Anthropic code modifications? Click the engine switcher in the chat header to swap drivers without restarting your sandbox.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black p-4 font-mono text-xs space-y-2 text-gray-300">
+                <div className="text-emerald-400">$ delta-engine switch --to opencode</div>
+                <div className="text-gray-500">Mounted workspace: /home/daytona/persist/workspace</div>
+                <div className="text-cyan-400">[AGY Driver] Code modified in place. Dev server hot reloaded on port 3000.</div>
+                <div className="text-purple-400">[OpenCode Driver] Attached to same directory. Zero context lost.</div>
+              </div>
+            </div>
+          )}
+
+          {activeShowcase === "preview" && (
+            <div className="p-6 space-y-6">
+              <div className="max-w-2xl space-y-3">
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Persistence & Watchdog</Badge>
+                <h3 className="text-2xl font-bold text-white font-mono">Daytona Persistent Volumes with 30-Min Auto-Persist</h3>
+                <p className="text-sm text-gray-300">
+                  Every user workspace is backed by a persistent Daytona volume mounted at <code className="text-emerald-400">/home/daytona/persist</code>. When inactive for &gt;30 minutes, DELTA automatically flushes modified files and pauses the sandbox container to minimize cloud compute costs.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                  <div className="text-emerald-400 font-bold">1. Active Coding</div>
+                  <div className="text-gray-400">Fast local micro-VM disk I/O with automatic symlink to persistent storage.</div>
+                </div>
+                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                  <div className="text-yellow-400 font-bold">2. 30m Idle Watchdog</div>
+                  <div className="text-gray-400">Inactivity manager flushes files to persistent volume and deletes container.</div>
+                </div>
+                <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
+                  <div className="text-blue-400 font-bold">3. Instant Restore</div>
+                  <div className="text-gray-400">New prompt provisions fresh micro-VM and mounts volume with 100% state intact.</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* MANIFESTO SECTION (SPOTIFY XIRP STYLE) */}
       <section id="manifesto" className="px-6 py-28 max-w-4xl mx-auto w-full">
         <div className="space-y-12 text-xl sm:text-3xl font-bold leading-snug text-gray-300">
           <p>
             AI coding tools solved the <span className="text-white">generation problem</span>. Code gets written faster, boilerplate disappears, and lines of code explode.
           </p>
           <p className="text-gray-500">
-            But something else happened. AI agents made confident decisions inside ephemeral containers that lacked persistent memory, real cloud tools, or live verification.
+            For <strong>Forward Deployed Engineers</strong>, writing code is only 20% of the job. The real friction is understanding client constraints, managing ephemeral micro-VMs, provisioning cloud infrastructure, and maintaining live systems with persistent context.
           </p>
           <p>
-            <span className="text-emerald-400">DELTA is different.</span> It is an autonomous development platform that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, and cloud deployment pipelines.
+            <span className="text-emerald-400">DELTA is different.</span> It is a comprehensive Forward Deployed Engineering system that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, Supabase data persistence, and automated cloud deployment pipelines.
           </p>
-          <p className="text-white text-2xl sm:text-4xl font-extrabold leading-tight">
-            Your agents don't guess in the dark. They build, verify, deploy, and maintain.
+          <p className="text-white text-2xl sm:text-4xl font-extrabold leading-tight font-mono">
+            Your agents don't guess in the dark. They architect, build, verify, deploy, and maintain.
           </p>
         </div>
       </section>
@@ -314,15 +340,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Agent 1 */}
         <div className="flex flex-col lg:flex-row items-center gap-12">
           <div className="flex-1 space-y-4">
-            <span className="font-mono text-xs uppercase text-blue-400 font-semibold tracking-wider">// AGENT 01: APP DEVELOPER</span>
-            <h3 className="text-3xl sm:text-4xl font-black text-white">Full-Stack Scaffolding & Requirements Interview</h3>
-            <p className="text-base text-gray-400 leading-relaxed">
-              Takes your high-level product idea, asks structured follow-up questions to nail down technical choices, drafts an architectural blueprint, and scaffolds complete full-stack web applications with hot-reloading dev servers.
+            <span className="font-mono text-xs text-emerald-400 uppercase font-bold tracking-wider">// AGENT 01</span>
+            <h3 className="text-3xl font-extrabold text-white font-mono">App Developer Agent</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Conducts an interactive requirements interview, clarifies ambiguous specifications, recommends modern frameworks (React, Vite, Node, Go, Python), and constructs entire multi-file codebases inside the sandbox.
             </p>
-            <ul className="space-y-2 text-sm text-gray-300 pt-2">
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Interactive requirements clarifying interview</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Vite, React 19, Tailwind CSS, Go Gin, and FastAPI recipes</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Automatic dev server startup & live preview routing</li>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Interactive clarification interview & tech stack selection</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Daytona filesystem workspace scaffolding</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Automatic dev server startup & port forwarding (Port 3000)</li>
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
@@ -333,68 +359,68 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Agent 2 */}
         <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
           <div className="flex-1 space-y-4">
-            <span className="font-mono text-xs uppercase text-purple-400 font-semibold tracking-wider">// AGENT 02: LLM DEPLOYER</span>
-            <h3 className="text-3xl sm:text-4xl font-black text-white">Intelligent Cloud GPU & Serverless LLM Deployment</h3>
-            <p className="text-base text-gray-400 leading-relaxed">
-              Analyzes your model traffic characteristics (bursty vs steady enterprise vs dev) to deploy open-source models (vLLM, Ollama, TGI) across Azure AI Studio or RunPod Serverless, outputting client connection code snippets.
+            <span className="font-mono text-xs text-purple-400 uppercase font-bold tracking-wider">// AGENT 02</span>
+            <h3 className="text-3xl font-extrabold text-white font-mono">LLM Deployer Agent</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Asks detailed traffic profiling questions (steady vs bursty QPS, latency SLAs, model weights) to determine the optimal production infrastructure: <strong>Azure AKS Dedicated GPU</strong> vs <strong>RunPod Serverless</strong>.
             </p>
-            <ul className="space-y-2 text-sm text-gray-300 pt-2">
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Burst traffic → RunPod Serverless vLLM ($0 idle scale-to-zero)</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Steady traffic → Azure Managed Online Endpoint & AKS</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Generates ready-to-use Python and TypeScript SDK connection snippets</li>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Interactive traffic analysis & cost estimation</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Automated vLLM / Ollama deployment on Azure or RunPod</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-purple-400" /> Returns live OpenAI-compatible endpoint URLs and API keys</li>
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/multi_agent_flow.jpg" alt="LLM Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <img src="/images/delta_fde_flowchart.jpg" alt="LLM Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
           </div>
         </div>
 
         {/* Agent 3 */}
         <div className="flex flex-col lg:flex-row items-center gap-12">
           <div className="flex-1 space-y-4">
-            <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// AGENT 03: APP DEPLOYER</span>
-            <h3 className="text-3xl sm:text-4xl font-black text-white">Automated Dockerization & Azure Cloud Deployment</h3>
-            <p className="text-base text-gray-400 leading-relaxed">
-              Inspects your project code, generates multi-stage production Dockerfiles with non-root security standards, provisions Azure Linux VMs or Azure Container Apps, and configures TLS domain certificates.
+            <span className="font-mono text-xs text-blue-400 uppercase font-bold tracking-wider">// AGENT 03</span>
+            <h3 className="text-3xl font-extrabold text-white font-mono">App Deployer Agent</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Inspects your application codebase, generates production-grade multi-stage Dockerfiles and docker-compose files, provisions an Azure Linux VM, installs Docker, and runs your container with health-check monitoring.
             </p>
-            <ul className="space-y-2 text-sm text-gray-300 pt-2">
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Minimal multi-stage Docker build files</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Azure CLI (`az vm`, `az containerapp`) automation</li>
-              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400" /> Production healthchecks and live verification testing</li>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Automatic Dockerfile & environment generation</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Azure Compute Linux VM provisioning via Azure MCP</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-blue-400" /> Automatic public IP assignment & TLS setup</li>
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/hero_cloud_ide.jpg" alt="App Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <img src="/images/delta_lld_architecture.jpg" alt="App Deployer Agent" className="rounded-2xl w-full h-auto object-cover" />
           </div>
         </div>
 
         {/* Agent 4 */}
         <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
           <div className="flex-1 space-y-4">
-            <span className="font-mono text-xs uppercase text-amber-400 font-semibold tracking-wider">// AGENT 04: APP MAINTAINER</span>
-            <h3 className="text-3xl sm:text-4xl font-black text-white">Git Repository Ingestion & Automated Pull Requests</h3>
-            <p className="text-base text-gray-400 leading-relaxed">
-              Clones any GitHub repository URL into the sandbox, creates an isolated feature/fix branch, executes modifications based on your prompt, runs test suites, and opens an automated GitHub Pull Request with structured diff summaries.
+            <span className="font-mono text-xs text-amber-400 uppercase font-bold tracking-wider">// AGENT 04</span>
+            <h3 className="text-3xl font-extrabold text-white font-mono">App Maintainer Agent</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              Takes any GitHub repository URL, clones it into your persistent volume, prompts you for required changes or bug fixes, tests modifications in the live sandbox, commits to a dedicated branch, and opens a GitHub Pull Request.
             </p>
-            <ul className="space-y-2 text-sm text-gray-300 pt-2">
+            <ul className="space-y-2 text-xs text-gray-400">
               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> 1-click GitHub repository cloning & setup</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> Human-in-the-loop branch diff review gate</li>
               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-amber-400" /> GitHub MCP & `gh pr create` automation</li>
             </ul>
           </div>
           <div className="flex-1 rounded-3xl border border-white/10 bg-[#141418] p-4 overflow-hidden">
-            <img src="/images/multi_agent_flow.jpg" alt="App Maintainer Agent" className="rounded-2xl w-full h-auto object-cover" />
+            <img src="/images/delta_db_schema_flow.jpg" alt="App Maintainer Agent" className="rounded-2xl w-full h-auto object-cover" />
           </div>
         </div>
       </section>
 
-      {/* COMPREHENSIVE DOCUMENTATION SECTION */}
+      {/* COMPREHENSIVE DOCUMENTATION & LLD SPECIFICATION SECTION */}
       <section id="docs" className="px-6 py-24 max-w-7xl mx-auto w-full border-t border-white/10">
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
-          <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// DEVELOPER DOCUMENTATION & SPECIFICATION</span>
-          <h2 className="text-3xl sm:text-5xl font-black text-white">Everything You Need to Build & Scale</h2>
+          <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// TECHNICAL DOCUMENTATION & SYSTEM DESIGN (LLD)</span>
+          <h2 className="text-3xl sm:text-5xl font-black text-white font-mono">DELTA Technical Specifications</h2>
           <p className="text-gray-400 text-sm sm:text-base">
-            Comprehensive architectural specs, quickstart guides, CLI driver references, and API endpoint documentation.
+            Detailed low-level architecture, Supabase DB schema, FDE workflows, CLI switcher mechanics, and API references.
           </p>
         </div>
 
@@ -403,12 +429,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Docs Navigation Sidebar */}
           <div className="lg:col-span-1 space-y-1">
             {[
-              { id: "overview", label: "Architecture Overview", icon: Layers },
+              { id: "fde", label: "FDE System Workflow", icon: Workflow },
+              { id: "overview", label: "System Design (HLD & LLD)", icon: Layers },
+              { id: "database", label: "DB Schema & RLS Policies", icon: Database },
               { id: "quickstart", label: "Quickstart Setup", icon: Zap },
               { id: "agents", label: "4 Autonomous Agents", icon: Cpu },
               { id: "cliswitcher", label: "CLI Switcher (AGY / OpenCode)", icon: Terminal },
-              { id: "secrets", label: "Daytona Secrets & Volumes", icon: Database },
-              { id: "mcp", label: "MCP Server Integrations", icon: Box },
+              { id: "secrets", label: "Daytona Secrets & Volumes", icon: Lock },
+              { id: "mcp", label: "MCP Integrations", icon: Box },
               { id: "api", label: "REST & WebSocket API", icon: Radio },
             ].map((item) => {
               const Icon = item.icon;
@@ -417,9 +445,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button
                   key={item.id}
                   onClick={() => setActiveDocSection(item.id as DocSection)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold transition-all text-left ${
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
                     isSelected
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm"
+                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm font-bold"
                       : "text-gray-400 hover:text-white hover:bg-white/5"
                   }`}
                 >
@@ -435,34 +463,124 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
           {/* Docs Content Viewer */}
           <div className="lg:col-span-3 rounded-3xl border border-white/10 bg-[#121216] p-6 sm:p-8 space-y-6">
-            {activeDocSection === "overview" && (
-              <div className="space-y-4">
-                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">System Architecture</Badge>
-                <h3 className="text-2xl font-bold text-white">Decoupled Agentic Micro-VM Architecture</h3>
-                <p className="text-sm text-gray-300 leading-relaxed">
-                  DELTA uses a three-tier decoupled architecture:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            
+            {/* 1. Forward Deployed Engineering System */}
+            {activeDocSection === "fde" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">FDE System Specification</Badge>
+                  <h3 className="text-2xl font-bold text-white font-mono">The Forward Deployed Engineering (FDE) Assistant</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    Forward Deployed Engineers work on the front lines of customer deployments. DELTA acts as an autonomous execution co-pilot that ingests ambiguous client problems, scaffolds clean solutions, executes live sandbox verification, and coordinates cloud deployments.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
+                  <img
+                    src="/images/delta_fde_flowchart.jpg"
+                    alt="DELTA Forward Deployed Engineering System Flowchart"
+                    className="rounded-xl w-full h-[360px] object-cover"
+                  />
+                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
+                    Fig 1: DELTA Forward Deployed Engineering (FDE) Multi-Agent Swarm Pipeline
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Cpu className="h-3.5 w-3.5 text-purple-400" /> Tier 1: Agent Layer</h5>
-                    <p className="text-[11px] text-gray-400">OpenAI Agents SDK logic for requirements interview, reasoning, traffic analysis, and HITL approvals.</p>
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><Workflow className="h-4 w-4 text-emerald-400" /> 1. Requirement Scoping</h5>
+                    <p className="text-gray-400">Automated Q&A loop extracts client data formats, latency limits, cloud vendor requirements, and authentication mechanisms.</p>
                   </div>
                   <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Terminal className="h-3.5 w-3.5 text-cyan-400" /> Tier 2: CLI Drivers</h5>
-                    <p className="text-[11px] text-gray-400">Pluggable coding drivers for Antigravity (`agy`) and OpenCode (`opencode`) operating on shared workspace.</p>
-                  </div>
-                  <div className="p-4 rounded-xl border border-white/10 bg-black/40 space-y-2">
-                    <h5 className="text-xs font-bold text-white flex items-center gap-1.5"><Server className="h-3.5 w-3.5 text-emerald-400" /> Tier 3: Daytona Micro-VM</h5>
-                    <p className="text-[11px] text-gray-400">Isolated Linux micro-VM container with persistent volume symlinks, port routing, and Daytona Secrets.</p>
+                    <h5 className="font-bold text-white flex items-center gap-1.5"><HardDrive className="h-4 w-4 text-cyan-400" /> 2. Persistent Sandbox Execution</h5>
+                    <p className="text-gray-400">Agents execute in isolated Daytona micro-VMs with zero host pollution, auto-persisting code to long-term volumes.</p>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* 2. System Design (HLD & LLD) */}
+            {activeDocSection === "overview" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Architecture (LLD)</Badge>
+                  <h3 className="text-2xl font-bold text-white font-mono">Low-Level System Design & Network Data Flow</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    DELTA combines a high-concurrency Go Gin backend, real-time WebSocket hub, Daytona SDK orchestrator, and reverse-proxy preview servers:
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
+                  <img
+                    src="/images/delta_lld_architecture.jpg"
+                    alt="DELTA Low-Level System Design & Network Data Flow"
+                    className="rounded-xl w-full h-[360px] object-cover"
+                  />
+                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
+                    Fig 2: DELTA Low-Level System Design (LLD), Micro-VM Proxy & Storage Pipeline
+                  </p>
+                </div>
+
+                <div className="space-y-3 text-xs text-gray-300">
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-emerald-400">WebSocket Dispatcher (`/ws`):</strong> Pushes stdout, stderr, thinking tokens, and tool invocations with sub-10ms latency.
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/40">
+                    <strong className="text-cyan-400">Live Preview Reverse Proxy (`/api/preview/proxy/:id/:port/*`):</strong> Transparently routes HTTP/WebSocket traffic to sandbox dev servers on port 3000.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Database Schema & RLS */}
+            {activeDocSection === "database" && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Data Layer</Badge>
+                  <h3 className="text-2xl font-bold text-white font-mono">Supabase PostgreSQL Schema & RLS Policies</h3>
+                  <p className="text-sm text-gray-300">
+                    DELTA utilizes a dual-database model: Supabase Cloud PostgreSQL with Row-Level Security (RLS) as the primary cloud store, backed by an embedded SQLite database for zero-latency local caching.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/60 p-3">
+                  <img
+                    src="/images/delta_db_schema_flow.jpg"
+                    alt="DELTA Database Schema & Entity Architecture"
+                    className="rounded-xl w-full h-[360px] object-cover"
+                  />
+                  <p className="text-[11px] font-mono text-center text-gray-400 mt-2">
+                    Fig 3: DELTA Relational Entity Model with Supabase Auth & RLS
+                  </p>
+                </div>
+
+                {/* Table Schema Breakdown */}
+                <div className="space-y-3 font-mono text-xs">
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
+                    <span className="text-emerald-400 font-bold">1. public.profiles</span>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK ref auth.users.id)`, `email (TEXT)`, `name (TEXT)`, `daytona_api_key (TEXT)`, `daytona_server_url (TEXT)`, `created_at (TIMESTAMPTZ)`</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
+                    <span className="text-cyan-400 font-bold">2. public.chat_messages</span>
+                    <p className="text-[11px] text-gray-400">`id (BIGSERIAL, PK)`, `user_id (UUID, FK)`, `sandbox_id (TEXT)`, `sender (TEXT)`, `text (TEXT)`, `thoughts (JSONB)`, `tools (JSONB)`, `timestamp (BIGINT)`</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
+                    <span className="text-purple-400 font-bold">3. public.user_sandboxes</span>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `daytona_sandbox_id (TEXT)`, `preview_url (TEXT)`, `active_port (INT)`, `last_active (TIMESTAMPTZ)`</p>
+                  </div>
+                  <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
+                    <span className="text-amber-400 font-bold">4. public.cloud_secrets</span>
+                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `provider (TEXT)`, `key_name (TEXT)`, `encrypted_value (TEXT)`, `updated_at (TIMESTAMPTZ)`</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Quickstart Setup */}
             {activeDocSection === "quickstart" && (
               <div className="space-y-4">
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Getting Started</Badge>
-                <h3 className="text-2xl font-bold text-white">3-Step First-Run Onboarding</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">3-Step First-Run Onboarding</h3>
                 <p className="text-sm text-gray-300">Setting up your DELTA environment takes under 60 seconds:</p>
                 <ol className="space-y-3 text-xs text-gray-300 list-decimal list-inside">
                   <li><strong>Enter Daytona API Key:</strong> Get your key from <code className="text-emerald-400">app.daytona.io</code>.</li>
@@ -475,10 +593,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* 5. 4 Autonomous Agents */}
             {activeDocSection === "agents" && (
               <div className="space-y-4">
                 <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">Autonomous Swarm</Badge>
-                <h3 className="text-2xl font-bold text-white">The 4 Autonomous Agent Personas</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">The 4 Autonomous Agent Personas</h3>
                 <p className="text-sm text-gray-300">
                   Each agent operates independently to guide you through complex software lifecycles:
                 </p>
@@ -503,10 +622,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* 6. CLI Switcher */}
             {activeDocSection === "cliswitcher" && (
               <div className="space-y-4">
                 <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Runtime Engine</Badge>
-                <h3 className="text-2xl font-bold text-white">Runtime CLI Switcher (AGY & OpenCode)</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">Runtime CLI Switcher (AGY & OpenCode)</h3>
                 <p className="text-sm text-gray-300">
                   Both CLI engines run in the exact same persistent workspace folder (<code className="text-emerald-400">/home/daytona/persist/workspace</code>):
                 </p>
@@ -518,10 +638,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* 7. Secrets & Persistence */}
             {activeDocSection === "secrets" && (
               <div className="space-y-4">
                 <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Persistence & Security</Badge>
-                <h3 className="text-2xl font-bold text-white">Daytona Secrets & Volume Inactivity Watchdog</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">Daytona Secrets & Volume Inactivity Watchdog</h3>
                 <p className="text-sm text-gray-300">
                   How DELTA protects your credentials and minimizes cloud costs:
                 </p>
@@ -533,10 +654,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* 8. MCP Integrations */}
             {activeDocSection === "mcp" && (
               <div className="space-y-4">
                 <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Model Context Protocol</Badge>
-                <h3 className="text-2xl font-bold text-white">MCP Integration Recipes</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">MCP Integration Recipes</h3>
                 <p className="text-sm text-gray-300">
                   Built-in recipes installed directly in your persistent Daytona sandbox volume:
                 </p>
@@ -549,10 +671,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
+            {/* 9. REST & WebSocket APIs */}
             {activeDocSection === "api" && (
               <div className="space-y-4">
                 <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Developer API</Badge>
-                <h3 className="text-2xl font-bold text-white">REST & WebSocket API Endpoints</h3>
+                <h3 className="text-2xl font-bold text-white font-mono">REST & WebSocket API Endpoints</h3>
                 <div className="space-y-2 font-mono text-xs text-gray-300">
                   <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/register</code> - SaaS User Signup</div>
                   <div className="p-2 rounded bg-black/50 border border-white/10"><code>POST /api/auth/login</code> - SaaS User Login</div>
@@ -565,7 +688,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* FINAL HIGH-IMPACT SPOTIFY-STYLE CTA BANNER */}
+      {/* SPOTIFY-STYLE IMPACT CTA BANNER */}
       <section className="px-6 py-20 max-w-7xl mx-auto w-full">
         <div className="relative rounded-3xl bg-[#1ed760] text-black p-10 sm:p-16 flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden shadow-2xl">
           <div className="space-y-3 text-center md:text-left z-10 max-w-xl">
@@ -573,14 +696,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Ready to code at lightning speed?
             </h2>
             <p className="text-black/80 font-medium text-sm sm:text-base">
-              Start with one project. See what your agents can build when they have real context, persistent volumes, and cloud sandboxes.
+              The premier Forward Deployed Engineering platform. Start with one project and experience autonomous agents with real cloud context.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 z-10 w-full md:w-auto">
             <Button
               size="lg"
               onClick={onStartSetup}
-              className="h-12 px-8 text-sm bg-black hover:bg-zinc-900 text-white font-extrabold rounded-full shadow-xl"
+              className="h-12 px-8 text-sm bg-black hover:bg-zinc-900 text-white font-extrabold rounded-full shadow-xl cursor-pointer"
             >
               Start 3-Step Setup
             </Button>
@@ -588,7 +711,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               size="lg"
               variant="outline"
               onClick={onLaunchWorkspace}
-              className="h-12 px-8 text-sm border-2 border-black bg-transparent text-black hover:bg-black/10 font-extrabold rounded-full"
+              className="h-12 px-8 text-sm border-2 border-black bg-transparent text-black hover:bg-black/10 font-extrabold rounded-full cursor-pointer"
             >
               Launch Live Workspace
             </Button>
@@ -600,13 +723,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className="w-full border-t border-white/10 py-10 px-6 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
-          <span>DELTA • Autonomous Cloud IDE & Swarm • Built with Daytona Micro-VMs</span>
+          <span>DELTA • Autonomous Forward Deployed Engineering System • Powered by Daytona & Supabase</span>
         </div>
         <div className="flex items-center gap-4">
-          <a href="#docs" className="hover:text-white transition-colors">Docs</a>
+          <a href="#docs" className="hover:text-white transition-colors">Docs & LLD</a>
           <a href="https://app.daytona.io" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Daytona Cloud</a>
-          <a href="https://github.com/aksri648/antigravity-ui" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
-          <button onClick={onResetApp} className="hover:text-red-400 transition-colors">Reset Data</button>
+          <a href="https://supabase.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Supabase</a>
+          <button onClick={onResetApp} className="hover:text-red-400 transition-colors cursor-pointer">Reset Data</button>
         </div>
       </footer>
     </div>
