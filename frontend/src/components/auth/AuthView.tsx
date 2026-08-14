@@ -17,7 +17,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { apiUrl } from "../../config/api";
-import { supabase, getSupabaseConfig, updateSupabaseClient } from "../../config/supabase";
+import { getSupabaseConfig, getSupabaseClient, updateSupabaseClient } from "../../config/supabase";
 
 interface AuthViewProps {
   initialMode?: "signin" | "signup";
@@ -65,7 +65,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
 
   useEffect(() => {
     // Listen for Supabase auth state change (e.g., OAuth redirects)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = getSupabaseClient().auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const token = session.access_token;
         const userObj = {
@@ -105,7 +105,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
     if (supaConfig.isConfigured) {
       try {
         if (mode === "signup") {
-          const { data, error: supaErr } = await supabase.auth.signUp({
+          const { data, error: supaErr } = await getSupabaseClient().auth.signUp({
             email: email.trim(),
             password: password.trim(),
             options: {
@@ -136,7 +136,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
             return;
           }
         } else {
-          const { data, error: supaErr } = await supabase.auth.signInWithPassword({
+          const { data, error: supaErr } = await getSupabaseClient().auth.signInWithPassword({
             email: email.trim(),
             password: password.trim(),
           });
@@ -208,7 +208,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const handleGoogleOAuth = async () => {
     if (supaConfig.isConfigured) {
       try {
-        const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        const { error: oauthErr } = await getSupabaseClient().auth.signInWithOAuth({
           provider: "google",
           options: {
             redirectTo: window.location.origin,

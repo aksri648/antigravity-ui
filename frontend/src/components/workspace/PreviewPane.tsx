@@ -75,7 +75,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Effective live preview URL: signedUrl > passed previewUrl > standard format
-  const daytonaPreviewUrl = signedUrl || previewUrl || (sandboxId ? `https://${activePort}-${sandboxId}.daytona.app` : "");
+  const daytonaPreviewUrl = signedUrl || previewUrl || (sandboxId ? `https://${sandboxId}-${activePort}.daytona.app` : "");
 
   // Fetch Daytona Signed Preview URL (Eliminates header requirements for iframes)
   const fetchSignedPreviewUrl = useCallback(async () => {
@@ -235,8 +235,8 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
     e.stopPropagation();
     const filtered = openTabs.filter((t) => t !== path);
     setOpenTabs(filtered);
-    if (selectedFile === path && filtered.length > 0) {
-      setSelectedFile(filtered[filtered.length - 1]);
+    if (selectedFile === path) {
+      setSelectedFile(filtered.length > 0 ? filtered[filtered.length - 1] : "");
     }
   };
 

@@ -92,7 +92,7 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
     setEditingConvTitle(conv.title);
   };
 
-  const handleSaveEditConv = async (e: React.MouseEvent, convId: string) => {
+  const handleSaveEditConv = async (e: React.SyntheticEvent, convId: string) => {
     e.stopPropagation();
     if (editingConvTitle.trim()) {
       await onUpdateConversationTitle(convId, editingConvTitle.trim());
@@ -100,7 +100,7 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
     setEditingConvId(null);
   };
 
-  const handleCancelEditConv = (e: React.MouseEvent) => {
+  const handleCancelEditConv = (e: React.SyntheticEvent) => {
     e.stopPropagation();
     setEditingConvId(null);
   };
@@ -286,8 +286,8 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
                     </div>
                   ) : (
                     <>
-                      <span className="truncate max-w-[170px]" title={activeProject.folderPath}>
-                        📁 {activeProject.folderPath.replace("/home/daytona/persist", "~")}
+                      <span className="truncate max-w-[170px]" title={activeProject.folderPath || ""}>
+                        📁 {activeProject.folderPath ? activeProject.folderPath.replace("/home/daytona/persist", "~") : "~"}
                       </span>
                       <div className="flex items-center gap-1">
                         <button
@@ -379,8 +379,8 @@ export const ProjectsSidebar: React.FC<ProjectsSidebarProps> = ({
                               className="w-full px-1.5 py-0.5 bg-black/50 border border-emerald-500/50 rounded text-xs text-white focus:outline-none"
                               autoFocus
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") handleSaveEditConv(e as any, conv.id);
-                                if (e.key === "Escape") handleCancelEditConv(e as any);
+                                if (e.key === "Enter") handleSaveEditConv(e, conv.id);
+                                if (e.key === "Escape") handleCancelEditConv(e);
                               }}
                             />
                             <button

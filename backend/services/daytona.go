@@ -99,10 +99,10 @@ func (s *DaytonaService) GetOrCreateUserVolume(apiKey string, serverUrl string, 
 	if err == nil {
 		listReq.Header.Set("Authorization", "Bearer "+apiKey)
 		if listResp, err := s.client.Do(listReq); err == nil {
-			defer listResp.Body.Close()
 			if listResp.StatusCode == http.StatusOK {
 				var vols []map[string]interface{}
 				if jsonErr := json.NewDecoder(listResp.Body).Decode(&vols); jsonErr == nil {
+					listResp.Body.Close()
 					for _, v := range vols {
 						name, _ := v["name"].(string)
 						id, _ := v["id"].(string)
@@ -115,7 +115,11 @@ func (s *DaytonaService) GetOrCreateUserVolume(apiKey string, serverUrl string, 
 							}, nil
 						}
 					}
+				} else {
+					listResp.Body.Close()
 				}
+			} else {
+				listResp.Body.Close()
 			}
 		}
 	}
@@ -359,6 +363,7 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 	}
 	jsonBytes, _ := json.Marshal(payload)
 
+	execClient := &http.Client{Timeout: 15 * time.Minute}
 	for _, ep := range endpoints {
 		req, err := http.NewRequest("POST", ep, bytes.NewBuffer(jsonBytes))
 		if err != nil {
@@ -367,7 +372,7 @@ func (s *DaytonaService) ExecProcess(apiKey string, serverUrl string, sandboxId 
 		req.Header.Set("Authorization", "Bearer "+apiKey)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := s.client.Do(req)
+		resp, err := execClient.Do(req)
 		if err != nil {
 			continue
 		}

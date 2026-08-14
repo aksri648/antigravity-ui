@@ -330,7 +330,7 @@ export function App() {
           { name: event.metadata?.tool || "tool_execution", path: event.metadata?.path },
         ];
       } else if (event.type === "token") {
-        updatedMsg.text = updatedMsg.text ? updatedMsg.text + "\n" + event.content : event.content;
+        updatedMsg.text = (updatedMsg.text || "") + event.content;
       } else if (event.type === "error") {
         updatedMsg.text = event.content || "An error occurred during execution.";
         updatedMsg.isError = true;
@@ -650,6 +650,13 @@ export function App() {
         method: "DELETE",
       });
       if (res.ok) {
+        if (activeProject?.id === projectId) {
+          localStorage.removeItem(`active_project_id_${userId}`);
+          setActiveProject(null);
+          setConversations([]);
+          setActiveConversationId(null);
+          setMessages([]);
+        }
         await fetchProjects();
       }
     } catch (err) {

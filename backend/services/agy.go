@@ -15,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"backend/models"
 )
 
@@ -31,6 +34,8 @@ func (s *AGYService) BootstrapSandbox(apiKey string, serverUrl string, sandboxId
 	if keyringPassphrase == "" {
 		keyringPassphrase = "agy-default-keyring-pass"
 	}
+	// Sanitize passphrase for safe shell interpolation
+	keyringPassphrase = strings.ReplaceAll(keyringPassphrase, "'", "'\"'\"'")
 
 	bootstrapCmd := fmt.Sprintf(`#!/usr/bin/env bash
 set -e
@@ -346,6 +351,17 @@ func (s *AGYService) SubmitAuthCode(apiKey string, serverUrl string, sandboxId s
 
 	clientId := os.Getenv("GOOGLE_OAUTH_CLIENT_ID")
 
+	// Sanitize inputs to prevent shell injection
+	safeAuthCode := strings.ReplaceAll(strings.ReplaceAll(authCode, "'", ""), "\"", "")
+	safeAuthCode = strings.ReplaceAll(safeAuthCode, "`", "")
+	safeAuthCode = strings.ReplaceAll(safeAuthCode, "$", "")
+	safeAuthCode = strings.ReplaceAll(safeAuthCode, ";", "")
+	safeAuthCode = strings.ReplaceAll(safeAuthCode, "|", "")
+	safeAuthCode = strings.ReplaceAll(safeAuthCode, "&", "")
+	safeClientId := strings.ReplaceAll(strings.ReplaceAll(clientId, "'", ""), "\"", "")
+	safeClientId = strings.ReplaceAll(safeClientId, "`", "")
+	safeClientId = strings.ReplaceAll(safeClientId, "$", "")
+
 	// 1. Perform token exchange directly inside the Daytona sandbox container via curl to Google Token API
 	exchangeCmd := fmt.Sprintf(`
 mkdir -p /home/daytona/persist/gemini /root/persist/gemini /root/.gemini /home/daytona/.gemini /root/.gemini/antigravity-cli /home/daytona/persist/gemini/antigravity-cli
@@ -369,7 +385,7 @@ else
   echo "TOKEN_EXCHANGE_FALLBACK"
   echo '%s' | (agy --prompt '/auth' 2>&1 || agy login 2>&1 || true)
 fi
-`, clientId, authCode, authCode)
+`, safeClientId, safeAuthCode, safeAuthCode)
 
 	res, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, exchangeCmd)
 	out := ""
@@ -489,12 +505,15 @@ func (s *AGYService) SaveGoogleApiKey(apiKey string, serverUrl string, sandboxId
 
 	cmd := fmt.Sprintf(`
 mkdir -p /home/daytona/persist/gemini /root/.gemini /root/.gemini/antigravity-cli
-echo 'GEMINI_API_KEY=%s' >> /home/daytona/persist/gemini/.env
-echo 'GEMINI_API_KEY=%s' >> /root/.gemini/.env
-echo 'GOOGLE_API_KEY=%s' >> /home/daytona/persist/gemini/.env
-echo 'GOOGLE_API_KEY=%s' >> /root/.gemini/.env
+for f in /home/daytona/persist/gemini/.env /root/.gemini/.env; do
+  touch "$f"
+  sed -i '/^GEMINI_API_KEY=/d' "$f"
+  sed -i '/^GOOGLE_API_KEY=/d' "$f"
+  echo 'GEMINI_API_KEY=%s' >> "$f"
+  echo 'GOOGLE_API_KEY=%s' >> "$f"
+done
 echo "API_KEY_SAVED"
-`, googleApiKey, googleApiKey, googleApiKey, googleApiKey)
+`, googleApiKey, googleApiKey)
 
 	_, err := s.daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 	return err
@@ -519,7 +538,7 @@ func (s *AGYService) StreamPromptExec(
 	}
 	agentTitle := "Antigravity AI Agent"
 	if agentMode != "" {
-		agentTitle = strings.Title(strings.ReplaceAll(agentMode, "-", " "))
+		agentTitle = cases.Title(language.English).String(strings.ReplaceAll(agentMode, "-", " "))
 	}
 	eventCallback(models.StreamEvent{
 		Type:      "thought",

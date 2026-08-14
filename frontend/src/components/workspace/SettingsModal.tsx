@@ -72,7 +72,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [currentServerUrl, setCurrentServerUrl] = useState(serverUrl || "https://app.daytona.io/api");
   const [currentUserId, setCurrentUserId] = useState(userId);
   const [currentSandboxId, setCurrentSandboxId] = useState(sandboxId);
-  const [currentPort, setCurrentPort] = useState(activePort);
+  const [currentPort, setCurrentPort] = useState<number>(activePort || 3000);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Daytona Verification State
@@ -199,7 +199,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setCurrentServerUrl(serverUrl || "https://app.daytona.io/api");
       setCurrentUserId(userId);
       setCurrentSandboxId(sandboxId);
-      setCurrentPort(activePort);
+      setCurrentPort(activePort || 3000);
       setVerifyStatus(null);
       setSaveBanner(null);
       fetchEnvVars();
@@ -276,7 +276,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleTriggerGoogleAuth = () => {
     const keyToUse = currentApiKey || apiKey || localStorage.getItem("daytona_api_key") || "";
     const clientId = oauthClientId.trim() || "884354919052-36trc1jjb3tguiac32ov6cod268c5blh.apps.googleusercontent.com";
-    const redirectUri = `${window.location.protocol}//${window.location.hostname}:8080/api/auth/google/callback`;
+    const redirectUri = apiUrl("/api/auth/google/callback");
 
     // Save custom OAuth credentials to local storage if provided
     if (oauthClientId.trim()) localStorage.setItem("google_oauth_client_id", oauthClientId.trim());

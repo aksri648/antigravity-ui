@@ -12,7 +12,9 @@ import (
 // Helper to extract userId
 func getUserId(c *gin.Context) string {
 	if u, exists := c.Get("userId"); exists {
-		return u.(string)
+		if s, ok := u.(string); ok {
+			return s
+		}
 	}
 	return c.Query("userId")
 }

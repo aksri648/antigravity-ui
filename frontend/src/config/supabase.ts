@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // Retrieve Supabase URL and Anon Key from environment variables or persistent localStorage
 export const getSupabaseConfig = () => {
@@ -20,13 +20,13 @@ export const getSupabaseConfig = () => {
   return { url, anonKey, isConfigured };
 };
 
-const config = getSupabaseConfig();
+const initialConfig = getSupabaseConfig();
 
-if (!config.isConfigured) {
+if (!initialConfig.isConfigured) {
   console.warn("[DELTA] Supabase is not configured. Auth features will be unavailable. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
 }
 
-export const supabase = createClient(config.url, config.anonKey, {
+let activeClient: SupabaseClient = createClient(initialConfig.url, initialConfig.anonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -34,14 +34,19 @@ export const supabase = createClient(config.url, config.anonKey, {
   },
 });
 
+export const getSupabaseClient = (): SupabaseClient => activeClient;
+export const supabase = activeClient;
+
 export const updateSupabaseClient = (url: string, anonKey: string) => {
   if (url) localStorage.setItem("supabase_url", url);
   if (anonKey) localStorage.setItem("supabase_anon_key", anonKey);
-  return createClient(url, anonKey, {
+  activeClient = createClient(url, anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
     },
   });
+  return activeClient;
 };
+

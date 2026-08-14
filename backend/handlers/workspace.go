@@ -25,6 +25,12 @@ var (
 	activePromptCancel = make(map[string]context.CancelFunc)
 )
 
+// shellQuote safely quotes a string for use in shell commands
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
+
 // ListWorkspaceFiles returns a nested tree structure of files inside the Daytona sandbox
 func ListWorkspaceFiles(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -185,7 +191,7 @@ func GetFileContent(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			filePath = "src/App.tsx"
 		}
 
-		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, fmt.Sprintf("cat %s", filePath))
+		res, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, fmt.Sprintf("cat %s", shellQuote(filePath)))
 		content := ""
 		if res != nil {
 			content = res.Result
@@ -715,7 +721,7 @@ func CreateFolderHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		cmd := fmt.Sprintf("mkdir -p %s", req.Path)
+		cmd := fmt.Sprintf("mkdir -p %s", shellQuote(req.Path))
 		_, err := daytonaSvc.ExecProcess(req.ApiKey, req.ServerUrl, req.SandboxID, cmd)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -739,7 +745,7 @@ func DeleteFileHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			return
 		}
 
-		cmd := fmt.Sprintf("rm -rf %s", path)
+		cmd := fmt.Sprintf("rm -rf %s", shellQuote(path))
 		_, err := daytonaSvc.ExecProcess(apiKey, serverUrl, sandboxId, cmd)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
