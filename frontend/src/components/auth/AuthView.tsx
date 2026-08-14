@@ -229,41 +229,42 @@ export const AuthView: React.FC<AuthViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#141418] p-6 sm:p-8 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md px-6 py-10 sm:px-12 sm:py-16 md:px-24 md:py-20 overflow-y-auto animate-in fade-in duration-200">
+      <div className="relative w-full max-w-[380px] my-auto rounded-2xl border border-white/10 bg-[#121216] p-5 sm:p-6 shadow-2xl shadow-black/90 space-y-4 font-sans">
         
         {/* Close Button */}
         {onClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            className="absolute top-3.5 right-3.5 text-gray-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            title="Close"
           >
             <X className="h-4 w-4" />
           </button>
         )}
 
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-lg shadow-emerald-500/20">
-            <Sparkles className="h-6 w-6" />
+        {/* Compact Header */}
+        <div className="text-center space-y-1.5">
+          <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-black shadow-md shadow-emerald-500/20">
+            <Sparkles className="h-4.5 w-4.5" />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-white font-mono">
+          <h2 className="text-lg font-bold tracking-tight text-white font-mono">
             {mode === "signup" ? "Create DELTA Account" : "Welcome Back"}
           </h2>
           <div className="flex items-center justify-center gap-2">
-            <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/40 text-emerald-400">
+            <Badge variant="outline" className="text-[9px] font-mono border-emerald-500/30 text-emerald-400 py-0 px-1.5">
               <Database className="h-2.5 w-2.5 mr-1 inline" /> {supaConfig.isConfigured ? "Supabase Auth & DB" : "SQLite Cloud Hybrid"}
             </Badge>
           </div>
         </div>
 
         {/* Mode Switcher Tabs */}
-        <div className="flex rounded-full bg-black/60 p-1 border border-white/10">
+        <div className="flex rounded-lg bg-black/50 p-0.5 border border-white/10">
           <button
             type="button"
             onClick={() => { setMode("signin"); setError(null); }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-full transition-all cursor-pointer ${
-              mode === "signin" ? "bg-white text-black shadow-md font-bold" : "text-gray-400 hover:text-white"
+            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
+              mode === "signin" ? "bg-white text-black shadow-sm font-bold" : "text-gray-400 hover:text-white"
             }`}
           >
             Sign In
@@ -271,8 +272,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
           <button
             type="button"
             onClick={() => { setMode("signup"); setError(null); }}
-            className={`flex-1 py-1.5 text-xs font-semibold rounded-full transition-all cursor-pointer ${
-              mode === "signup" ? "bg-white text-black shadow-md font-bold" : "text-gray-400 hover:text-white"
+            className={`flex-1 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer ${
+              mode === "signup" ? "bg-white text-black shadow-sm font-bold" : "text-gray-400 hover:text-white"
             }`}
           >
             Create Account
@@ -280,46 +281,46 @@ export const AuthView: React.FC<AuthViewProps> = ({
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-500/40 bg-red-950/30 p-3 text-xs text-red-300 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-            <span>{error}</span>
+          <div className="rounded-lg border border-red-500/40 bg-red-950/30 p-2.5 text-[11px] text-red-300 flex items-center gap-2">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-400" />
+            <span className="leading-tight">{error}</span>
           </div>
         )}
 
         {/* Primary Auth Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           {mode === "signup" && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-                <UserIcon className="h-3.5 w-3.5 text-emerald-400" /> Full Name
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+                <UserIcon className="h-3 w-3 text-emerald-400" /> Full Name
               </label>
               <Input
                 type="text"
                 placeholder="Jane Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-black/60 border-white/10 text-white text-xs h-10"
+                className="bg-black/50 border-white/10 text-white text-xs h-8.5 rounded-lg focus:border-emerald-500/50"
               />
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5 text-emerald-400" /> Email Address *
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+              <Mail className="h-3 w-3 text-emerald-400" /> Email Address *
             </label>
             <Input
               type="email"
               placeholder="developer@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-black/60 border-white/10 text-white text-xs h-10"
+              className="bg-black/50 border-white/10 text-white text-xs h-8.5 rounded-lg focus:border-emerald-500/50"
               required
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 text-emerald-400" /> Password *
+          <div className="space-y-1">
+            <label className="text-[11px] font-medium text-gray-300 flex items-center gap-1">
+              <Lock className="h-3 w-3 text-emerald-400" /> Password *
             </label>
             <div className="relative">
               <Input
@@ -327,34 +328,34 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 placeholder="••••••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-black/60 border-white/10 text-white text-xs h-10 pr-9"
+                className="bg-black/50 border-white/10 text-white text-xs h-8.5 rounded-lg pr-8 focus:border-emerald-500/50"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
 
           {/* Optional Daytona Key on Signup */}
           {mode === "signup" && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Key className="h-3.5 w-3.5 text-emerald-400" /> Daytona API Key (Optional)
+            <div className="space-y-1">
+              <label className="text-[11px] font-medium text-gray-300 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Key className="h-3 w-3 text-emerald-400" /> Daytona Key (Optional)
                 </span>
-                <span className="text-[10px] text-gray-500 font-normal">Can configure later</span>
+                <span className="text-[9px] text-gray-500">Configurable later</span>
               </label>
               <Input
                 type="password"
                 placeholder="daytona_sec_xxxxxxxxxxxx"
                 value={daytonaApiKey}
                 onChange={(e) => setDaytonaApiKey(e.target.value)}
-                className="font-mono bg-black/60 border-white/10 text-white text-xs h-10"
+                className="font-mono bg-black/50 border-white/10 text-white text-xs h-8.5 rounded-lg focus:border-emerald-500/50"
               />
             </div>
           )}
@@ -363,20 +364,20 @@ export const AuthView: React.FC<AuthViewProps> = ({
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-full shadow-lg shadow-emerald-500/20 text-xs transition-all gap-2 cursor-pointer"
+            className="w-full h-9 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg shadow-md shadow-emerald-500/10 text-xs transition-all gap-1.5 cursor-pointer mt-1"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-            {mode === "signup" ? "Create Account & Enter" : "Sign In to Workspace"}
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
+            {mode === "signup" ? "Create Account" : "Sign In"}
           </Button>
 
           {/* Google OAuth Button */}
-          <div className="pt-1">
+          <div>
             <button
               type="button"
               onClick={handleGoogleOAuth}
-              className="w-full h-10 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-white flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full h-8.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-[11px] font-medium text-white flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
-              <svg className="h-4 w-4" viewBox="0 0 24 24">
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
@@ -388,25 +389,25 @@ export const AuthView: React.FC<AuthViewProps> = ({
         </form>
 
         {/* Collapsible Supabase Configuration */}
-        <div className="border-t border-white/10 pt-3">
+        <div className="border-t border-white/10 pt-2.5">
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-[11px] text-gray-400 hover:text-emerald-400 flex items-center justify-between w-full cursor-pointer"
+            className="text-[10px] text-gray-400 hover:text-emerald-400 flex items-center justify-between w-full cursor-pointer font-mono"
           >
             <span>Supabase Cloud DB & Auth Settings</span>
-            <span>{showAdvanced ? "▲" : "▼"}</span>
+            <span className="text-[9px]">{showAdvanced ? "▲" : "▼"}</span>
           </button>
 
           {showAdvanced && (
-            <div className="mt-3 space-y-2.5 rounded-xl border border-white/10 bg-black/50 p-3 text-xs">
+            <div className="mt-2 space-y-2 rounded-lg border border-white/10 bg-black/40 p-2.5 text-[11px]">
               <div className="space-y-1">
                 <label className="text-[10px] text-gray-400">Supabase Project URL</label>
                 <Input
                   placeholder="https://your-project.supabase.co"
                   value={supaUrlInput}
                   onChange={(e) => setSupaUrlInput(e.target.value)}
-                  className="font-mono text-xs bg-black/60 border-white/10 text-emerald-300 h-8"
+                  className="font-mono text-[11px] bg-black/50 border-white/10 text-emerald-300 h-7.5 rounded"
                 />
               </div>
               <div className="space-y-1">
@@ -416,14 +417,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   placeholder="eyJhbGciOi..."
                   value={supaKeyInput}
                   onChange={(e) => setSupaKeyInput(e.target.value)}
-                  className="font-mono text-xs bg-black/60 border-white/10 text-emerald-300 h-8"
+                  className="font-mono text-[11px] bg-black/50 border-white/10 text-emerald-300 h-7.5 rounded"
                 />
               </div>
               <Button
                 type="button"
                 size="sm"
                 onClick={handleSaveSupabaseConfig}
-                className="w-full h-7 text-[11px] bg-white text-black hover:bg-gray-200 font-bold rounded-lg"
+                className="w-full h-7 text-[10px] bg-white text-black hover:bg-gray-200 font-bold rounded cursor-pointer"
               >
                 Apply Supabase Config
               </Button>
@@ -432,13 +433,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
         </div>
 
         {/* Guest Access Alternative */}
-        <div className="text-center pt-1">
+        <div className="text-center pt-0.5">
           <button
             type="button"
             onClick={onContinueAsGuest}
-            className="text-xs text-gray-400 hover:text-white transition-colors underline cursor-pointer"
+            className="text-[11px] text-gray-400 hover:text-white transition-colors underline cursor-pointer"
           >
-            Continue as Guest (Ephemeral Sandbox Session)
+            Continue as Guest (Ephemeral Session)
           </button>
         </div>
       </div>
