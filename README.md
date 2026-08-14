@@ -2,6 +2,8 @@
 
 Autonomous multi-agent cloud IDE. A user types a natural-language prompt in a browser-based split-screen UI, and AI agents running inside isolated cloud sandboxes generate, edit, and run code in real time with a live preview.
 
+> **Note**: This project is **source-available** for viewing purposes only and is **not open source**. All rights are reserved by the copyright holder. See the [LICENSE](LICENSE) file for complete licensing terms and contact details.
+
 ## Architecture
 
 ```mermaid
