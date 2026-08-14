@@ -38,6 +38,10 @@ export function App() {
     const saved = localStorage.getItem("workspace_sidebar_open");
     return saved !== null ? saved === "true" : true;
   });
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem("workspace_right_panel_open");
+    return saved !== null ? saved === "true" : true;
+  });
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -901,6 +905,14 @@ export function App() {
                 return next;
               });
             }}
+            isRightPanelOpen={isRightPanelOpen}
+            onToggleRightPanel={() => {
+              setIsRightPanelOpen((prev) => {
+                const next = !prev;
+                localStorage.setItem("workspace_right_panel_open", String(next));
+                return next;
+              });
+            }}
             activeProjectName={activeProject?.name}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onOpenAuth={(mode) => {
@@ -949,10 +961,12 @@ export function App() {
               onLogout={handleLogout}
             />
 
-            {/* Left Pane (Adjustable Width) */}
+            {/* Left Pane (Adjustable Width or Full Screen when Right Panel is Collapsed) */}
             <div
-              style={{ width: `${leftPanePercent}%` }}
-              className="h-full shrink-0 overflow-hidden flex flex-col min-w-[280px]"
+              style={{ width: isRightPanelOpen ? `${leftPanePercent}%` : "100%" }}
+              className={`h-full overflow-hidden flex flex-col transition-[width] duration-150 ${
+                isRightPanelOpen ? "shrink-0 min-w-[280px]" : "flex-1 w-full"
+              }`}
             >
               <ChatPane
                 messages={messages}
@@ -970,48 +984,64 @@ export function App() {
                 activeConversationTitle={conversations.find((c) => c.id === activeConversationId)?.title}
                 activeProjectName={activeProject?.name}
                 onNewChat={() => handleCreateConversation(activeProject?.id)}
-              />
-            </div>
-
-            {/* Interactive Resizable Divider Bar */}
-            <div
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setIsDraggingSplitter(true);
-              }}
-              onDoubleClick={() => {
-                setLeftPanePercent(32);
-                localStorage.setItem("workspace_left_width_pct", "32");
-              }}
-              className={`group relative w-2 hover:w-2.5 bg-border/40 hover:bg-emerald-500/80 cursor-col-resize z-20 shrink-0 transition-all flex items-center justify-center border-x border-white/5 ${
-                isDraggingSplitter ? "bg-emerald-500 w-2.5 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : ""
-              }`}
-              title="Drag to resize panels (Double-click to reset to 32%)"
-            >
-              <div className="h-8 w-1 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
-            </div>
-
-            {/* Right Pane (Dynamic Remaining Width) */}
-            <div className="flex-1 h-full min-w-0 overflow-hidden relative">
-              {/* Invisible overlay during drag to prevent iframes from swallowing mouse movements */}
-              {isDraggingSplitter && <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />}
-              <PreviewPane
-                sandboxId={sandboxId}
-                apiKey={apiKey || ""}
-                serverUrl={serverUrl}
-                previewUrl={previewUrl}
-                activePort={activePort}
-                terminalLogs={terminalLogs}
-                userId={userId}
-                projectId={activeProject?.id}
-                onPortChange={(port) => {
-                  setActivePort(port);
-                  if (sandboxId) {
-                    setPreviewUrl(`https://${sandboxId}-${port}.daytona.app`);
-                  }
+                isRightPanelOpen={isRightPanelOpen}
+                onToggleRightPanel={() => {
+                  setIsRightPanelOpen((prev) => {
+                    const next = !prev;
+                    localStorage.setItem("workspace_right_panel_open", String(next));
+                    return next;
+                  });
                 }}
               />
             </div>
+
+            {/* Interactive Resizable Divider Bar (Only shown when Right Panel is Open) */}
+            {isRightPanelOpen && (
+              <div
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsDraggingSplitter(true);
+                }}
+                onDoubleClick={() => {
+                  setLeftPanePercent(32);
+                  localStorage.setItem("workspace_left_width_pct", "32");
+                }}
+                className={`group relative w-2 hover:w-2.5 bg-border/40 hover:bg-emerald-500/80 cursor-col-resize z-20 shrink-0 transition-all flex items-center justify-center border-x border-white/5 ${
+                  isDraggingSplitter ? "bg-emerald-500 w-2.5 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : ""
+                }`}
+                title="Drag to resize panels (Double-click to reset to 32%)"
+              >
+                <div className="h-8 w-1 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
+              </div>
+            )}
+
+            {/* Right Pane (Dynamic Remaining Width — Collapsible) */}
+            {isRightPanelOpen && (
+              <div className="flex-1 h-full min-w-0 overflow-hidden relative animate-in fade-in duration-150">
+                {/* Invisible overlay during drag to prevent iframes from swallowing mouse movements */}
+                {isDraggingSplitter && <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />}
+                <PreviewPane
+                  sandboxId={sandboxId}
+                  apiKey={apiKey || ""}
+                  serverUrl={serverUrl}
+                  previewUrl={previewUrl}
+                  activePort={activePort}
+                  terminalLogs={terminalLogs}
+                  userId={userId}
+                  projectId={activeProject?.id}
+                  onToggleCollapse={() => {
+                    setIsRightPanelOpen(false);
+                    localStorage.setItem("workspace_right_panel_open", "false");
+                  }}
+                  onPortChange={(port) => {
+                    setActivePort(port);
+                    if (sandboxId) {
+                      setPreviewUrl(`https://${sandboxId}-${port}.daytona.app`);
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Workspace & Environment Settings Modal */}

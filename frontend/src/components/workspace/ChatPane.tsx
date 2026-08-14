@@ -19,6 +19,7 @@ import {
   Activity,
   Zap,
   Plus,
+  PanelRight,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -60,6 +61,8 @@ interface ChatPaneProps {
   activeConversationTitle?: string;
   activeProjectName?: string;
   onNewChat?: () => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
 }
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
@@ -75,6 +78,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   activeConversationTitle,
   activeProjectName,
   onNewChat,
+  isRightPanelOpen = true,
+  onToggleRightPanel,
 }) => {
   const [input, setInput] = useState("");
   const [selectedMode, setSelectedMode] = useState<AgentMode>(currentAgentMode);
@@ -203,6 +208,19 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
+
+          {!isRightPanelOpen && onToggleRightPanel && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleRightPanel}
+              className="h-7 text-xs px-2 border-purple-500/40 bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 cursor-pointer flex items-center gap-1 shadow-sm font-medium"
+              title="Expand right preview & dev panel"
+            >
+              <PanelRight className="h-3.5 w-3.5 text-purple-400" />
+              <span className="hidden sm:inline">Preview</span>
+            </Button>
+          )}
         </div>
       </div>
 

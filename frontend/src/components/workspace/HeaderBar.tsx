@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Cpu, Settings, Layers, LogOut, User, LogIn, UserPlus, PanelLeft, PanelLeftClose, FolderGit2 } from "lucide-react";
+import { Sparkles, Cpu, Settings, Layers, LogOut, User, LogIn, UserPlus, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, FolderGit2 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
@@ -11,6 +11,8 @@ interface HeaderBarProps {
   userName?: string;
   isSidebarOpen?: boolean;
   onToggleSidebar?: () => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
   activeProjectName?: string;
   onOpenSettings: () => void;
   onOpenAuth?: (mode: "signin" | "signup") => void;
@@ -26,6 +28,8 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   userName,
   isSidebarOpen = true,
   onToggleSidebar,
+  isRightPanelOpen = true,
+  onToggleRightPanel,
   activeProjectName,
   onOpenSettings,
   onOpenAuth,
@@ -149,6 +153,23 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
         >
           <Settings className="h-3.5 w-3.5 text-blue-400" /> Settings
         </Button>
+
+        {/* Right Panel (Preview / VNC / Telemetry / Deployments) Toggle */}
+        {onToggleRightPanel && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggleRightPanel}
+            className={`h-8 w-8 transition-colors cursor-pointer ${
+              isRightPanelOpen
+                ? "text-gray-400 hover:text-white hover:bg-white/10"
+                : "text-purple-400 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20"
+            }`}
+            title={isRightPanelOpen ? "Collapse Right Panel (Preview / VNC / Deployments)" : "Expand Right Panel (Preview / VNC / Deployments)"}
+          >
+            {isRightPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRight className="h-4 w-4" />}
+          </Button>
+        )}
 
         {/* Exit Workspace / Sign Out — Instant response */}
         <Button

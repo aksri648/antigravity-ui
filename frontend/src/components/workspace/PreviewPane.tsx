@@ -20,6 +20,7 @@ import {
   Sparkles,
   Activity,
   Layers,
+  PanelRightClose,
 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { Button } from "../ui/button";
@@ -40,6 +41,7 @@ interface PreviewPaneProps {
   onPortChange: (port: number) => void;
   userId?: string;
   projectId?: string;
+  onToggleCollapse?: () => void;
 }
 
 export const PreviewPane: React.FC<PreviewPaneProps> = ({
@@ -52,6 +54,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   onPortChange,
   userId,
   projectId,
+  onToggleCollapse,
 }) => {
   const [activeTab, setActiveTab] = useState<"preview" | "vnc" | "code" | "terminal" | "telemetry" | "deployments">("preview");
   const [iframeKey, setIframeKey] = useState(0);
@@ -463,6 +466,18 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
           >
             <ExternalLink className="h-3 w-3 text-blue-400" /> Open External
           </a>
+
+          {onToggleCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="h-7 w-7 text-muted-foreground hover:text-white hover:bg-white/10 cursor-pointer"
+              title="Collapse right preview & dev panel"
+            >
+              <PanelRightClose className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
