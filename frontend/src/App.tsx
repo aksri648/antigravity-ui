@@ -31,6 +31,14 @@ export function App() {
   const [activePort, setActivePort] = useState<number>(3000);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Adjustable Split Pane Width State (Left Panel %)
+  const [leftPanePercent, setLeftPanePercent] = useState<number>(() => {
+    const saved = localStorage.getItem("workspace_left_width_pct");
+    return saved ? parseFloat(saved) : 32;
+  });
+  const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
+  const workspaceContainerRef = useRef<HTMLDivElement>(null);
+
   const wsRef = useRef<WebSocket | null>(null);
 
   // Auto-verify session and fetch profile & active sandbox from SQLite
@@ -101,6 +109,42 @@ export function App() {
       fetchChatHistory();
     }
   }, [currentView, userId, sandboxId, fetchChatHistory]);
+
+  // Handle Dragging Splitter for Workspace Panel Resizing
+  useEffect(() => {
+    if (!isDraggingSplitter) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!workspaceContainerRef.current) return;
+      const rect = workspaceContainerRef.current.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const totalWidth = rect.width;
+      if (totalWidth <= 0) return;
+
+      const minPx = 280;
+      const maxPx = Math.max(minPx, totalWidth - 340);
+      const clampedPx = Math.min(Math.max(offsetX, minPx), maxPx);
+      const pct = (clampedPx / totalWidth) * 100;
+
+      setLeftPanePercent(pct);
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSplitter(false);
+      setLeftPanePercent((current) => {
+        localStorage.setItem("workspace_left_width_pct", current.toFixed(2));
+        return current;
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDraggingSplitter]);
 
   // Initialize WebSocket connection to Go backend
   useEffect(() => {
@@ -616,10 +660,16 @@ export function App() {
             onExitWorkspace={handleExitWorkspace}
           />
 
-          {/* Main 30 / 70 Split Screen Workspace */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left Pane (30% Width) */}
-            <div className="w-[30%] min-w-[320px] max-w-[480px]">
+          {/* Main Adjustable Split Screen Workspace */}
+          <div
+            ref={workspaceContainerRef}
+            className={`flex flex-1 overflow-hidden relative ${isDraggingSplitter ? "select-none cursor-col-resize" : ""}`}
+          >
+            {/* Left Pane (Adjustable Width) */}
+            <div
+              style={{ width: `${leftPanePercent}%` }}
+              className="h-full shrink-0 overflow-hidden flex flex-col min-w-[280px]"
+            >
               <ChatPane
                 messages={messages}
                 onSendMessage={handleSendMessage}
@@ -636,8 +686,28 @@ export function App() {
               />
             </div>
 
-            {/* Right Pane (70% Width) */}
-            <div className="flex-1">
+            {/* Interactive Resizable Divider Bar */}
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsDraggingSplitter(true);
+              }}
+              onDoubleClick={() => {
+                setLeftPanePercent(32);
+                localStorage.setItem("workspace_left_width_pct", "32");
+              }}
+              className={`group relative w-2 hover:w-2.5 bg-border/40 hover:bg-emerald-500/80 cursor-col-resize z-20 shrink-0 transition-all flex items-center justify-center border-x border-white/5 ${
+                isDraggingSplitter ? "bg-emerald-500 w-2.5 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : ""
+              }`}
+              title="Drag to resize panels (Double-click to reset to 32%)"
+            >
+              <div className="h-8 w-1 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
+            </div>
+
+            {/* Right Pane (Dynamic Remaining Width) */}
+            <div className="flex-1 h-full min-w-0 overflow-hidden relative">
+              {/* Invisible overlay during drag to prevent iframes from swallowing mouse movements */}
+              {isDraggingSplitter && <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />}
               <PreviewPane
                 sandboxId={sandboxId}
                 apiKey={apiKey || ""}
