@@ -45,22 +45,48 @@ flowchart TD
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 3, Radix UI, Monaco Editor |
-| Backend | Go 1.25, Gin, Gorilla WebSocket, golang-jwt, pure-Go SQLite |
-| Agent Layer | Python (orchestrator + 4 specialized agent personas) |
-| Sandbox | Daytona cloud micro-VMs with persistent volumes |
-| Persistence | SQLite (local runtime) + Supabase/PostgreSQL (optional cloud) |
+| Frontend | React 19, TypeScript, Vite 8, Tailwind CSS 3, Radix UI, Monaco Editor, Lucide Icons |
+| Backend | Go 1.25, Gin, Gorilla WebSocket, golang-jwt, pure-Go SQLite (`modernc.org/sqlite`) |
+| Multi-Project | Project-scoped persistent volumes (`/persist/projects/<slug>`) + Multi-Chat Threading |
+| Sandboxes | Daytona Cloud micro-VMs with persistent volume attachments |
+| Persistence | SQLite (local runtime) + Supabase/PostgreSQL (cloud option with RLS) |
+| Binaries | Linux 64-bit ELF binary + Windows standalone `server.exe` (zero CGO/DLL dependencies) |
 
 ## Quickstart
 
 ### Prerequisites
 
 - Node.js 18+
-- Go 1.25+
-- Python 3.10+ (for agent layer)
+- Go 1.25+ (or run the standalone `backend/server.exe` directly on Windows)
 - A Daytona API key ([daytona.io](https://daytona.io))
 
-### Frontend
+### Running the Backend
+
+#### On Linux / macOS / WSL:
+```bash
+cd backend
+go run .           # Gin server on http://localhost:8080
+# Or run pre-built binary:
+./server
+```
+
+#### On Windows (Native Standalone):
+```powershell
+cd backend
+.\server.exe       # Pre-compiled pure-Go executable on http://localhost:8080
+```
+
+Environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | Backend listen port |
+| `SQLITE_DB_PATH` | `data/agy_cloud.db` | SQLite database path |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,...` | Comma-separated CORS allowed origins |
+| `GOOGLE_OAUTH_CLIENT_ID` | (optional) | Gemini / Google OAuth Client ID |
+| `GOOGLE_OAUTH_REDIRECT_URI`| (optional) | OAuth callback endpoint |
+
+### Running the Frontend
 
 ```bash
 cd frontend
@@ -70,108 +96,73 @@ npm run build      # Production build to frontend/dist/
 npm run lint       # Oxlint
 ```
 
-### Backend
-
-```bash
-cd backend
-go run .           # Gin server on http://localhost:8080
-```
-
-Environment variables:
-
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `8080` | Backend listen port |
-| `SQLITE_DB_PATH` | `data/agy_cloud.db` | SQLite database path |
-
-Frontend environment (set in `.env` or `localStorage`):
-
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | Backend base URL (default `http://localhost:8080`) |
-| `VITE_SUPABASE_URL` | Supabase project URL (optional) |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key (optional) |
-
 ## Project Structure
 
 ```
 .
 ├── frontend/                  # React/Vite SPA
 │   └── src/
-│       ├── App.tsx            # Root component, view state machine
+│       ├── App.tsx            # Root component, view state machine, resizable split pane
+│       ├── types/             # Project, Conversation, and Chat TypeScript interfaces
 │       ├── components/
-│       │   ├── auth/          # Sign in / sign up
-│       │   ├── marketing/     # Public landing page + docs
+│       │   ├── auth/          # Sign in / sign up modal
+│       │   ├── marketing/     # Public landing page + interactive architecture docs
 │       │   ├── onboarding/    # First-time setup wizard
-│       │   ├── workspace/     # Chat, preview, files, settings
+│       │   ├── workspace/     # Chat, preview, files, projects sidebar, settings
+│       │   │   ├── ProjectsSidebar.tsx # Multi-project & multi-chat collapsible sidebar
+│       │   │   ├── HeaderBar.tsx       # Top navigation, project pill, sidebar toggle
+│       │   │   ├── ChatPane.tsx        # Conversation chat, engine toggle, agent modes
+│       │   │   └── PreviewPane.tsx     # Live iframe, code editor, terminal tabs
 │       │   └── ui/            # Reusable primitives (shadcn/ui pattern)
 │       └── config/            # API URLs, Supabase client
 ├── backend/                   # Go/Gin control plane
 │   ├── main.go                # Server entry, route registration
-│   ├── handlers/              # HTTP route handlers
-│   ├── services/              # Business logic (Daytona, AGY, users)
-│   ├── db/                    # SQLite init + migrations
-│   └── models/                # DTOs and request/response structs
-├── agents/                    # Python multi-agent orchestration
-│   ├── orchestrator.py        # Central dispatch to agent personas
-│   ├── drivers.py             # CLI driver abstraction (AGY, OpenCode, Claude)
-│   ├── app_developer.py       # Requirements, architecture, code generation
-│   ├── llm_deployer.py        # Model deployment recommendations
-│   ├── app_deployer.py        # Containerization and cloud deployment
-│   └── app_maintainer.py      # Repo maintenance and PR workflow
+│   ├── handlers/              # HTTP route handlers (projects, workspace, auth, secrets)
+│   │   ├── projects.go        # Multi-project and multi-chat CRUD endpoints
+│   │   ├── workspace.go       # Daytona prompt dispatch, file tree, proxy
+│   │   └── chat_history.go    # Threaded conversation chat history
+│   ├── services/              # Business logic (Daytona, AGY, UserService)
+│   ├── db/                    # SQLite init + 9-table schema migrations
+│   ├── models/                # DTOs and request/response structs
+│   └── server.exe             # Standalone pre-compiled Windows executable
 ├── supabase/
-│   └── schema.sql             # Cloud schema (4 tables + RLS policies)
+│   └── schema.sql             # Cloud schema (6 tables + RLS policies + indexes)
 └── docs/
     └── imagegeneration.md     # Image generation prompts for docs visuals
 ```
 
-## Frontend Views
+## Multi-Project & Multi-Chat Architecture
 
-The app has four navigation states managed by `App.tsx`:
+DELTA incorporates project-level workspace isolation and conversation threading modeled after **ChatGPT Codex / Cursor Projects**:
 
-1. **Marketing** -- Public landing page with interactive architecture docs
-2. **Auth** -- Sign in / sign up
-3. **Setup** -- First-time onboarding (Daytona API key + Google Auth)
-4. **Workspace** -- 30/70 split-screen: chat pane (left) + preview/editor (right)
+1. **Multi-Projects**:
+   - Users can create and switch between projects.
+   - Each project is automatically mapped to an isolated persistent folder in the Daytona sandbox at `/home/daytona/persist/projects/<slug>/`.
+   - All agent prompts and file edits are executed relative to the active project folder.
 
-## Agent System
+2. **Multi-Chats (Conversation Threading)**:
+   - Multiple chat threads can be created within each project.
+   - Chats can be searched, renamed inline, and deleted.
+   - Chat history is persisted per conversation in SQLite and Supabase with foreign-key integrity.
 
-The Python `agents/` package provides four specialized personas routed through `AgentOrchestrator`:
+3. **Collapsible Sidebar**:
+   - Toggleable via the top-left icon in the `HeaderBar`.
+   - Offers project switching, quick "+ New Project", "+ New Chat", and conversation search.
 
-| Agent | Focus |
-|---|---|
-| AppDeveloper | Requirements interview, architecture planning, code generation |
-| LLMDeployer | Traffic profiling, model deployment (RunPod, Azure AI, etc.) |
-| AppDeployer | Containerization and cloud deployment |
-| AppMaintainer | Repository ingestion, branch management, PR workflow |
-
-All agents share a `CodingCliDriver` interface with three implementations: AGY (primary), OpenCode, and Claude Code (future-ready).
-
-The web UI currently uses the Go backend's AGY/OpenCode execution path (`backend/services/agy.go`), not the Python orchestrator directly.
+4. **Adjustable Split Pane Workspace**:
+   - Drag-to-resize divider with double-click reset to 32% and persistent `localStorage` memory.
+   - Active drag overlay prevents Monaco and iframe embeds from swallowing mouse events.
 
 ## Persistence
 
-- **SQLite** (`backend/data/agy_cloud.db`): 7 tables for users, sandboxes, chat messages, agent runs, secrets, and environment config. Used as the primary runtime store.
-- **Supabase** (optional): 4 cloud tables (`profiles`, `chat_messages`, `user_sandboxes`, `cloud_secrets`) with row-level security enforcing `auth.uid() = user_id`.
-- **Daytona Volumes**: Per-user persistent volume mounted at `/home/daytona/persist` in each sandbox. Stores workspace files and CLI credentials.
-
-## WebSocket Events
-
-The backend broadcasts real-time events over `GET /ws`:
-
-| Event | Description |
-|---|---|
-| `thought` | Agent reasoning step |
-| `tool_start` | Tool invocation beginning |
-| `token` | Streaming text from agent |
-| `port_detected` | Dev server port bound (triggers preview update) |
-| `error` | Agent execution error |
-| `done` | Execution complete |
+- **SQLite** (`backend/data/agy_cloud.db`): 9 tables for users, projects, conversations, sandboxes, chat messages, user environments, agent runs, agent messages, and cloud secrets.
+- **Supabase** (optional): 6 cloud tables (`profiles`, `projects`, `conversations`, `chat_messages`, `user_sandboxes`, `cloud_secrets`) with row-level security enforcing `auth.uid() = user_id`.
+- **Daytona Volumes**: Per-user persistent volume mounted at `/home/daytona/persist` in each sandbox.
 
 ## Documentation
 
-- [System Design](./system_design.md) -- Architecture, API reference, security model
-- [Development Guide](./DEVELOPMENT.md) -- Local dev, data model, checklists
+- [System Design](./system_design.md) -- Comprehensive architecture, API endpoints, data models
+- [Development Guide](./DEVELOPMENT.md) -- Local dev workflow, cross-compilation, deployment
 
 ## License
 

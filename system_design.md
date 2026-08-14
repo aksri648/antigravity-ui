@@ -213,9 +213,11 @@ The orchestrator accepts `agent_mode`, `prompt`, `sandbox_id`, `api_key`, reposi
 
 ```mermaid
 erDiagram
-    PROFILES ||--o{ CHAT_MESSAGES : "owns"
+    PROFILES ||--o{ PROJECTS : "owns"
     PROFILES ||--o{ USER_SANDBOXES : "provisions"
     PROFILES ||--o{ CLOUD_SECRETS : "stores"
+    PROJECTS ||--o{ CONVERSATIONS : "contains"
+    CONVERSATIONS ||--o{ CHAT_MESSAGES : "threads"
 
     PROFILES {
         UUID id PK "auth.users.id reference"
@@ -226,11 +228,33 @@ erDiagram
         TIMESTAMPTZ created_at "Account creation timestamp"
     }
 
+    PROJECTS {
+        UUID id PK "Project UUID"
+        UUID user_id FK "Owner profile reference"
+        TEXT name "Human readable project title"
+        TEXT slug "URL/filesystem safe identifier"
+        TEXT description "Project description"
+        TEXT folder_path "Persistent folder /persist/projects/<slug>"
+        BOOLEAN is_default "Primary workspace flag"
+        TIMESTAMPTZ created_at "Creation timestamp"
+    }
+
+    CONVERSATIONS {
+        UUID id PK "Conversation UUID"
+        UUID user_id FK "Owner profile reference"
+        UUID project_id FK "Parent project reference"
+        TEXT sandbox_id "Target Daytona Sandbox ID"
+        TEXT title "Chat thread title"
+        TIMESTAMPTZ created_at "Creation timestamp"
+    }
+
     CHAT_MESSAGES {
         BIGSERIAL id PK "Message ID"
         UUID user_id FK "Owner profile reference"
+        UUID conversation_id FK "Parent conversation reference"
+        UUID project_id FK "Parent project reference"
         TEXT sandbox_id "Target Daytona Sandbox ID"
-        TEXT sender "user / assistant / system"
+        TEXT sender "user / agy / opencode / system"
         TEXT text "Markdown message text"
         JSONB thoughts "Model reasoning token log"
         JSONB tools "CLI tool invocations & outputs"
@@ -258,11 +282,11 @@ erDiagram
 
 ### 5.1 SQLite (Local Runtime)
 
-`backend/db/db.go` initializes the local database with 7 tables: `users`, `sandboxes`, `chat_messages`, `user_environments`, `agent_runs`, `agent_messages`, and `cloud_secrets`.
+`backend/db/db.go` initializes the local database with 9 tables: `users`, `projects`, `conversations`, `sandboxes`, `chat_messages`, `user_environments`, `agent_runs`, `agent_messages`, and `cloud_secrets`.
 
 ### 5.2 Supabase (Cloud Persistence)
 
-`supabase/schema.sql` defines 4 tables with row-level security: `profiles`, `chat_messages`, `user_sandboxes`, and `cloud_secrets`. All tables enforce `auth.uid() = user_id` ownership via RLS policies.
+`supabase/schema.sql` defines 6 tables with row-level security: `profiles`, `projects`, `conversations`, `chat_messages`, `user_sandboxes`, and `cloud_secrets`. All tables enforce `auth.uid() = user_id` ownership via RLS policies.
 
 ## 6. Workspace Lifecycle
 
@@ -275,6 +299,14 @@ erDiagram
 3. Ensure a per-user volume named `vol-<userId>`
 4. Create sandbox with volume mounted at `/home/daytona/persist`
 5. Persist the active sandbox record via `UserService`
+
+### Multi-Project Persistent Folders
+
+When a project is created, a dedicated persistent directory is allocated inside the user's volume:
+```bash
+/home/daytona/persist/projects/<slug>/
+```
+Agent executions (`POST /api/workspace/prompt`) change directory into the active project folder before invoking `agy` or `opencode`.
 
 ### Idle Management
 
@@ -294,16 +326,37 @@ A 30-minute `InactivityManager` runs at backend startup. Activity middleware rec
 | POST | `/api/auth/settings` | update user Daytona settings |
 | GET | `/api/auth/google/callback` | Google/AGY callback integration |
 
+### Multi-Projects
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/projects` | List all projects for authenticated user |
+| POST | `/api/projects` | Create new project with persistent folder mount |
+| PUT | `/api/projects/:id` | Update project name or description |
+| DELETE | `/api/projects/:id` | Cascade delete project and associated chats |
+
+### Multi-Chats (Conversations)
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/conversations` | List conversation threads (`?projectId=...`) |
+| POST | `/api/conversations` | Create new conversation under project |
+| PUT | `/api/conversations/:id` | Rename conversation title |
+| DELETE | `/api/conversations/:id` | Delete conversation and messages |
+| GET | `/api/chat/history` | Fetch messages (`?conversationId=...`) |
+| POST | `/api/chat/history` | Save message with conversation context |
+| DELETE | `/api/chat/history` | Clear messages (`?conversationId=...`) |
+
 ### Workspace & Execution
 
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/workspace/create` | Create workspace with volume |
 | GET | `/api/workspace/status/:sandboxId` | Check micro-VM status |
-| GET | `/api/workspace/files` | List files |
+| GET | `/api/workspace/files` | List files (`?folder=...`) |
 | GET | `/api/workspace/file-content` | Read file |
 | POST | `/api/workspace/file-save` | Save file |
-| POST | `/api/workspace/prompt` | Run AGY or OpenCode prompt |
+| POST | `/api/workspace/prompt` | Run AGY or OpenCode prompt with project context |
 | POST | `/api/workspace/stop` | Stop running prompt |
 | GET | `/api/workspace/preview-url` | Fetch live preview URL |
 | ANY | `/api/preview/proxy/:sandboxId/:port/*path` | Reverse proxy to dev server |

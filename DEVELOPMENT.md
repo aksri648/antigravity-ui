@@ -50,13 +50,15 @@ No separate deployment or packaging workflow exists for the agent layer currentl
 
 ### SQLite Schema
 
-Initialized by `backend/db/db.go` with WAL mode and connection pooling:
+Initialized by `backend/db/db.go` with WAL mode and connection pooling (9 tables):
 
 | Table | Columns | Purpose |
 |---|---|---|
 | `users` | id, email, name, password_hash, daytona_* | User accounts + Daytona config |
+| `projects` | id, user_id, name, slug, description, folder_path, is_default | Multi-project workspaces mapped to persistent folders |
+| `conversations` | id, user_id, project_id, sandbox_id, title | Multi-chat thread tracking |
 | `sandboxes` | id, user_id, sandbox_id, status, preview_url | Active sandbox records |
-| `chat_messages` | id, user_id, role, content, timestamp | Chat history |
+| `chat_messages` | id, user_id, conversation_id, project_id, role, content | Threaded chat history |
 | `user_environments` | id, user_id, key, value | Environment variables |
 | `agent_runs` | id, user_id, sandbox_id, prompt, status | Execution history |
 | `agent_messages` | id, run_id, role, content, metadata | Agent message records |
@@ -64,11 +66,13 @@ Initialized by `backend/db/db.go` with WAL mode and connection pooling:
 
 ### Supabase Schema
 
-Defined in `supabase/schema.sql`. Apply to a Supabase project for cloud persistence:
+Defined in `supabase/schema.sql`. Apply to a Supabase project for cloud persistence (6 tables):
 
 ```sql
--- 4 tables with RLS enabled
+-- 6 tables with RLS enabled
 profiles          -- auth.uid() = id
+projects          -- auth.uid() = user_id
+conversations     -- auth.uid() = user_id
 chat_messages     -- auth.uid() = user_id
 user_sandboxes    -- auth.uid() = user_id
 cloud_secrets     -- auth.uid() = user_id
@@ -76,45 +80,40 @@ cloud_secrets     -- auth.uid() = user_id
 
 All policies enforce `auth.uid() = user_id` (or profile id) as the ownership predicate.
 
-## Environment Variables
+## Cross-Platform Compilation
 
-### Backend
+The Go backend uses `modernc.org/sqlite` (pure Go without CGO dependencies), enabling instant zero-dependency cross-compilation across platforms:
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `8080` | Server listen port |
-| `SQLITE_DB_PATH` | `data/agy_cloud.db` | SQLite database file path |
+```bash
+# Compile for Linux (x86-64)
+cd backend
+GOOS=linux GOARCH=amd64 go build -o server .
 
-### Frontend
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_URL` | `http://localhost:8080` | Backend REST API base URL |
-| `VITE_WS_URL` | (derived from API URL) | WebSocket URL |
-| `VITE_SUPABASE_URL` | (from localStorage) | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | (from localStorage) | Supabase anonymous key |
+# Compile standalone Windows executable (.exe)
+cd backend
+GOOS=windows GOARCH=amd64 go build -o server.exe .
+```
 
 ## Key Source Files
 
 ### Backend (`backend/`)
 
-| File | Lines | Purpose |
-|---|---|---|
-| `main.go` | 157 | Server entry, service init, route registration |
-| `db/db.go` | -- | SQLite init, WAL mode, schema migrations |
-| `models/models.go` | 288 | All DTOs, request/response structs, StreamEvent |
-| `handlers/auth.go` | -- | Auth middleware, register, login, settings |
-| `handlers/workspace.go` | -- | Workspace CRUD, file ops, prompt, preview |
-| `handlers/websocket.go` | -- | Gorilla WebSocket broadcast hub |
-| `handlers/chat_history.go` | -- | Chat message CRUD |
-| `handlers/setup.go` | -- | Daytona verification, Google auth flow |
-| `handlers/secrets.go` | -- | Integration secrets management |
-| `handlers/webhooks.go` | -- | Daytona webhook handler |
-| `services/daytona.go` | 770 | Daytona REST API client |
-| `services/agy.go` | 673 | Sandbox bootstrap, CLI execution, stream parsing |
-| `services/user_service.go` | -- | User and sandbox record CRUD |
-| `services/supabase.go` | -- | Supabase client integration |
-| `services/inactivity_manager.go` | -- | 30-min idle sandbox timeout |
+| File | Purpose |
+|---|---|
+| `main.go` | Server entry, service init, route registration |
+| `db/db.go` | SQLite init, WAL mode, 9-table schema migrations |
+| `models/models.go` | All DTOs, Project, Conversation, request/response structs |
+| `handlers/projects.go` | Multi-project & multi-chat CRUD endpoints |
+| `handlers/auth.go` | Auth middleware, register, login, settings |
+| `handlers/workspace.go` | Daytona prompt dispatch, project folder routing, file ops |
+| `handlers/websocket.go` | Gorilla WebSocket broadcast hub |
+| `handlers/chat_history.go` | Threaded conversation chat history CRUD |
+| `handlers/setup.go` | Daytona verification, Google auth flow |
+| `handlers/secrets.go` | Integration secrets management |
+| `services/daytona.go` | Daytona REST API client |
+| `services/agy.go` | Sandbox bootstrap, CLI execution, stream parsing |
+| `services/user_service.go` | User, Project, Conversation, and Sandbox CRUD |
+| `services/inactivity_manager.go` | 30-min idle sandbox timeout |
 
 ### Frontend (`frontend/src/`)
 
