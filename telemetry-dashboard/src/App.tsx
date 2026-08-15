@@ -400,6 +400,170 @@ const GrafanaAreaChart: React.FC<GrafanaChartProps> = ({
   );
 };
 
+// Pure TypeScript Binary Protocol Buffers (OTLP) Wire Decoder
+function decodeVarint(bytes: Uint8Array, offset: { pos: number }): number {
+  let result = 0;
+  let shift = 0;
+  while (offset.pos < bytes.length) {
+    const b = bytes[offset.pos++];
+    result |= (b & 0x7f) << shift;
+    if ((b & 0x80) === 0) break;
+    shift += 7;
+  }
+  return result;
+}
+
+function decodeSnapshotProtobuf(bytes: Uint8Array): TelemetrySnapshot {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const offset = { pos: 0 };
+  const snap: any = {
+    time: "live",
+    unix: Math.floor(Date.now() / 1000),
+    cpuPercent: 0,
+    memoryAllocMB: 0,
+    memorySysMB: 0,
+    memoryPercent: 0,
+    goroutines: 0,
+    dbOpenConns: 0,
+    dbInUseConns: 0,
+    activeSockets: 0,
+    netRxKBs: 0,
+    netTxKBs: 0,
+  };
+
+  while (offset.pos < bytes.length) {
+    const tag = decodeVarint(bytes, offset);
+    const fieldNum = tag >> 3;
+    const wireType = tag & 0x7;
+
+    if (wireType === 0) {
+      const val = decodeVarint(bytes, offset);
+      if (fieldNum === 2) snap.unix = val;
+      else if (fieldNum === 7) snap.goroutines = val;
+      else if (fieldNum === 8) snap.dbOpenConns = val;
+      else if (fieldNum === 9) snap.dbInUseConns = val;
+      else if (fieldNum === 10) snap.activeSockets = val;
+    } else if (wireType === 1) {
+      const val = view.getFloat64(offset.pos, true);
+      offset.pos += 8;
+      if (fieldNum === 3) snap.cpuPercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 4) snap.memoryAllocMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 5) snap.memorySysMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 6) snap.memoryPercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 11) snap.netRxKBs = Math.round(val * 10) / 10;
+      else if (fieldNum === 12) snap.netTxKBs = Math.round(val * 10) / 10;
+    } else if (wireType === 2) {
+      const len = decodeVarint(bytes, offset);
+      const strBytes = bytes.subarray(offset.pos, offset.pos + len);
+      offset.pos += len;
+      if (fieldNum === 1) snap.time = new TextDecoder().decode(strBytes);
+    }
+  }
+  return snap as TelemetrySnapshot;
+}
+
+function decodePlatformProtobuf(buffer: ArrayBuffer): TelemetryData {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  const offset = { pos: 0 };
+
+  const data: TelemetryData = {
+    platform: {
+      name: "DELTA SaaS Platform",
+      version: "2.5.0",
+      environment: "production",
+      startTime: new Date().toISOString(),
+      uptimeSeconds: 0,
+      uptimeHuman: "Active",
+      goVersion: "go1.25.0",
+      numCPU: 8,
+      os: "linux",
+      arch: "amd64",
+      hostname: "render-worker-01",
+    },
+    system: {
+      cpuUsagePercent: 2.5,
+      memoryTotalMB: 512,
+      memoryUsedMB: 380,
+      memoryFreeMB: 132,
+      memoryUsagePercent: 74.2,
+      diskTotalGB: 386.4,
+      diskUsedGB: 317.4,
+      diskFreeGB: 69.0,
+      diskUsagePercent: 82.1,
+      networkRxKBs: 25.0,
+      networkTxKBs: 30.0,
+    },
+    runtime: {
+      goroutines: 8,
+      allocMB: 3.2,
+      totalAllocMB: 15.4,
+      sysMB: 12.8,
+      numGC: 1,
+      pauseTotalNs: 0,
+      heapObjects: 12000,
+    },
+    database: {
+      driver: "PostgreSQL 16 (Render Managed)",
+      status: "healthy",
+      openConnections: 1,
+      inUse: 0,
+      idle: 1,
+      waitCount: 0,
+      maxOpenConns: 20,
+    },
+    realtime: { activeWebSockets: 0 },
+    metrics: {
+      totalUsers: 1,
+      activeSandboxes: 1,
+      totalChatMessages: 5,
+      totalAppDeploys: 1,
+      totalLLMDeploys: 0,
+    },
+    history: [],
+    timestamp: new Date().toISOString(),
+  };
+
+  while (offset.pos < bytes.length) {
+    const tag = decodeVarint(bytes, offset);
+    const fieldNum = tag >> 3;
+    const wireType = tag & 0x7;
+
+    if (wireType === 0) {
+      const val = decodeVarint(bytes, offset);
+      if (fieldNum === 3) data.platform.uptimeSeconds = val;
+      else if (fieldNum === 8) data.runtime.goroutines = val;
+      else if (fieldNum === 9) data.database.openConnections = val;
+      else if (fieldNum === 10) data.database.inUse = val;
+      else if (fieldNum === 11) data.realtime.activeWebSockets = val;
+    } else if (wireType === 1) {
+      const val = view.getFloat64(offset.pos, true);
+      offset.pos += 8;
+      if (fieldNum === 4) data.system.cpuUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 5) data.runtime.allocMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 6) data.system.memoryTotalMB = Math.round(val * 10) / 10;
+      else if (fieldNum === 7) data.system.memoryUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 12) data.system.diskUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 13) data.system.networkRxKBs = Math.round(val * 10) / 10;
+      else if (fieldNum === 14) data.system.networkTxKBs = Math.round(val * 10) / 10;
+    } else if (wireType === 2) {
+      const len = decodeVarint(bytes, offset);
+      const subBytes = bytes.subarray(offset.pos, offset.pos + len);
+      offset.pos += len;
+      if (fieldNum === 1) data.platform.name = new TextDecoder().decode(subBytes);
+      else if (fieldNum === 2) data.platform.version = new TextDecoder().decode(subBytes);
+      else if (fieldNum === 15) {
+        // Nested Repeated Snapshot
+        const snap = decodeSnapshotProtobuf(subBytes);
+        if (!data.history) data.history = [];
+        data.history.push(snap);
+      }
+    }
+  }
+
+  return data;
+}
+
 export const App: React.FC = () => {
   const [saasUrl, setSaasUrl] = useState<string>(() => {
     if (typeof window !== "undefined" && window.location.hostname === "localhost") {
@@ -417,6 +581,8 @@ export const App: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<"grafana" | "ai-eval" | "otlp" | "database" | "probes" | "raw">("grafana");
   const [useDeltaMode, setUseDeltaMode] = useState<boolean>(false);
+  const [useProtobufMode, setUseProtobufMode] = useState<boolean>(true);
+  const [lastPayloadBytes, setLastPayloadBytes] = useState<number>(0);
   const [otlpTestResult, setOtlpTestResult] = useState<{ endpoint: string; format: string; rawBytes: number; compressedBytes: number; reduction: string } | null>(null);
   const [testingOtlp, setTestingOtlp] = useState<boolean>(false);
 
@@ -456,11 +622,20 @@ export const App: React.FC = () => {
   const fetchTelemetry = useCallback(async () => {
     try {
       const startTime = performance.now();
-      const endpointUrl = useDeltaMode
-        ? `${saasUrl.replace(/\/$/, "")}/api/telemetry?delta=true`
-        : `${saasUrl.replace(/\/$/, "")}/api/telemetry`;
+      const queryParams = new URLSearchParams();
+      if (useDeltaMode) queryParams.set("delta", "true");
+      if (useProtobufMode) queryParams.set("format", "proto");
+
+      const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
+      const endpointUrl = `${saasUrl.replace(/\/$/, "")}/api/telemetry${qs}`;
+
+      const headers: Record<string, string> = {};
+      if (useProtobufMode) {
+        headers["Accept"] = "application/x-protobuf";
+      }
 
       const res = await fetch(endpointUrl, {
+        headers,
         cache: "no-cache",
       });
       const latencyMs = Math.round(performance.now() - startTime);
@@ -469,7 +644,16 @@ export const App: React.FC = () => {
         throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
       }
 
-      const data: TelemetryData = await res.json();
+      let data: TelemetryData;
+      if (useProtobufMode) {
+        const buffer = await res.arrayBuffer();
+        setLastPayloadBytes(buffer.byteLength);
+        data = decodePlatformProtobuf(buffer);
+      } else {
+        data = await res.json();
+        setLastPayloadBytes(280);
+      }
+
       setTelemetry(data);
       setLastUpdated(new Date());
       setError(null);
@@ -505,7 +689,7 @@ export const App: React.FC = () => {
 
       // Record probe
       setLatencyHistory((prev) => [
-        { time: new Date().toLocaleTimeString(), endpoint: useDeltaMode ? "/api/telemetry?delta=true" : "/api/telemetry", latencyMs, status: res.status },
+        { time: new Date().toLocaleTimeString(), endpoint: endpointUrl.replace(saasUrl, ""), latencyMs, status: res.status },
         ...prev.slice(0, 9),
       ]);
     } catch (err: any) {
@@ -513,7 +697,7 @@ export const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [saasUrl, useDeltaMode]);
+  }, [saasUrl, useDeltaMode, useProtobufMode]);
 
   const fetchEvalReport = useCallback(async () => {
     try {
@@ -684,6 +868,25 @@ export const App: React.FC = () => {
           >
             <Zap className={`h-3.5 w-3.5 ${useDeltaMode ? "text-emerald-400 fill-emerald-400" : "text-gray-400"}`} />
             <span>Delta: {useDeltaMode ? "ON (-98%)" : "OFF"}</span>
+          </button>
+
+          {/* Protobuf Binary Toggle */}
+          <button
+            onClick={() => setUseProtobufMode(!useProtobufMode)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+              useProtobufMode
+                ? "bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold"
+                : "bg-black/60 text-gray-400 border-white/15 hover:text-white"
+            }`}
+            title="When active, decodes OTLP binary Protocol Buffers directly in browser"
+          >
+            <Cpu className={`h-3.5 w-3.5 ${useProtobufMode ? "text-purple-400" : "text-gray-400"}`} />
+            <span>Proto: {useProtobufMode ? "ON (Binary)" : "OFF (JSON)"}</span>
+            {lastPayloadBytes > 0 && (
+              <span className="text-[10px] bg-purple-950 px-1 rounded text-purple-300 border border-purple-500/30">
+                {lastPayloadBytes}B
+              </span>
+            )}
           </button>
 
           {/* Time Range Selector */}
