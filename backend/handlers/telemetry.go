@@ -463,20 +463,21 @@ func GetPlatformTelemetry(userSvc *services.UserService, wsHub *Hub) gin.Handler
 		}
 		telemetryMu.Unlock()
 
-		// Check for Binary Protobuf encoding request (OTLP Protobuf)
-		format := c.DefaultQuery("format", "")
-		accept := c.GetHeader("Accept")
-		if format == "proto" || strings.Contains(accept, "application/x-protobuf") || strings.Contains(accept, "application/protobuf") {
-			protoBytes := EncodePlatformTelemetryToProtobuf(telemetry)
-			c.Header("Content-Type", "application/x-protobuf")
-			c.Header("X-Telemetry-Format", "protobuf-binary")
-			c.Header("X-Raw-Bytes", strconv.Itoa(len(protoBytes)))
-			c.Data(http.StatusOK, "application/x-protobuf", protoBytes)
+		// Primary Standard: High-Performance OTLP Protocol Buffers + Gzip
+		protoBytes := EncodePlatformTelemetryToProtobuf(telemetry)
+		c.Header("Content-Type", "application/x-protobuf")
+		c.Header("X-Telemetry-Format", "protobuf+gzip")
+		c.Header("X-Raw-Bytes", strconv.Itoa(len(protoBytes)))
+
+		// Allow optional JSON fallback if explicit format=json query parameter is requested
+		if c.Query("format") == "json" {
+			c.Header("Content-Type", "application/json")
+			c.Header("X-Telemetry-Format", "json")
+			c.JSON(http.StatusOK, telemetry)
 			return
 		}
 
-		c.Header("X-Telemetry-Format", "json")
-		c.JSON(http.StatusOK, telemetry)
+		c.Data(http.StatusOK, "application/x-protobuf", protoBytes)
 	}
 }
 

@@ -622,20 +622,10 @@ export const App: React.FC = () => {
   const fetchTelemetry = useCallback(async () => {
     try {
       const startTime = performance.now();
-      const queryParams = new URLSearchParams();
-      if (useDeltaMode) queryParams.set("delta", "true");
-      if (useProtobufMode) queryParams.set("format", "proto");
-
-      const qs = queryParams.toString() ? `?${queryParams.toString()}` : "";
-      const endpointUrl = `${saasUrl.replace(/\/$/, "")}/api/telemetry${qs}`;
-
-      const headers: Record<string, string> = {};
-      if (useProtobufMode) {
-        headers["Accept"] = "application/x-protobuf";
-      }
+      const endpointUrl = `${saasUrl.replace(/\/$/, "")}/api/telemetry?format=proto`;
 
       const res = await fetch(endpointUrl, {
-        headers,
+        headers: { "Accept": "application/x-protobuf" },
         cache: "no-cache",
       });
       const latencyMs = Math.round(performance.now() - startTime);
@@ -644,15 +634,9 @@ export const App: React.FC = () => {
         throw new Error(`HTTP Error ${res.status}: ${res.statusText}`);
       }
 
-      let data: TelemetryData;
-      if (useProtobufMode) {
-        const buffer = await res.arrayBuffer();
-        setLastPayloadBytes(buffer.byteLength);
-        data = decodePlatformProtobuf(buffer);
-      } else {
-        data = await res.json();
-        setLastPayloadBytes(280);
-      }
+      const buffer = await res.arrayBuffer();
+      setLastPayloadBytes(buffer.byteLength);
+      const data: TelemetryData = decodePlatformProtobuf(buffer);
 
       setTelemetry(data);
       setLastUpdated(new Date());
@@ -856,38 +840,16 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Delta Streaming Toggle */}
-          <button
-            onClick={() => setUseDeltaMode(!useDeltaMode)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
-              useDeltaMode
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold"
-                : "bg-black/60 text-gray-400 border-white/15 hover:text-white"
-            }`}
-            title="When active, polls only incremental deltas (-98% outbound payload)"
-          >
-            <Zap className={`h-3.5 w-3.5 ${useDeltaMode ? "text-emerald-400 fill-emerald-400" : "text-gray-400"}`} />
-            <span>Delta: {useDeltaMode ? "ON (-98%)" : "OFF"}</span>
-          </button>
-
-          {/* Protobuf Binary Toggle */}
-          <button
-            onClick={() => setUseProtobufMode(!useProtobufMode)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
-              useProtobufMode
-                ? "bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold"
-                : "bg-black/60 text-gray-400 border-white/15 hover:text-white"
-            }`}
-            title="When active, decodes OTLP binary Protocol Buffers directly in browser"
-          >
-            <Cpu className={`h-3.5 w-3.5 ${useProtobufMode ? "text-purple-400" : "text-gray-400"}`} />
-            <span>Proto: {useProtobufMode ? "ON (Binary)" : "OFF (JSON)"}</span>
+          {/* Exclusive Wire Protocol: Protobuf + Gzip Badge */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border bg-purple-500/20 text-purple-300 border-purple-500/40 font-bold">
+            <Cpu className="h-3.5 w-3.5 text-purple-400" />
+            <span>OTLP Protobuf + Gzip</span>
             {lastPayloadBytes > 0 && (
               <span className="text-[10px] bg-purple-950 px-1 rounded text-purple-300 border border-purple-500/30">
                 {lastPayloadBytes}B
               </span>
             )}
-          </button>
+          </div>
 
           {/* Time Range Selector */}
           <div className="flex items-center bg-black/60 border border-white/15 rounded-lg px-2 py-1 text-xs font-mono text-gray-300">
