@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"backend/handlers"
 	"backend/services"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -39,50 +39,27 @@ func main() {
 
 	r := gin.Default()
 
-	// 2. CORS configuration for React frontend & Telemetry Dashboard
-	allowedOrigins := []string{
-		"http://localhost:5173",
-		"http://localhost:5174",
-		"http://localhost:3000",
-		"http://127.0.0.1:5173",
-		"http://127.0.0.1:5174",
-		"https://antigravity-ui-cx0g.onrender.com",
-		"https://delta-telemetry.onrender.com",
-	}
-	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
-		for _, o := range strings.Split(envOrigins, ",") {
-			trimmed := strings.TrimSpace(o)
-			if trimmed != "" {
-				allowedOrigins = append(allowedOrigins, trimmed)
-			}
+	// 2. Robust Universal CORS Middleware (reflects origin & handles preflight OPTIONS with 204 No Content)
+	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		}
-	}
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Daytona-Key")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH, HEAD")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
-	r.Use(cors.New(cors.Config{
-		AllowOriginFunc: func(origin string) bool {
-			if origin == "" {
-				return true
-			}
-			if strings.HasPrefix(origin, "http://localhost:") ||
-				strings.HasPrefix(origin, "http://127.0.0.1:") ||
-				strings.HasSuffix(origin, ".onrender.com") ||
-				strings.HasSuffix(origin, ".workers.dev") ||
-				strings.HasSuffix(origin, ".pages.dev") {
-				return true
-			}
-			for _, o := range allowedOrigins {
-				if origin == o {
-					return true
-				}
-			}
-			return false
-		},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Daytona-Key", "Cache-Control"},
-		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	})
 
 	// 3. Services initialization
 	daytonaSvc := services.NewDaytonaService()
