@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: antigravity-ui
+    runtime: go
+    plan: free
+    region: oregon
+    buildCommand: "cd frontend && npm install && npm run build && cd ../backend && go build -o server ."
+    startCommand: "./backend/server"
+    envVars:
+      - key: GIN_MODE
+        value: release
+      - key: SQLITE_DB_PATH
+        value: "/tmp/agy_cloud.db"
+      - key: JWT_SECRET
+        generateValue: true
