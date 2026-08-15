@@ -20,6 +20,7 @@ type CloudSecretsPayload struct {
 	OpenAIApiKey        string `json:"openaiApiKey,omitempty"`
 	GoogleApiKey        string `json:"googleApiKey,omitempty"`
 	GitHubToken         string `json:"githubToken,omitempty"`
+	OpenCodeZenApiKey   string `json:"opencodeZenApiKey,omitempty"`
 	AzureClientID       string `json:"azureClientId,omitempty"`
 	AzureClientSecret   string `json:"azureClientSecret,omitempty"`
 	AzureTenantID       string `json:"azureTenantId,omitempty"`
@@ -33,12 +34,14 @@ type SecretStatus struct {
 	OpenAIConfigured      bool   `json:"openaiConfigured"`
 	GoogleConfigured      bool   `json:"googleConfigured"`
 	GitHubConfigured      bool   `json:"githubConfigured"`
+	OpenCodeZenConfigured bool   `json:"opencodeZenConfigured"`
 	AzureConfigured       bool   `json:"azureConfigured"`
 	RunPodConfigured      bool   `json:"runpodConfigured"`
 	HuggingFaceConfigured bool   `json:"huggingfaceConfigured"`
 	OpenAIKeyMasked       string `json:"openaiKeyMasked,omitempty"`
 	GoogleKeyMasked       string `json:"googleKeyMasked,omitempty"`
 	GitHubTokenMasked     string `json:"githubTokenMasked,omitempty"`
+	OpenCodeZenKeyMasked  string `json:"opencodeZenKeyMasked,omitempty"`
 	RunPodKeyMasked       string `json:"runpodKeyMasked,omitempty"`
 	HFTokenMasked         string `json:"hfTokenMasked,omitempty"`
 	AzureClientID         string `json:"azureClientId,omitempty"`
@@ -81,6 +84,9 @@ func GetSecretsStatusHandler(daytonaSvc *services.DaytonaService) gin.HandlerFun
 						case "OPENAI_API_KEY":
 							status.OpenAIConfigured = true
 							status.OpenAIKeyMasked = maskSecret(v)
+						case "OPENCODE_ZEN_API_KEY", "OPENCODE_API_KEY":
+							status.OpenCodeZenConfigured = true
+							status.OpenCodeZenKeyMasked = maskSecret(v)
 						case "GOOGLE_API_KEY", "GEMINI_API_KEY":
 							status.GoogleConfigured = true
 							status.GoogleKeyMasked = maskSecret(v)
@@ -157,6 +163,10 @@ func SaveSecretsHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 		if req.OpenAIApiKey != "" {
 			saveSecret("OPENAI_API_KEY", req.OpenAIApiKey)
 		}
+		if req.OpenCodeZenApiKey != "" {
+			saveSecret("OPENCODE_ZEN_API_KEY", req.OpenCodeZenApiKey)
+			saveSecret("OPENCODE_API_KEY", req.OpenCodeZenApiKey)
+		}
 		if req.GoogleApiKey != "" {
 			saveSecret("GOOGLE_API_KEY", req.GoogleApiKey)
 			saveSecret("GEMINI_API_KEY", req.GoogleApiKey)
@@ -189,6 +199,10 @@ func SaveSecretsHandler(daytonaSvc *services.DaytonaService) gin.HandlerFunc {
 			var envLines []string
 			if req.OpenAIApiKey != "" {
 				envLines = append(envLines, fmt.Sprintf("OPENAI_API_KEY=%s", req.OpenAIApiKey))
+			}
+			if req.OpenCodeZenApiKey != "" {
+				envLines = append(envLines, fmt.Sprintf("OPENCODE_ZEN_API_KEY=%s", req.OpenCodeZenApiKey))
+				envLines = append(envLines, fmt.Sprintf("OPENCODE_API_KEY=%s", req.OpenCodeZenApiKey))
 			}
 			if req.GoogleApiKey != "" {
 				envLines = append(envLines, fmt.Sprintf("GOOGLE_API_KEY=%s", req.GoogleApiKey))

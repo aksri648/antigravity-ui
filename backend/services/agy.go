@@ -581,6 +581,11 @@ func (s *AGYService) StreamPromptExec(
 	var runnerScript string
 	if cliEngine == "opencode" {
 		runnerScript = fmt.Sprintf(`
+# Check and export OpenCode Zen key if configured
+if [ -n "$OPENCODE_ZEN_API_KEY" ] && [ -z "$OPENCODE_API_KEY" ]; then
+  export OPENCODE_API_KEY="$OPENCODE_ZEN_API_KEY"
+fi
+
 if command -v opencode >/dev/null 2>&1; then
   opencode run %s 2>&1 || opencode %s 2>&1
 elif [ -f /home/daytona/.opencode/bin/opencode ]; then
