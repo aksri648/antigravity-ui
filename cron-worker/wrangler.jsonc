@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "delta-keepalive-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-02-01",
+  "triggers": {
+    "crons": ["*/13 * * * *"]
+  },
+  "vars": {
+    "TARGET_URL": "https://antigravity-ui-cx0g.onrender.com/api/health"
+  }
+}
