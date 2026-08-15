@@ -24,7 +24,15 @@ An enterprise-grade, autonomous multi-agent cloud IDE and Forward Deployed Engin
 
 ## 🏗️ System Architecture
 
-![DELTA System Architecture Flowchart](./docs/assets/system_design_flowchart.jpg)
+<p align="center">
+  <a href="./docs/assets/system_design_flowchart.jpg">
+    <img src="./docs/assets/system_design_flowchart.jpg" alt="DELTA System Architecture Flowchart" width="100%" style="border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);" />
+  </a>
+  <br />
+  <em>DELTA Autonomous FDE Platform — High-Level System Architecture & Data Flow</em>
+  <br />
+  <a href="./systemdesign.html"><strong>🌐 Open Interactive System Design Viewer (systemdesign.html) →</strong></a>
+</p>
 
 ### Interactive Mermaid.js Flowchart
 ```mermaid
