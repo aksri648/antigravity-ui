@@ -92,13 +92,13 @@ const lldDiagram = `flowchart TD
     subgraph BackendLayer ["2. Orchestration Layer (Go Gin on Port 8080)"]
         Gin["Go Gin API Router"]
         WS["Gorilla WebSocket Hub (/ws)"]
-        Auth["Supabase / JWT Auth Middleware"]
+        Auth["Clerk / JWT Auth Middleware"]
         Watchdog["Inactivity Watchdog (30m Auto-Persist)"]
         Proxy["Live Preview Reverse Proxy"]
     end
 
     subgraph StorageLayer ["3. Cloud & Data Layer"]
-        SupaDB[("Supabase PostgreSQL<br/>• profiles & chat_messages<br/>• user_sandboxes & cloud_secrets")]
+        PostgresDB[("Managed PostgreSQL 16 DB<br/>• users & chat_messages<br/>• sandboxes & cloud_secrets")]
         LocalDB[("SQLite Local Cache<br/>• data/agy_cloud.db")]
     end
 
@@ -391,7 +391,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span>Supabase Cloud Auth & PostgREST DB</span>
+            <span>Clerk Security & Managed PostgreSQL</span>
           </div>
         </div>
       </section>
@@ -545,7 +545,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             For <strong>Forward Deployed Engineers</strong>, writing code is only 20% of the job. The real friction is understanding client constraints, managing ephemeral micro-VMs, provisioning cloud infrastructure, and maintaining live systems with persistent context.
           </p>
           <p>
-            <span className="text-emerald-400">DELTA is different.</span> It is a comprehensive Forward Deployed Engineering system that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, Supabase data persistence, and automated cloud deployment pipelines.
+            <span className="text-emerald-400">DELTA is different.</span> It is a comprehensive Forward Deployed Engineering system that connects your agents to real micro-VM sandboxes, persistent volumes, multi-model CLIs, managed PostgreSQL persistence, and automated cloud deployment pipelines.
           </p>
           <p className="text-white text-2xl sm:text-4xl font-extrabold leading-tight font-mono">
             Your agents don't guess in the dark. They architect, build, verify, deploy, and maintain.
@@ -654,7 +654,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span className="font-mono text-xs uppercase text-emerald-400 font-semibold tracking-wider">// TECHNICAL DOCUMENTATION & SYSTEM DESIGN (LLD)</span>
           <h2 className="text-3xl sm:text-5xl font-black text-white font-mono">DELTA Technical Specifications</h2>
           <p className="text-gray-400 text-sm sm:text-base">
-            Detailed low-level architecture, Supabase DB schema, FDE workflows, CLI switcher mechanics, and API references.
+            Detailed low-level architecture, Managed PostgreSQL DB schema, FDE workflows, CLI switcher mechanics, and API references.
           </p>
         </div>
 
@@ -665,7 +665,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {[
               { id: "fde", label: "FDE System Workflow", icon: Workflow },
               { id: "overview", label: "System Design (HLD & LLD)", icon: Layers },
-              { id: "database", label: "DB Schema & RLS Policies", icon: Database },
+              { id: "database", label: "DB Schema & Persistence", icon: Database },
               { id: "quickstart", label: "Quickstart Setup", icon: Zap },
               { id: "agents", label: "4 Autonomous Agents", icon: Cpu },
               { id: "cliswitcher", label: "CLI Switcher (AGY / OpenCode)", icon: Terminal },
@@ -764,40 +764,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             )}
 
-            {/* 3. Database Schema & RLS */}
+            {/* 3. Database Schema & Persistence */}
             {activeDocSection === "database" && (
               <div className="space-y-6">
                 <div className="space-y-2">
                   <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Data Layer</Badge>
-                  <h3 className="text-2xl font-bold text-white font-mono">Supabase PostgreSQL Schema & RLS Policies</h3>
+                  <h3 className="text-2xl font-bold text-white font-mono">Managed PostgreSQL Schema & Persistence</h3>
                   <p className="text-sm text-gray-300">
-                    DELTA utilizes a dual-database model: Supabase Cloud PostgreSQL with Row-Level Security (RLS) as the primary cloud store, backed by an embedded SQLite database for zero-latency local caching.
+                    DELTA utilizes a dual-database model: Managed PostgreSQL 16 as the primary production cloud store, backed by an embedded SQLite database for zero-latency local caching.
                   </p>
                 </div>
 
                 <MermaidDiagram
                   chart={dbSchemaDiagram}
                   id="doc-db-schema"
-                  title="DELTA Relational Entity Model with Supabase Auth & RLS"
+                  title="DELTA Relational Entity Model with PostgreSQL & Clerk Auth"
                 />
 
                 {/* Table Schema Breakdown */}
                 <div className="space-y-3 font-mono text-xs">
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
-                    <span className="text-emerald-400 font-bold">1. public.profiles</span>
-                    <p className="text-[11px] text-gray-400">`id (UUID, PK ref auth.users.id)`, `email (TEXT)`, `name (TEXT)`, `daytona_api_key (TEXT)`, `daytona_server_url (TEXT)`, `created_at (TIMESTAMPTZ)`</p>
+                    <span className="text-emerald-400 font-bold">1. public.users</span>
+                    <p className="text-[11px] text-gray-400">`id (TEXT, PK)`, `email (TEXT)`, `name (TEXT)`, `daytona_api_key (TEXT)`, `daytona_server_url (TEXT)`, `created_at (TIMESTAMP)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-cyan-400 font-bold">2. public.chat_messages</span>
-                    <p className="text-[11px] text-gray-400">`id (BIGSERIAL, PK)`, `user_id (UUID, FK)`, `sandbox_id (TEXT)`, `sender (TEXT)`, `text (TEXT)`, `thoughts (JSONB)`, `tools (JSONB)`, `timestamp (BIGINT)`</p>
+                    <p className="text-[11px] text-gray-400">`id (TEXT, PK)`, `user_id (TEXT, FK)`, `sandbox_id (TEXT)`, `sender (TEXT)`, `text (TEXT)`, `thoughts_json (TEXT)`, `tools_json (TEXT)`, `created_at (BIGINT)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
-                    <span className="text-purple-400 font-bold">3. public.user_sandboxes</span>
-                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `daytona_sandbox_id (TEXT)`, `preview_url (TEXT)`, `active_port (INT)`, `last_active (TIMESTAMPTZ)`</p>
+                    <span className="text-purple-400 font-bold">3. public.sandboxes</span>
+                    <p className="text-[11px] text-gray-400">`id (TEXT, PK)`, `user_id (TEXT, FK)`, `daytona_sandbox_id (TEXT)`, `preview_url (TEXT)`, `active_port (INT)`, `created_at (TIMESTAMP)`</p>
                   </div>
                   <div className="p-3 rounded-lg border border-white/10 bg-black/50 space-y-1">
                     <span className="text-amber-400 font-bold">4. public.cloud_secrets</span>
-                    <p className="text-[11px] text-gray-400">`id (UUID, PK)`, `user_id (UUID, FK)`, `provider (TEXT)`, `key_name (TEXT)`, `encrypted_value (TEXT)`, `updated_at (TIMESTAMPTZ)`</p>
+                    <p className="text-[11px] text-gray-400">`id (SERIAL, PK)`, `user_id (TEXT)`, `provider (TEXT)`, `key_name (TEXT)`, `encrypted_value (TEXT)`, `updated_at (BIGINT)`</p>
                   </div>
                 </div>
               </div>
@@ -806,14 +806,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             {/* 4. Quickstart Setup */}
             {activeDocSection === "quickstart" && (
               <div className="space-y-4">
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">Getting Started</Badge>
-                <h3 className="text-2xl font-bold text-white font-mono">3-Step First-Run Onboarding</h3>
-                <p className="text-sm text-gray-300">Setting up your DELTA environment takes under 60 seconds:</p>
-                <ol className="space-y-3 text-xs text-gray-300 list-decimal list-inside">
-                  <li><strong>Enter Daytona API Key:</strong> Get your key from <code className="text-emerald-400">app.daytona.io</code>.</li>
-                  <li><strong>Provide AI Model Credentials:</strong> Enter your Google AI Studio key or OpenAI API key.</li>
-                  <li><strong>Configure Cloud Integrations:</strong> Add optional GitHub Token, Azure Service Principal, RunPod API Key, or Hugging Face token.</li>
-                </ol>
+                <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">Getting Started</Badge>
+                <h3 className="text-2xl font-bold text-white font-mono">Daytona Cloud Sandbox Prerequisites</h3>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  DELTA connects directly to Daytona to create reproducible micro-VM developer environments. Configure your credentials to begin scaffolding full-stack applications.
+                </p>
                 <div className="p-4 rounded-xl border border-white/10 bg-black/60 font-mono text-xs text-emerald-400">
                   // Credentials automatically saved to Daytona Secrets Manager and restored on all future runs!
                 </div>

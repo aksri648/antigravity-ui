@@ -1,5 +1,8 @@
 import { StrictMode, Component, type ErrorInfo, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ClerkProvider } from '@clerk/clerk-react'
+import { dark } from '@clerk/themes'
+import { getClerkPublishableKey } from './config/clerk'
 import './index.css'
 import App from './App.tsx'
 
@@ -30,32 +33,18 @@ class ErrorBoundary extends Component<
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0c0c0e",
-          color: "#e5e7eb",
-          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          background: "#090a0f",
+          color: "#f87171",
+          fontFamily: "monospace",
           padding: "2rem",
-          textAlign: "center",
+          textAlign: "center"
         }}>
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚠️</div>
-          <h1 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "0.5rem", color: "#f87171" }}>
-            Something went wrong
+          <h1 style={{ fontSize: "1.5rem", marginBottom: "1rem", color: "#ef4444" }}>
+            DELTA Interface Error
           </h1>
-          <p style={{ fontSize: "0.875rem", color: "#9ca3af", maxWidth: "480px", marginBottom: "1.5rem" }}>
-            DELTA encountered an unexpected error. Your data is safe.
+          <p style={{ maxWidth: "600px", color: "#9ca3af", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
+            {this.state.error?.message || "An unexpected error occurred in the workspace layout."}
           </p>
-          <pre style={{
-            fontSize: "0.75rem",
-            color: "#6b7280",
-            background: "#1a1a1e",
-            padding: "1rem",
-            borderRadius: "0.5rem",
-            maxWidth: "600px",
-            overflow: "auto",
-            marginBottom: "1.5rem",
-            border: "1px solid rgba(255,255,255,0.1)",
-          }}>
-            {this.state.error?.message}
-          </pre>
           <button
             onClick={() => window.location.reload()}
             style={{
@@ -78,10 +67,24 @@ class ErrorBoundary extends Component<
   }
 }
 
+const clerkPublishableKey = getClerkPublishableKey();
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <ClerkProvider
+        publishableKey={clerkPublishableKey}
+        appearance={{
+          baseTheme: dark,
+          variables: {
+            colorPrimary: '#10b981',
+            colorBackground: '#0a0a0a',
+            colorText: '#ffffff',
+          },
+        }}
+      >
+        <App />
+      </ClerkProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

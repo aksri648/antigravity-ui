@@ -11,8 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthMiddleware validates JWT token from Authorization header or query param via Supabase or SQLite
-func AuthMiddleware(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
+// AuthMiddleware validates JWT token from Authorization header or query param via Clerk or Local JWT
+func AuthMiddleware(userSvc *services.UserService, clerkSvc *services.ClerkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		tokenStr := ""
@@ -24,17 +24,17 @@ func AuthMiddleware(userSvc *services.UserService, supabaseSvc *services.Supabas
 		}
 
 		if tokenStr != "" {
-			// 1. Try Supabase Token Verification if configured
-			if supabaseSvc != nil && supabaseSvc.IsConfigured() {
-				if supaUser, err := supabaseSvc.VerifyToken(tokenStr); err == nil && supaUser != nil {
-					c.Set("userId", supaUser.ID)
-					c.Set("email", supaUser.Email)
-					c.Set("name", supaUser.Name)
-					if supaUser.DaytonaApiKey != "" {
-						c.Set("daytonaApiKey", supaUser.DaytonaApiKey)
+			// 1. Try Clerk Token Verification if configured
+			if clerkSvc != nil && clerkSvc.IsConfigured() {
+				if clerkUser, err := clerkSvc.VerifyToken(tokenStr); err == nil && clerkUser != nil {
+					c.Set("userId", clerkUser.ID)
+					c.Set("email", clerkUser.Email)
+					c.Set("name", clerkUser.Name)
+					if clerkUser.DaytonaApiKey != "" {
+						c.Set("daytonaApiKey", clerkUser.DaytonaApiKey)
 					}
-					if supaUser.DaytonaServerUrl != "" {
-						c.Set("daytonaServerUrl", supaUser.DaytonaServerUrl)
+					if clerkUser.DaytonaServerUrl != "" {
+						c.Set("daytonaServerUrl", clerkUser.DaytonaServerUrl)
 					}
 					c.Next()
 					return
@@ -61,24 +61,13 @@ func AuthMiddleware(userSvc *services.UserService, supabaseSvc *services.Supabas
 	}
 }
 
-// Register handles SaaS user signup via Supabase Auth or SQLite
-func Register(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
+// Register handles SaaS user signup via Local DB
+func Register(userSvc *services.UserService, clerkSvc *services.ClerkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.RegisterRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 			return
-		}
-
-		// If Supabase Auth is configured, sign up through Supabase
-		if supabaseSvc != nil && supabaseSvc.IsConfigured() {
-			supaResp, err := supabaseSvc.SignUp(req.Email, req.Password, req.Name, req.DaytonaApiKey, req.DaytonaServerUrl)
-			if err == nil && supaResp != nil {
-				// Mirror to local SQLite database
-				_, _ = userSvc.Register(req)
-				c.JSON(http.StatusCreated, supaResp)
-				return
-			}
 		}
 
 		resp, err := userSvc.Register(req)
@@ -91,22 +80,13 @@ func Register(userSvc *services.UserService, supabaseSvc *services.SupabaseServi
 	}
 }
 
-// Login handles SaaS user sign in via Supabase Auth or SQLite
-func Login(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
+// Login handles SaaS user sign in via Local DB
+func Login(userSvc *services.UserService, clerkSvc *services.ClerkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req models.LoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid login credentials"})
 			return
-		}
-
-		// If Supabase Auth is configured, authenticate through Supabase
-		if supabaseSvc != nil && supabaseSvc.IsConfigured() {
-			supaResp, err := supabaseSvc.SignIn(req.Email, req.Password)
-			if err == nil && supaResp != nil {
-				c.JSON(http.StatusOK, supaResp)
-				return
-			}
 		}
 
 		resp, err := userSvc.Login(req)
@@ -120,7 +100,7 @@ func Login(userSvc *services.UserService, supabaseSvc *services.SupabaseService)
 }
 
 // GetMe returns current authenticated user profile and their active Daytona sandbox
-func GetMe(userSvc *services.UserService, supabaseSvc *services.SupabaseService) gin.HandlerFunc {
+func GetMe(userSvc *services.UserService, clerkSvc *services.ClerkService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userIdVal, exists := c.Get("userId")
 		if !exists {
@@ -135,7 +115,7 @@ func GetMe(userSvc *services.UserService, supabaseSvc *services.SupabaseService)
 
 		user, err := userSvc.GetUserByID(userId)
 		if err != nil {
-			// Construct profile from context if created via Supabase
+			// Construct profile from context if created via Clerk
 			email, _ := c.Get("email")
 			name, _ := c.Get("name")
 			daytonaApiKey, _ := c.Get("daytonaApiKey")
