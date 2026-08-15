@@ -19,6 +19,11 @@ var (
 	once       sync.Once
 )
 
+// IsPostgres returns true if currently connected to PostgreSQL
+func IsPostgres() bool {
+	return DriverName == "postgres"
+}
+
 // InitDB initializes PostgreSQL or SQLite database with connection pooling and automated schema migrations
 func InitDB(connStr string) (string, error) {
 	var initErr error

@@ -1,5 +1,4 @@
-import React from "react";
-import { Sparkles, Cpu, Settings, LogOut, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, FolderGit2 } from "lucide-react";
+import { Sparkles, Cpu, Settings, LogOut, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose, FolderGit2, Activity, ExternalLink } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 
@@ -94,6 +93,23 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Platform Telemetry Dashboard Live Link */}
+        <a
+          href="https://delta-telemetry.onrender.com"
+          target="_blank"
+          rel="noreferrer"
+          className="h-8 gap-1.5 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-mono text-xs flex items-center transition-all cursor-pointer shadow-sm shadow-emerald-500/10"
+          title="Open Live Platform Telemetry & System Pulse Dashboard"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <Activity className="h-3.5 w-3.5 text-emerald-400" />
+          <span className="hidden sm:inline font-bold">Platform Pulse</span>
+          <ExternalLink className="h-3 w-3 text-emerald-400/80" />
+        </a>
 
         {/* Settings Button */}
         <Button

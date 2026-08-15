@@ -90,8 +90,9 @@ func main() {
 		c.Next()
 	})
 	{
-		// Health status
+		// Health & Telemetry status
 		api.GET("/health", handlers.HealthCheck(daytonaSvc))
+		api.GET("/telemetry", handlers.GetPlatformTelemetry(userSvc, wsHub))
 
 		// Multi-User SaaS Authentication Endpoints (Clerk & Local Auth)
 		api.POST("/auth/register", handlers.Register(userSvc, clerkSvc))

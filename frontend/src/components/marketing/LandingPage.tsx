@@ -16,6 +16,8 @@ import {
   Radio,
   Workflow,
   HardDrive,
+  Activity,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -305,7 +307,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               href="#docs"
               className="px-4 py-2 rounded-xl border border-emerald-500/25 hover:border-emerald-400/60 bg-emerald-500/10 hover:bg-emerald-500/20 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] text-emerald-300 hover:text-white transition-all duration-200 flex items-center gap-1.5 font-bold cursor-pointer"
             >
-              <BookOpen className="h-4 w-4 text-emerald-400" /> Documentation & Diagrams
+              <BookOpen className="h-4 w-4 text-emerald-400" /> Documentation
+            </a>
+
+            <a
+              href="https://delta-telemetry.onrender.com"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3.5 py-2 rounded-xl border border-white/10 hover:border-emerald-500/40 bg-black/40 hover:bg-emerald-500/10 text-gray-300 hover:text-emerald-300 transition-all duration-200 flex items-center gap-1.5 font-mono text-xs cursor-pointer"
+            >
+              <Activity className="h-3.5 w-3.5 text-emerald-400" /> Platform Pulse
+              <ExternalLink className="h-3 w-3 text-gray-400" />
             </a>
           </nav>
 
@@ -954,15 +966,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* Footer */}
-      <footer className="w-full border-t border-white/10 py-10 px-6 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+      <footer className="w-full border-t border-white/10 py-10 px-6 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-mono">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-emerald-400" />
-          <span>DELTA • Autonomous Forward Deployed Engineering System • Powered by Daytona & Supabase</span>
+          <span>DELTA • Autonomous Forward Deployed Engineering System • Powered by Daytona & Clerk</span>
         </div>
         <div className="flex items-center gap-4">
           <a href="#docs" className="hover:text-white transition-colors">Docs & Diagrams</a>
+          <a href="https://delta-telemetry.onrender.com" target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 font-bold">
+            <Activity className="h-3 w-3" /> Platform Pulse
+          </a>
           <a href="https://app.daytona.io" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Daytona Cloud</a>
-          <a href="https://supabase.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Supabase</a>
+          <a href="https://clerk.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Clerk Auth</a>
           <button onClick={onResetApp} className="hover:text-red-400 transition-colors cursor-pointer">Reset Data</button>
         </div>
       </footer>
