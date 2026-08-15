@@ -97,6 +97,7 @@ flowchart TD
 | **Authentication** | Clerk Authentication (`@clerk/react` & Backend API REST verification) |
 | **Database** | Managed PostgreSQL 16 on Render (Connection pooling up to 20 conns, auto-migrations) |
 | **Cloud Sandboxes** | Daytona Micro-VMs with attached persistent storage (`/home/daytona/persist`) |
+| **CLI Agent Engines** | Google Antigravity CLI (`agy`) & OpenCode CLI (`opencode` + OpenCode Zen) |
 | **Edge Keep-Alive** | Cloudflare Workers Cron Trigger (`*/13 * * * *`) |
 | **AI Agent Evaluation** | DeepEval (v1.6.2) & Arize Phoenix OpenTelemetry trajectory benchmarks |
 
@@ -105,7 +106,7 @@ flowchart TD
 ## 🤖 The 4 Autonomous Agent Personas
 
 1. 💻 **App Developer Agent**:
-   - Gathers product requirements, scaffolds multi-framework codebases, and executes sandbox builds.
+   - Gathers product requirements, scaffolds multi-framework codebases, and executes sandbox builds with `agy` or `opencode` (powered by Gemini 2.5 Pro, GPT-4o, Claude 3.7, or OpenCode Zen).
    - *DeepEval Score: 96.5% Task Completion, 98.8% Tool Accuracy.*
 2. 🚀 **LLM Deployer Agent**:
    - Collects throughput and latency SLAs, provisions serverless RunPod or Azure GPU nodes, and returns OpenAI-compatible endpoints.
@@ -154,6 +155,7 @@ npm run dev
 
 ## 🔐 Environment Variables
 
+### Server-Level (Set in Hosting / Render)
 | Variable | Description | Default / Example |
 |---|---|---|
 | `PORT` | Backend listen port | `8080` |
@@ -164,6 +166,17 @@ npm run dev
 | `DAYTONA_SERVER_URL` | Daytona Cloud API endpoint | `https://app.daytona.io/api` |
 | `DAYTONA_API_KEY` | Default Daytona API Key | `dtn_...` |
 | `JWT_SECRET` | Fallback local JWT signing secret | `your-secret-key` |
+
+### Cloud & Agent Secrets (Configurable in In-App Settings ⚙️)
+| Secret Key | Description | Used By |
+|---|---|---|
+| `OPENCODE_ZEN_API_KEY` | OpenCode Zen unified subscription token | OpenCode CLI engine |
+| `OPENAI_API_KEY` | OpenAI GPT-4o API Key | OpenCode CLI engine |
+| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Google AI Studio Gemini Key | Antigravity CLI (`agy`) |
+| `GITHUB_TOKEN` | GitHub Personal Access Token | App Maintainer Agent |
+| `RUNPOD_API_KEY` | RunPod Serverless GPU API Key | LLM Deployer Agent |
+| `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` | Azure Service Principal credentials | App Deployer Agent |
+| `HF_TOKEN` | Hugging Face Hub Access Token | LLM Deployer Agent |
 
 ---
 
