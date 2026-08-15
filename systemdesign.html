@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DELTA • System Design Architecture Diagram</title>
+  <!-- Mermaid.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #1e293b;
+      --border: #e2e8f0;
+      --card-bg: #f8fafc;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      font-size: 1.25rem;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 6px;
+      background: #ecfdf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+      text-transform: uppercase;
+      font-family: monospace;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #e2e8f0;
+    }
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      overflow: auto;
+    }
+    .diagram-wrapper {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+      max-width: 1200px;
+      width: 100%;
+      overflow-x: auto;
+    }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 24px;
+      width: 100%;
+      max-width: 1200px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .color-box {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+    footer {
+      padding: 16px 32px;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>DELTA • System Architecture Flowchart</h1>
+      <span class="badge">Mermaid.js Live</span>
+    </div>
+    <div class="controls">
+      <button onclick="window.print()">🖨️ Print / PDF</button>
+      <button onclick="location.reload()">🔄 Re-render</button>
+    </div>
+  </header>
+
+  <div class="container">
+    
+    <div class="diagram-wrapper">
+      <pre class="mermaid">
+flowchart TD
+    %% Styling Classes
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1,font-weight:bold,rx:8,ry:8;
+    classDef edgeStyle fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#7e22ce,font-weight:bold,rx:8,ry:8;
+    classDef controlStyle fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#15803d,font-weight:bold,rx:8,ry:8;
+    classDef dataStyle fill:#ccfbf1,stroke:#0d9488,stroke-width:2px,color:#0f766e,font-weight:bold,rx:8,ry:8;
+    classDef sandboxStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#b45309,font-weight:bold,rx:8,ry:8;
+
+    %% 1. Client Layer
+    subgraph ClientLayer["1. User Browser & Client Apps"]
+        IDE["DELTA SaaS Web IDE<br/>(React 19 / Vite / Monaco)"]:::clientStyle
+        Telemetry["Grafana Telemetry Dashboard<br/>(delta-telemetry.onrender.com)"]:::clientStyle
+    end
+
+    %% 2. Global Edge & Auth Layer
+    subgraph EdgeLayer["2. Edge & Auth Layer"]
+        Clerk["Clerk Authentication<br/>(JWT & Session Tokens)"]:::edgeStyle
+        CFWorker["Cloudflare Cron Worker<br/>(13-min */13 keep-alive ping)"]:::edgeStyle
+    end
+
+    %% 3. Control Plane (Render Web Service)
+    subgraph ControlPlane["3. Go Control Plane (Render Web Service)"]
+        GinAPI["Gin REST API Router<br/>(CORS & Universal Origin)"]:::controlStyle
+        WSHub["Gorilla WebSocket Hub<br/>(/ws Real-time Token Stream)"]:::controlStyle
+        DeepEval["DeepEval AI Evaluator<br/>(Trajectory Benchmarking)"]:::controlStyle
+        DaytonaSvc["Daytona SDK Orchestrator<br/>(Micro-VM Lifecycle)"]:::controlStyle
+    end
+
+    %% 4. Data & Persistence Layer
+    subgraph DataLayer["4. Persistence & Data Store"]
+        Postgres[(Render Managed PostgreSQL 16<br/>20-connection pool)]:::dataStyle
+        TelemetryBuf[(In-Memory Rolling Buffer<br/>Linux /proc/stat stats)]:::dataStyle
+    end
+
+    %% 5. Daytona Cloud Sandboxes
+    subgraph Sandboxes["5. Daytona Cloud Micro-VM Sandboxes"]
+        Volume["/home/daytona/persist<br/>(Per-user Persistent Volumes)"]:::sandboxStyle
+        Swarms["AGY & OpenCode Dual CLI Swarms<br/>(4 Autonomous Personas)"]:::sandboxStyle
+        DevServer["Live Preview Dev Server<br/>(Reverse Proxy Port 3000)"]:::sandboxStyle
+    end
+
+    %% Connections
+    IDE -- "HTTPS & WebSocket (/ws)" --> GinAPI
+    IDE -- "Live Token Stream" --> WSHub
+    Telemetry -- "GET /api/telemetry" --> GinAPI
+    CFWorker -- "GET /api/health (Every 13 min)" --> GinAPI
+    Clerk -. "JWT Auth Verification" .-> GinAPI
+
+    GinAPI --> DeepEval
+    GinAPI --> Postgres
+    GinAPI --> TelemetryBuf
+    GinAPI --> DaytonaSvc
+
+    DaytonaSvc -- "Daytona REST API" --> Volume
+    Volume --> Swarms
+    Swarms --> DevServer
+    DevServer -. "Reverse Proxy Link" .-> IDE
+      </pre>
+    </div>
+
+    <!-- Component Legend -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="color-box" style="background: #e0f2fe; border-color: #0284c7;"></div>
+        <span>User Browser & Client (Sky Blue)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #f3e8ff; border-color: #9333ea;"></div>
+        <span>Edge & Auth Layer (Purple)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #dcfce7; border-color: #16a34a;"></div>
+        <span>Go Control Plane (Emerald)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #ccfbf1; border-color: #0d9488;"></div>
+        <span>PostgreSQL 16 Store (Teal)</span>
+      </div>
+      <div class="legend-item">
+        <div class="color-box" style="background: #fef3c7; border-color: #d97706;"></div>
+        <span>Daytona Micro-VMs (Amber)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>DELTA Autonomous FDE Platform • System Design Architecture</span>
+    <span>Render Managed Services & Cloudflare Global Edge</span>
+  </footer>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      }
+    });
+  </script>
+</body>
+</html>
