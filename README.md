@@ -97,7 +97,7 @@ flowchart TD
 | **Authentication** | Clerk Authentication (`@clerk/react` & Backend API REST verification) |
 | **Database** | Managed PostgreSQL 16 on Render (Connection pooling up to 20 conns, auto-migrations) |
 | **Cloud Sandboxes** | Daytona Micro-VMs with attached persistent storage (`/home/daytona/persist`) |
-| **CLI Agent Engines** | Google Antigravity CLI (`agy`) & OpenCode CLI (`opencode` + OpenCode Zen) |
+| **CLI Agent Engines** | 2 Dedicated CLIs: Google Antigravity CLI (`agy`) & OpenCode CLI (`opencode`) • OpenCode Zen is configured as a curated model provider inside `opencode` |
 | **Edge Keep-Alive** | Cloudflare Workers Cron Trigger (`*/13 * * * *`) |
 | **AI Agent Evaluation** | DeepEval (v1.6.2) & Arize Phoenix OpenTelemetry trajectory benchmarks |
 

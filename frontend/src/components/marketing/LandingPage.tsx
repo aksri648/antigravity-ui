@@ -963,8 +963,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <ul className="space-y-2 text-xs text-gray-300">
                   <li className="flex items-center gap-1.5">• Click the <strong className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-emerald-400 inline" /> AGY</strong> or <strong className="flex items-center gap-1"><Terminal className="h-3.5 w-3.5 text-cyan-400 inline" /> OpenCode</strong> button in the Chat header.</li>
                   <li>• You can switch at any moment during development — all files, git branches, and dev servers remain intact.</li>
-                  <li>• <strong>OpenCode Zen Support:</strong> Native integration for OpenCode Zen unified subscription tokens (<code className="text-cyan-300">OPENCODE_ZEN_API_KEY</code> / <code className="text-cyan-300">OPENCODE_API_KEY</code>) with multi-model cloud routing.</li>
-                  <li>• OpenCode automatically leverages the API keys and Zen tokens stored in your persistent <code className="text-gray-400">/home/daytona/persist/gemini/.env</code>.</li>
+                  <li>• <strong>OpenCode Zen Provider:</strong> Native integration for OpenCode Zen as the curated model provider inside OpenCode CLI using unified subscription tokens (<code className="text-cyan-300">OPENCODE_ZEN_API_KEY</code> / <code className="text-cyan-300">OPENCODE_API_KEY</code>).</li>
+                  <li>• OpenCode CLI automatically leverages the API keys and Zen provider tokens stored in your persistent <code className="text-gray-400">/home/daytona/persist/gemini/.env</code>.</li>
                 </ul>
               </div>
             )}

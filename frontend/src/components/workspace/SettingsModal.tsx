@@ -895,37 +895,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {/* Status Overview */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                   {[
-                    { label: "OpenCode Zen", configured: secretStatus?.opencodeZenConfigured || !!opencodeZenApiKey, desc: "Managed Models" },
-                    { label: "GitHub MCP", configured: secretStatus?.githubConfigured, desc: "PRs & Repos" },
-                    { label: "Azure Cloud", configured: secretStatus?.azureConfigured, desc: "VMs & Apps" },
-                    { label: "RunPod GPU", configured: secretStatus?.runpodConfigured, desc: "Serverless vLLM" },
-                    { label: "Hugging Face", configured: secretStatus?.huggingfaceConfigured, desc: "Hub Models" },
-                  ].map((m, idx) => (
-                    <div key={idx} className="rounded-xl border border-border/70 bg-black/40 p-2.5 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-white truncate">{m.label}</span>
-                        <Badge
-                          variant={m.configured ? "default" : "outline"}
-                          className={`text-[9px] font-mono py-0 px-1 ${
-                            m.configured ? "bg-emerald-600 text-white" : "text-muted-foreground border-border"
-                          }`}
-                        >
-                          {m.configured ? "Ready" : "Not Set"}
-                        </Badge>
+                    { label: "OpenCode Zen (Provider)", configured: secretStatus?.opencodeZenConfigured || !!opencodeZenApiKey, desc: "OpenCode CLI Provider" },
+                    { label: "GitHub MCP", configured: secretStatus?.githubConfigured || !!githubToken, desc: "PRs & Code Push" },
+                    { label: "RunPod MCP", configured: secretStatus?.runpodConfigured || !!runpodApiKey, desc: "vLLM Deployments" },
+                    { label: "Azure MCP", configured: secretStatus?.azureConfigured || (!!azureClientId && !!azureTenantId), desc: "Cloud Resources" },
+                    { label: "Hugging Face", configured: secretStatus?.huggingfaceConfigured || !!hfToken, desc: "Gated Models & Hub" },
+                  ].map((s, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/5 text-[11px] font-mono">
+                      <div>
+                        <span className="font-bold text-white">{s.label}</span>
+                        <span className="text-gray-400 ml-1.5 hidden sm:inline">({s.desc})</span>
                       </div>
-                      <p className="text-[9px] text-muted-foreground truncate">{m.desc}</p>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        s.configured ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-white/5 text-gray-500"
+                      }`}>
+                        {s.configured ? "Configured" : "Not Set"}
+                      </span>
                     </div>
                   ))}
                 </div>
 
-                {/* Section 0: OpenCode Zen API Key / Token */}
+                {/* Section 0: OpenCode Zen Provider API Key (for OpenCode CLI) */}
                 <div className="rounded-xl border border-border/80 bg-black/30 p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" /> OpenCode Zen API Key / Token
+                      <Sparkles className="h-3.5 w-3.5 text-cyan-400" /> OpenCode Zen Provider Key (for OpenCode CLI)
                     </span>
                     <Badge variant="outline" className="text-[10px] font-mono border-cyan-500/40 text-cyan-400">
-                      OpenCode Zen
+                      OpenCode Provider
                     </Badge>
                   </div>
                   <div className="space-y-1">
@@ -947,7 +944,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         {showOpencodeZenKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Enables OpenCode Zen managed cloud inference subscription for multi-model code execution.</p>
+                    <p className="text-[10px] text-muted-foreground">Configures OpenCode Zen as the curated model provider inside the OpenCode CLI for multi-model coding agent executions.</p>
                   </div>
                 </div>
 
