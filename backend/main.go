@@ -39,21 +39,49 @@ func main() {
 
 	r := gin.Default()
 
-	// 2. CORS configuration for React frontend (dynamic via ALLOWED_ORIGINS env var or defaults)
-	allowedOrigins := []string{"http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"}
+	// 2. CORS configuration for React frontend & Telemetry Dashboard
+	allowedOrigins := []string{
+		"http://localhost:5173",
+		"http://localhost:5174",
+		"http://localhost:3000",
+		"http://127.0.0.1:5173",
+		"http://127.0.0.1:5174",
+		"https://antigravity-ui-cx0g.onrender.com",
+		"https://delta-telemetry.onrender.com",
+	}
 	if envOrigins := os.Getenv("ALLOWED_ORIGINS"); envOrigins != "" {
-		allowedOrigins = strings.Split(envOrigins, ",")
-		for i := range allowedOrigins {
-			allowedOrigins[i] = strings.TrimSpace(allowedOrigins[i])
+		for _, o := range strings.Split(envOrigins, ",") {
+			trimmed := strings.TrimSpace(o)
+			if trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
 		}
 	}
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Daytona-Key"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowOriginFunc: func(origin string) bool {
+			if origin == "" {
+				return true
+			}
+			if strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasSuffix(origin, ".onrender.com") ||
+				strings.HasSuffix(origin, ".workers.dev") ||
+				strings.HasSuffix(origin, ".pages.dev") {
+				return true
+			}
+			for _, o := range allowedOrigins {
+				if origin == o {
+					return true
+				}
+			}
+			return false
+		},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "X-Daytona-Key", "Cache-Control"},
+		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}))
 
 	// 3. Services initialization
