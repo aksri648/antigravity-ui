@@ -93,6 +93,8 @@ func main() {
 		// Health & Telemetry status
 		api.GET("/health", handlers.HealthCheck(daytonaSvc))
 		api.GET("/telemetry", handlers.GetPlatformTelemetry(userSvc, wsHub))
+		api.GET("/telemetry/ai-eval", handlers.GetAIAgentEvalReport())
+		api.POST("/telemetry/ai-eval/run", handlers.RunLiveAIEvalTest())
 
 		// Multi-User SaaS Authentication Endpoints (Clerk & Local Auth)
 		api.POST("/auth/register", handlers.Register(userSvc, clerkSvc))
