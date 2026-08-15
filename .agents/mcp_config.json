@@ -1,8 +1,14 @@
 {
   "mcpServers": {
-    "drawio": {
+    "render": {
       "command": "npx",
-      "args": ["-y", "@drawio/mcp"]
+      "args": [
+        "-y",
+        "@niyogi/render-mcp"
+      ],
+      "env": {
+        "RENDER_API_KEY": "rnd_ekaeADvMLy0gxyhSYbacpLZ3v32I"
+      }
     }
   }
 }

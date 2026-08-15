@@ -16,7 +16,7 @@ import (
 type SupabaseService struct {
 	client  *http.Client
 	url     string
-	anonKey string
+	apiKey  string
 }
 
 func NewSupabaseService() *SupabaseService {
@@ -24,23 +24,35 @@ func NewSupabaseService() *SupabaseService {
 	if url == "" {
 		url = os.Getenv("NEXT_PUBLIC_SUPABASE_URL")
 	}
-	key := os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+	// 1. Support new Supabase Key format (sb_secret_... and sb_publishable_...)
+	key := os.Getenv("SUPABASE_SECRET_KEY")
+	if key == "" {
+		key = os.Getenv("SUPABASE_PUBLISHABLE_KEY")
+	}
+	// 2. Backward compatibility with legacy anon / service_role keys
+	if key == "" {
+		key = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	}
 	if key == "" {
 		key = os.Getenv("SUPABASE_ANON_KEY")
+	}
+	if key == "" {
+		key = os.Getenv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
 	}
 	if key == "" {
 		key = os.Getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 	}
 
 	return &SupabaseService{
-		client:  &http.Client{Timeout: 15 * time.Second},
-		url:     strings.TrimRight(url, "/"),
-		anonKey: key,
+		client: &http.Client{Timeout: 15 * time.Second},
+		url:    strings.TrimRight(url, "/"),
+		apiKey: key,
 	}
 }
 
 func (s *SupabaseService) IsConfigured() bool {
-	return s.url != "" && s.anonKey != ""
+	return s.url != "" && s.apiKey != ""
 }
 
 // SignUp creates a user via Supabase Auth REST API
@@ -69,7 +81,7 @@ func (s *SupabaseService) SignUp(email, password, name, daytonaApiKey, daytonaSe
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("apikey", s.anonKey)
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
@@ -143,7 +155,7 @@ func (s *SupabaseService) SignIn(email, password string) (*models.AuthResponse, 
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("apikey", s.anonKey)
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.client.Do(req)
@@ -206,7 +218,7 @@ func (s *SupabaseService) VerifyToken(token string) (*models.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("apikey", s.anonKey)
+	req.Header.Set("apikey", s.apiKey)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := s.client.Do(req)
@@ -269,8 +281,10 @@ func (s *SupabaseService) SaveChatMessage(userId, sandboxId, sender, text string
 	if err != nil {
 		return err
 	}
-	req.Header.Set("apikey", s.anonKey)
-	req.Header.Set("Authorization", "Bearer "+s.anonKey)
+	req.Header.Set("apikey", s.apiKey)
+	if strings.HasPrefix(s.apiKey, "ey") {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Prefer", "return=minimal")
 
@@ -306,8 +320,10 @@ func (s *SupabaseService) SaveSecret(userId, provider, keyName, encryptedValue s
 	if err != nil {
 		return err
 	}
-	req.Header.Set("apikey", s.anonKey)
-	req.Header.Set("Authorization", "Bearer "+s.anonKey)
+	req.Header.Set("apikey", s.apiKey)
+	if strings.HasPrefix(s.apiKey, "ey") {
+		req.Header.Set("Authorization", "Bearer "+s.apiKey)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Prefer", "resolution=merge-duplicates")
 

@@ -411,10 +411,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-gray-400">Supabase Anon / Public Key</label>
+                <label className="text-[10px] text-gray-400">Supabase Publishable Key (sb_publishable_...)</label>
                 <Input
                   type="password"
-                  placeholder="eyJhbGciOi..."
+                  placeholder="sb_publishable_example12345 or anon key..."
                   value={supaKeyInput}
                   onChange={(e) => setSupaKeyInput(e.target.value)}
                   className="font-mono text-[11px] bg-black/50 border-white/10 text-emerald-300 h-7.5 rounded"
