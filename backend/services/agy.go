@@ -655,8 +655,8 @@ cd /home/daytona/persist/workspace 2>/dev/null || cd /home/daytona/workspace 2>/
 		return fmt.Errorf("google account unauthenticated")
 	}
 
-	// 3. Detect dev server ports (e.g. 3000, 5173, 8080)
-	portRegex := regexp.MustCompile(`(?:Local|Running at|http://localhost:)(\d{4,5})`)
+	// 3. Detect dev server ports (e.g. 3000, 5173, 8080, 8000)
+	portRegex := regexp.MustCompile(`(?i)(?:Local:\s*|Running at\s*|listening on (?:port )?|http://(?:localhost|127\.0\.0\.1|0\.0\.0\.0):|port\s+)(\d{4,5})`)
 	if match := portRegex.FindStringSubmatch(out); len(match) > 1 {
 		if portNum, err := strconv.Atoi(match[1]); err == nil {
 			previewURL := s.daytonaSvc.GetPreviewURL(sandboxId, portNum, serverUrl)
