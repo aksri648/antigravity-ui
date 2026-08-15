@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -19,10 +20,19 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	jwtSecret = "antigravity-agy-cloud-secret-key-2026"
-	salt      = "agy-user-salt-secure-hash"
-)
+func getJWTSecret() string {
+	if s := os.Getenv("JWT_SECRET"); s != "" {
+		return s
+	}
+	return "antigravity-agy-cloud-secret-key-2026"
+}
+
+func getSalt() string {
+	if s := os.Getenv("PASSWORD_SALT"); s != "" {
+		return s
+	}
+	return "agy-user-salt-secure-hash"
+}
 
 type UserService struct {
 	daytonaSvc *DaytonaService
@@ -35,7 +45,7 @@ func NewUserService(daytonaSvc *DaytonaService) *UserService {
 }
 
 func hashPassword(password string) string {
-	h := hmac.New(sha256.New, []byte(salt))
+	h := hmac.New(sha256.New, []byte(getSalt()))
 	h.Write([]byte(password))
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -52,7 +62,7 @@ func (s *UserService) GenerateJWT(user *models.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jwtSecret))
+	return token.SignedString([]byte(getJWTSecret()))
 }
 
 func (s *UserService) ValidateJWT(tokenStr string) (*jwt.MapClaims, error) {
@@ -60,7 +70,7 @@ func (s *UserService) ValidateJWT(tokenStr string) (*jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(jwtSecret), nil
+		return []byte(getJWTSecret()), nil
 	})
 
 	if err != nil || !token.Valid {

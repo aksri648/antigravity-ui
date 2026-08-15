@@ -212,6 +212,24 @@ func main() {
 	// WebSocket Endpoint for Real-time Streaming
 	r.GET("/ws", handlers.HandleWebSocket(wsHub))
 
+	// Serve production React frontend if built
+	distPaths := []string{"../frontend/dist", "frontend/dist", "./dist"}
+	for _, distPath := range distPaths {
+		if stat, err := os.Stat(distPath); err == nil && stat.IsDir() {
+			r.Static("/assets", distPath+"/assets")
+			r.StaticFile("/favicon.ico", distPath+"/favicon.ico")
+			r.NoRoute(func(c *gin.Context) {
+				if !strings.HasPrefix(c.Request.URL.Path, "/api") && !strings.HasPrefix(c.Request.URL.Path, "/ws") {
+					c.File(distPath + "/index.html")
+					return
+				}
+				c.JSON(404, gin.H{"error": "Endpoint not found"})
+			})
+			log.Printf("🌐 Serving production frontend static bundle from: %s", distPath)
+			break
+		}
+	}
+
 	log.Printf("🚀 DELTA SaaS Backend listening on http://localhost:%s", port)
 	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
