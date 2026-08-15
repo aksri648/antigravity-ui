@@ -467,7 +467,12 @@ func GetPlatformTelemetry(userSvc *services.UserService, wsHub *Hub) gin.Handler
 		protoBytes := EncodePlatformTelemetryToProtobuf(telemetry)
 		c.Header("Content-Type", "application/x-protobuf")
 		c.Header("X-Telemetry-Format", "protobuf+gzip")
+		c.Header("X-Protobuf-Bytes", strconv.Itoa(len(protoBytes)))
 		c.Header("X-Raw-Bytes", strconv.Itoa(len(protoBytes)))
+
+		if gzBytes, err := CompressGzip(protoBytes); err == nil {
+			c.Header("X-Wire-Gzip-Bytes", strconv.Itoa(len(gzBytes)))
+		}
 
 		// Allow optional JSON fallback if explicit format=json query parameter is requested
 		if c.Query("format") == "json" {

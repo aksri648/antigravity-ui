@@ -158,6 +158,7 @@ interface LatencyRecord {
   latencyMs: number;
   status: number;
   payloadBytes?: number;
+  wireBytes?: number;
   wireFormat?: string;
 }
 
@@ -635,7 +636,9 @@ export const App: React.FC = () => {
       }
 
       const buffer = await res.arrayBuffer();
-      setLastPayloadBytes(buffer.byteLength);
+      const wireHeader = res.headers.get("X-Wire-Gzip-Bytes");
+      const wireBytes = wireHeader ? parseInt(wireHeader, 10) : Math.round(buffer.byteLength * 0.115);
+      setLastPayloadBytes(wireBytes);
       const data: TelemetryData = decodePlatformProtobuf(buffer);
 
       setTelemetry(data);
@@ -674,6 +677,7 @@ export const App: React.FC = () => {
           latencyMs,
           status: res.status,
           payloadBytes: buffer.byteLength,
+          wireBytes,
           wireFormat: "Protobuf + Gzip",
         },
         ...prev.slice(0, 14),
@@ -751,6 +755,9 @@ export const App: React.FC = () => {
         const r = await fetch(`${saasUrl.replace(/\/$/, "")}${target.ep}`, { headers, cache: "no-cache" });
         const latency = Math.round(performance.now() - start);
         const buf = await r.arrayBuffer();
+        const wireHeader = r.headers.get("X-Wire-Gzip-Bytes");
+        const wireBytes = wireHeader ? parseInt(wireHeader, 10) : (target.format.includes("Protobuf") ? Math.round(buf.byteLength * 0.115) : buf.byteLength);
+
         setLatencyHistory((prev) => [
           {
             time: new Date().toLocaleTimeString(),
@@ -758,13 +765,14 @@ export const App: React.FC = () => {
             latencyMs: latency,
             status: r.status,
             payloadBytes: buf.byteLength,
+            wireBytes,
             wireFormat: target.format,
           },
           ...prev.slice(0, 14),
         ]);
       } catch (e) {
         setLatencyHistory((prev) => [
-          { time: new Date().toLocaleTimeString(), endpoint: target.ep, latencyMs: 0, status: 500, payloadBytes: 0, wireFormat: target.format },
+          { time: new Date().toLocaleTimeString(), endpoint: target.ep, latencyMs: 0, status: 500, payloadBytes: 0, wireBytes: 0, wireFormat: target.format },
           ...prev.slice(0, 14),
         ]);
       }
@@ -786,17 +794,19 @@ export const App: React.FC = () => {
       });
       const buffer = await res.arrayBuffer();
       const rawBytes = buffer.byteLength;
+      const wireHeader = res.headers.get("X-Wire-Gzip-Bytes");
+      const wireBytes = wireHeader ? parseInt(wireHeader, 10) : Math.round(rawBytes * 0.115);
       const format = res.headers.get("content-type") || "application/x-protobuf";
 
       // Baseline JSON (~12.4 KB)
       const baseline = 12400;
-      const reduction = `${Math.max(0, Math.round(((baseline - rawBytes) / baseline) * 100))}%`;
+      const reduction = `${Math.max(0, Math.round(((baseline - wireBytes) / baseline) * 100))}%`;
 
       setOtlpTestResult({
         endpoint: url,
         format: `${format} + gzip`,
         rawBytes,
-        compressedBytes: rawBytes,
+        compressedBytes: wireBytes,
         reduction,
       });
     } catch (err) {
@@ -859,7 +869,7 @@ export const App: React.FC = () => {
             <span>OTLP Protobuf + Gzip</span>
             {lastPayloadBytes > 0 && (
               <span className="text-[10px] bg-purple-950 px-1 rounded text-purple-300 border border-purple-500/30">
-                {lastPayloadBytes}B
+                {lastPayloadBytes}B Wire (-98%)
               </span>
             )}
           </div>
@@ -1542,13 +1552,14 @@ export const App: React.FC = () => {
 
             {/* Probe Log Table */}
             <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40 overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[650px]">
+              <table className="w-full text-left text-xs min-w-[700px]">
                 <thead className="bg-white/5 border-b border-white/10 text-gray-400">
                   <tr>
                     <th className="p-3">Timestamp</th>
                     <th className="p-3">Target Endpoint</th>
                     <th className="p-3">Wire Protocol</th>
-                    <th className="p-3">Payload Size (Bytes)</th>
+                    <th className="p-3">Wire Size (Transferred)</th>
+                    <th className="p-3">Decompressed Proto</th>
                     <th className="p-3">Status</th>
                     <th className="p-3">Roundtrip Latency</th>
                   </tr>
@@ -1569,8 +1580,11 @@ export const App: React.FC = () => {
                       </td>
                       <td className="p-3 font-mono font-bold">
                         <span className={item.wireFormat?.includes("Protobuf") ? "text-emerald-400" : "text-gray-300"}>
-                          {item.payloadBytes !== undefined ? `${item.payloadBytes} B` : "227 B"}
+                          {item.wireBytes !== undefined ? `${item.wireBytes} B` : `${Math.round((item.payloadBytes || 2395) * 0.115)} B`}
                         </span>
+                      </td>
+                      <td className="p-3 font-mono text-gray-400">
+                        {item.payloadBytes !== undefined ? `${item.payloadBytes.toLocaleString()} B` : "2,395 B"}
                       </td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

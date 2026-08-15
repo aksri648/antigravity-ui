@@ -50,7 +50,7 @@ func main() {
 		}
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Daytona-Key")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH, HEAD")
-		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin")
+		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Encoding, X-Wire-Gzip-Bytes, X-Protobuf-Bytes, X-Telemetry-Format, X-Raw-Bytes, Access-Control-Allow-Origin")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
 
 		if c.Request.Method == "OPTIONS" {
