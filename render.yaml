@@ -1,3 +1,10 @@
+databases:
+  - name: delta-postgres
+    plan: free
+    region: oregon
+    databaseName: delta_db
+    user: delta_user
+
 services:
   - type: web
     name: antigravity-ui
@@ -9,7 +16,9 @@ services:
     envVars:
       - key: GIN_MODE
         value: release
-      - key: SQLITE_DB_PATH
-        value: "/tmp/agy_cloud.db"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: delta-postgres
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true

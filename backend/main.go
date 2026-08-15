@@ -20,16 +20,22 @@ func main() {
 		port = "8080"
 	}
 
-	// 1. Initialize SQLite Database
-	dbPath := os.Getenv("SQLITE_DB_PATH")
-	if dbPath == "" {
-		dbPath = "data/agy_cloud.db"
+	// 1. Initialize Database (PostgreSQL if DATABASE_URL/POSTGRES_URL is set, fallback to SQLite)
+	dbConnStr := os.Getenv("DATABASE_URL")
+	if dbConnStr == "" {
+		dbConnStr = os.Getenv("POSTGRES_URL")
 	}
-	_, err := db.InitDB(dbPath)
+	if dbConnStr == "" {
+		dbConnStr = os.Getenv("SQLITE_DB_PATH")
+	}
+	if dbConnStr == "" {
+		dbConnStr = "data/agy_cloud.db"
+	}
+	driverName, err := db.InitDB(dbConnStr)
 	if err != nil {
-		log.Fatalf("Failed to initialize SQLite database: %v", err)
+		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	log.Printf("📦 SQLite database connected and migrations applied at: %s", dbPath)
+	log.Printf("📦 Database connected (%s) and schema migrations applied", driverName)
 
 	r := gin.Default()
 
