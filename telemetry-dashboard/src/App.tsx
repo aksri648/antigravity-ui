@@ -455,12 +455,24 @@ function decodeSnapshotProtobuf(bytes: Uint8Array): TelemetrySnapshot {
       else if (fieldNum === 6) snap.memoryPercent = Math.round(val * 10) / 10;
       else if (fieldNum === 11) snap.netRxKBs = Math.round(val * 10) / 10;
       else if (fieldNum === 12) snap.netTxKBs = Math.round(val * 10) / 10;
+    } else if (wireType === 5) {
+      const val = view.getFloat32(offset.pos, true);
+      offset.pos += 4;
+      if (fieldNum === 3) snap.cpuPercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 4) snap.memoryAllocMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 5) snap.memorySysMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 6) snap.memoryPercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 11) snap.netRxKBs = Math.round(val * 10) / 10;
+      else if (fieldNum === 12) snap.netTxKBs = Math.round(val * 10) / 10;
     } else if (wireType === 2) {
       const len = decodeVarint(bytes, offset);
       const strBytes = bytes.subarray(offset.pos, offset.pos + len);
       offset.pos += len;
       if (fieldNum === 1) snap.time = new TextDecoder().decode(strBytes);
     }
+  }
+  if (!snap.time && snap.unix) {
+    snap.time = new Date(snap.unix * 1000).toTimeString().split(" ")[0];
   }
   return snap as TelemetrySnapshot;
 }
@@ -542,6 +554,16 @@ function decodePlatformProtobuf(buffer: ArrayBuffer): TelemetryData {
     } else if (wireType === 1) {
       const val = view.getFloat64(offset.pos, true);
       offset.pos += 8;
+      if (fieldNum === 4) data.system.cpuUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 5) data.runtime.allocMB = Math.round(val * 100) / 100;
+      else if (fieldNum === 6) data.system.memoryTotalMB = Math.round(val * 10) / 10;
+      else if (fieldNum === 7) data.system.memoryUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 12) data.system.diskUsagePercent = Math.round(val * 10) / 10;
+      else if (fieldNum === 13) data.system.networkRxKBs = Math.round(val * 10) / 10;
+      else if (fieldNum === 14) data.system.networkTxKBs = Math.round(val * 10) / 10;
+    } else if (wireType === 5) {
+      const val = view.getFloat32(offset.pos, true);
+      offset.pos += 4;
       if (fieldNum === 4) data.system.cpuUsagePercent = Math.round(val * 10) / 10;
       else if (fieldNum === 5) data.runtime.allocMB = Math.round(val * 100) / 100;
       else if (fieldNum === 6) data.system.memoryTotalMB = Math.round(val * 10) / 10;

@@ -63,6 +63,18 @@ func encodeProtoInt32(buf *bytes.Buffer, fieldNum int, v int32) {
 	encodeVarint(buf, uint64(v))
 }
 
+// Helper: encode 32-bit float IEEE 754 (compact wireFixed32)
+func encodeProtoFloat(buf *bytes.Buffer, fieldNum int, v float64) {
+	if v == 0 {
+		return
+	}
+	encodeTag(buf, fieldNum, wireFixed32)
+	bits := math.Float32bits(float32(v))
+	var b [4]byte
+	binary.LittleEndian.PutUint32(b[:], bits)
+	buf.Write(b[:])
+}
+
 // Helper: encode double (64-bit float IEEE 754)
 func encodeProtoDouble(buf *bytes.Buffer, fieldNum int, v float64) {
 	if v == 0 {
@@ -88,18 +100,20 @@ func encodeProtoMessage(buf *bytes.Buffer, fieldNum int, msgBytes []byte) {
 // EncodeSnapshotToProtobuf serializes a single TelemetrySnapshot to Protobuf binary wire format
 func EncodeSnapshotToProtobuf(s TelemetrySnapshot) []byte {
 	buf := new(bytes.Buffer)
-	encodeProtoString(buf, 1, s.Timestamp)
+	if s.Timestamp != "" {
+		encodeProtoString(buf, 1, s.Timestamp)
+	}
 	encodeProtoInt64(buf, 2, s.UnixSeconds)
-	encodeProtoDouble(buf, 3, s.CPUPercent)
-	encodeProtoDouble(buf, 4, s.MemoryAllocMB)
-	encodeProtoDouble(buf, 5, s.MemorySysMB)
-	encodeProtoDouble(buf, 6, s.MemoryPercent)
+	encodeProtoFloat(buf, 3, s.CPUPercent)
+	encodeProtoFloat(buf, 4, s.MemoryAllocMB)
+	encodeProtoFloat(buf, 5, s.MemorySysMB)
+	encodeProtoFloat(buf, 6, s.MemoryPercent)
 	encodeProtoInt32(buf, 7, int32(s.Goroutines))
 	encodeProtoInt32(buf, 8, int32(s.DBOpenConns))
 	encodeProtoInt32(buf, 9, int32(s.DBInUseConns))
 	encodeProtoInt32(buf, 10, int32(s.ActiveSockets))
-	encodeProtoDouble(buf, 11, s.NetRxKBs)
-	encodeProtoDouble(buf, 12, s.NetTxKBs)
+	encodeProtoFloat(buf, 11, s.NetRxKBs)
+	encodeProtoFloat(buf, 12, s.NetTxKBs)
 	return buf.Bytes()
 }
 
@@ -109,17 +123,17 @@ func EncodePlatformTelemetryToProtobuf(t PlatformTelemetry) []byte {
 	encodeProtoString(buf, 1, t.Platform.Name)
 	encodeProtoString(buf, 2, t.Platform.Version)
 	encodeProtoInt64(buf, 3, t.Platform.UptimeSeconds)
-	encodeProtoDouble(buf, 4, t.System.CPUUsagePercent)
-	encodeProtoDouble(buf, 5, t.Runtime.AllocMB)
-	encodeProtoDouble(buf, 6, t.System.MemoryTotalMB)
-	encodeProtoDouble(buf, 7, t.System.MemoryUsagePercent)
+	encodeProtoFloat(buf, 4, t.System.CPUUsagePercent)
+	encodeProtoFloat(buf, 5, t.Runtime.AllocMB)
+	encodeProtoFloat(buf, 6, t.System.MemoryTotalMB)
+	encodeProtoFloat(buf, 7, t.System.MemoryUsagePercent)
 	encodeProtoInt32(buf, 8, int32(t.Runtime.Goroutines))
 	encodeProtoInt32(buf, 9, int32(t.Database.OpenConnections))
 	encodeProtoInt32(buf, 10, int32(t.Database.InUse))
 	encodeProtoInt32(buf, 11, int32(t.Realtime.ActiveWebSockets))
-	encodeProtoDouble(buf, 12, t.System.DiskUsagePercent)
-	encodeProtoDouble(buf, 13, t.System.NetworkRxKBs)
-	encodeProtoDouble(buf, 14, t.System.NetworkTxKBs)
+	encodeProtoFloat(buf, 12, t.System.DiskUsagePercent)
+	encodeProtoFloat(buf, 13, t.System.NetworkRxKBs)
+	encodeProtoFloat(buf, 14, t.System.NetworkTxKBs)
 
 	// Repeated History Snapshots
 	for _, snap := range t.History {
