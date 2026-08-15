@@ -62,6 +62,8 @@ func main() {
 	})
 
 	// 3. Services initialization
+	r.Use(handlers.TransparentGzipMiddleware())
+
 	daytonaSvc := services.NewDaytonaService()
 	agySvc := services.NewAGYService(daytonaSvc)
 	userSvc := services.NewUserService(daytonaSvc)
@@ -74,6 +76,10 @@ func main() {
 	go wsHub.Run()
 
 	inactivityMgr := services.NewInactivityManager(daytonaSvc, wsHub, 30*time.Minute)
+
+	// Standard OpenTelemetry Protocol (OTLP) Root Endpoint
+	r.GET("/v1/metrics", handlers.HandleOTLPExport())
+	r.POST("/v1/metrics", handlers.HandleOTLPExport())
 
 	// 4. API Routes
 	api := r.Group("/api")
@@ -95,9 +101,11 @@ func main() {
 		c.Next()
 	})
 	{
-		// Health & Telemetry status
+		// Health, Telemetry & OTLP Protobuf Exporter
 		api.GET("/health", handlers.HealthCheck(daytonaSvc))
 		api.GET("/telemetry", handlers.GetPlatformTelemetry(userSvc, wsHub))
+		api.GET("/telemetry/otlp", handlers.HandleOTLPExport())
+		api.POST("/telemetry/otlp", handlers.HandleOTLPExport())
 		api.GET("/telemetry/ai-eval", handlers.GetAIAgentEvalReport())
 		api.POST("/telemetry/ai-eval/run", handlers.RunLiveAIEvalTest())
 

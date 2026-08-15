@@ -433,10 +433,49 @@ func GetPlatformTelemetry(userSvc *services.UserService, wsHub *Hub) gin.Handler
 		if len(historicalPoints) > 30 {
 			historicalPoints = historicalPoints[len(historicalPoints)-30:]
 		}
-		telemetry.History = make([]TelemetrySnapshot, len(historicalPoints))
-		copy(telemetry.History, historicalPoints)
+
+		isDelta := c.Query("delta") == "true" || c.Query("compact") == "true"
+		sinceStr := c.Query("since")
+
+		if isDelta {
+			// Deliver only the latest single incremental snapshot (Delta Temporality)
+			telemetry.History = []TelemetrySnapshot{snapshot}
+			c.Header("X-Payload-Mode", "delta-streaming")
+		} else if sinceStr != "" {
+			if sinceUnix, err := strconv.ParseInt(sinceStr, 10, 64); err == nil {
+				var filtered []TelemetrySnapshot
+				for _, pt := range historicalPoints {
+					if pt.UnixSeconds > sinceUnix {
+						filtered = append(filtered, pt)
+					}
+				}
+				telemetry.History = filtered
+				c.Header("X-Payload-Mode", "incremental-since")
+			} else {
+				telemetry.History = make([]TelemetrySnapshot, len(historicalPoints))
+				copy(telemetry.History, historicalPoints)
+				c.Header("X-Payload-Mode", "full-history")
+			}
+		} else {
+			telemetry.History = make([]TelemetrySnapshot, len(historicalPoints))
+			copy(telemetry.History, historicalPoints)
+			c.Header("X-Payload-Mode", "full-history")
+		}
 		telemetryMu.Unlock()
 
+		// Check for Binary Protobuf encoding request (OTLP Protobuf)
+		format := c.DefaultQuery("format", "")
+		accept := c.GetHeader("Accept")
+		if format == "proto" || strings.Contains(accept, "application/x-protobuf") || strings.Contains(accept, "application/protobuf") {
+			protoBytes := EncodePlatformTelemetryToProtobuf(telemetry)
+			c.Header("Content-Type", "application/x-protobuf")
+			c.Header("X-Telemetry-Format", "protobuf-binary")
+			c.Header("X-Raw-Bytes", strconv.Itoa(len(protoBytes)))
+			c.Data(http.StatusOK, "application/x-protobuf", protoBytes)
+			return
+		}
+
+		c.Header("X-Telemetry-Format", "json")
 		c.JSON(http.StatusOK, telemetry)
 	}
 }
