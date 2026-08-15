@@ -24,6 +24,9 @@ An enterprise-grade, autonomous multi-agent cloud IDE and Forward Deployed Engin
 
 ## 🏗️ System Architecture
 
+![DELTA System Architecture Flowchart](./docs/assets/system_design_flowchart.jpg)
+
+### Interactive Mermaid.js Flowchart
 ```mermaid
 flowchart TD
     subgraph Clients["Presentation & Observability Layer"]

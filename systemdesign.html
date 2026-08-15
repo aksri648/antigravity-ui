@@ -24,13 +24,16 @@
       min-height: 100vh;
     }
     header {
-      padding: 20px 32px;
+      padding: 16px 32px;
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: #ffffff;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 50;
     }
     .brand {
       display: flex;
@@ -38,7 +41,7 @@
       gap: 12px;
     }
     .brand h1 {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       margin: 0;
       font-weight: 800;
       letter-spacing: -0.5px;
@@ -56,21 +59,44 @@
       text-transform: uppercase;
       font-family: monospace;
     }
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 4px;
+      border-radius: 10px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
     .controls {
       display: flex;
-      gap: 10px;
+      gap: 8px;
     }
-    button {
+    .action-btn {
       background: #f1f5f9;
       border: 1px solid #cbd5e1;
-      padding: 8px 14px;
+      padding: 6px 12px;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s;
     }
-    button:hover {
+    .action-btn:hover {
       background: #e2e8f0;
     }
     .container {
@@ -78,27 +104,70 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 32px;
-      overflow: auto;
+      padding: 32px 24px;
+      gap: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .diagram-wrapper {
+    .section-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 16px;
-      padding: 32px;
+      padding: 24px;
       box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-      max-width: 1200px;
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .image-container {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      display: flex;
+      justify-content: center;
+    }
+    .image-container img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .image-container img:hover {
+      transform: scale(1.01);
+    }
+    .mermaid-wrapper {
       width: 100%;
       overflow-x: auto;
+      display: flex;
+      justify-content: center;
+      padding: 16px 0;
     }
     .legend {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 12px;
-      margin-top: 24px;
       width: 100%;
-      max-width: 1200px;
     }
     .legend-item {
       display: flex;
@@ -134,18 +203,47 @@
   <header>
     <div class="brand">
       <h1>DELTA • System Architecture Flowchart</h1>
-      <span class="badge">Mermaid.js Live</span>
+      <span class="badge">Production Design</span>
     </div>
+    
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchView('all', this)">View All</button>
+      <button class="tab-btn" onclick="switchView('image', this)">Image Diagram</button>
+      <button class="tab-btn" onclick="switchView('mermaid', this)">Mermaid Flowchart</button>
+    </div>
+
     <div class="controls">
-      <button onclick="window.print()">🖨️ Print / PDF</button>
-      <button onclick="location.reload()">🔄 Re-render</button>
+      <button class="action-btn" onclick="window.print()">🖨️ Print / PDF</button>
+      <button class="action-btn" onclick="location.reload()">🔄 Re-render</button>
     </div>
   </header>
 
   <div class="container">
     
-    <div class="diagram-wrapper">
-      <pre class="mermaid">
+    <!-- 1. Visual Image Diagram -->
+    <div id="image-section" class="section-card">
+      <div class="section-header">
+        <div class="section-title">
+          <span>🎨 High-Level Architecture Flowchart</span>
+        </div>
+        <span style="font-size: 0.75rem; color: #64748b; font-family: monospace;">docs/assets/system_design_flowchart.jpg</span>
+      </div>
+      <div class="image-container">
+        <img src="docs/assets/system_design_flowchart.jpg" alt="DELTA System Design Architecture Diagram" />
+      </div>
+    </div>
+
+    <!-- 2. Interactive Mermaid.js SVG Flowchart -->
+    <div id="mermaid-section" class="section-card">
+      <div class="section-header">
+        <div class="section-title">
+          <span>📊 Interactive Live Mermaid.js Vector Diagram</span>
+        </div>
+        <span style="font-size: 0.75rem; color: #64748b; font-family: monospace;">Dynamic SVG</span>
+      </div>
+      
+      <div class="mermaid-wrapper">
+        <pre class="mermaid">
 flowchart TD
     %% Styling Classes
     classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1,font-weight:bold,rx:8,ry:8;
@@ -203,30 +301,31 @@ flowchart TD
     Volume --> Swarms
     Swarms --> DevServer
     DevServer -. "Reverse Proxy Link" .-> IDE
-      </pre>
-    </div>
+        </pre>
+      </div>
 
-    <!-- Component Legend -->
-    <div class="legend">
-      <div class="legend-item">
-        <div class="color-box" style="background: #e0f2fe; border-color: #0284c7;"></div>
-        <span>User Browser & Client (Sky Blue)</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #f3e8ff; border-color: #9333ea;"></div>
-        <span>Edge & Auth Layer (Purple)</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #dcfce7; border-color: #16a34a;"></div>
-        <span>Go Control Plane (Emerald)</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #ccfbf1; border-color: #0d9488;"></div>
-        <span>PostgreSQL 16 Store (Teal)</span>
-      </div>
-      <div class="legend-item">
-        <div class="color-box" style="background: #fef3c7; border-color: #d97706;"></div>
-        <span>Daytona Micro-VMs (Amber)</span>
+      <!-- Component Legend -->
+      <div class="legend">
+        <div class="legend-item">
+          <div class="color-box" style="background: #e0f2fe; border-color: #0284c7;"></div>
+          <span>User Browser & Client (Sky Blue)</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box" style="background: #f3e8ff; border-color: #9333ea;"></div>
+          <span>Edge & Auth Layer (Purple)</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box" style="background: #dcfce7; border-color: #16a34a;"></div>
+          <span>Go Control Plane (Emerald)</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box" style="background: #ccfbf1; border-color: #0d9488;"></div>
+          <span>PostgreSQL 16 Store (Teal)</span>
+        </div>
+        <div class="legend-item">
+          <div class="color-box" style="background: #fef3c7; border-color: #d97706;"></div>
+          <span>Daytona Micro-VMs (Amber)</span>
+        </div>
       </div>
     </div>
 
@@ -247,6 +346,25 @@ flowchart TD
         curve: 'basis'
       }
     });
+
+    function switchView(view, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const imgSec = document.getElementById('image-section');
+      const mermaidSec = document.getElementById('mermaid-section');
+
+      if (view === 'all') {
+        imgSec.style.display = 'flex';
+        mermaidSec.style.display = 'flex';
+      } else if (view === 'image') {
+        imgSec.style.display = 'flex';
+        mermaidSec.style.display = 'none';
+      } else if (view === 'mermaid') {
+        imgSec.style.display = 'none';
+        mermaidSec.style.display = 'flex';
+      }
+    }
   </script>
 </body>
 </html>
