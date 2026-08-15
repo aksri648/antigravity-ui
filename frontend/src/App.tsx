@@ -82,7 +82,7 @@ export function App() {
     return saved ? parseFloat(saved) : 32;
   });
   const [isDraggingSplitter, setIsDraggingSplitter] = useState(false);
-  const workspaceContainerRef = useRef<HTMLDivElement>(null);
+  const splitAreaContainerRef = useRef<HTMLDivElement>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -228,16 +228,17 @@ export function App() {
     if (!isDraggingSplitter) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (!workspaceContainerRef.current) return;
-      const rect = workspaceContainerRef.current.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
+      if (!splitAreaContainerRef.current) return;
+      const rect = splitAreaContainerRef.current.getBoundingClientRect();
       const totalWidth = rect.width;
       if (totalWidth <= 0) return;
 
-      const minPx = 280;
-      const maxPx = Math.max(minPx, totalWidth - 340);
-      const clampedPx = Math.min(Math.max(offsetX, minPx), maxPx);
-      const pct = (clampedPx / totalWidth) * 100;
+      const offsetX = e.clientX - rect.left;
+      const minLeftPx = 280;
+      const minRightPx = 320;
+      const maxLeftPx = Math.max(minLeftPx, totalWidth - minRightPx);
+      const clampedPx = Math.min(Math.max(offsetX, minLeftPx), maxLeftPx);
+      const pct = Math.min(Math.max((clampedPx / totalWidth) * 100, 15), 85);
 
       setLeftPanePercent(pct);
     };
@@ -250,10 +251,15 @@ export function App() {
       });
     };
 
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
 
     return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
@@ -946,10 +952,7 @@ export function App() {
           />
 
           {/* Main Adjustable Split Screen Workspace with Projects Sidebar */}
-          <div
-            ref={workspaceContainerRef}
-            className={`flex flex-1 overflow-hidden relative ${isDraggingSplitter ? "select-none cursor-col-resize" : ""}`}
-          >
+          <div className="flex flex-1 overflow-hidden relative">
             {/* Multi-Project & Multi-Chat Collapsible Sidebar */}
             <ProjectsSidebar
               isOpen={isSidebarOpen}
@@ -979,92 +982,103 @@ export function App() {
               onLogout={handleLogout}
             />
 
-            {/* Left Pane (Adjustable Width or Full Screen when Right Panel is Collapsed) */}
+            {/* Split Content Area (Chat + Splitter + Preview) */}
             <div
-              style={{ width: isRightPanelOpen ? `${leftPanePercent}%` : "100%" }}
-              className={`h-full overflow-hidden flex flex-col transition-[width] duration-150 ${
-                isRightPanelOpen ? "shrink-0 min-w-[280px]" : "flex-1 w-full"
-              }`}
+              ref={splitAreaContainerRef}
+              className={`flex flex-1 h-full min-w-0 overflow-hidden relative ${isDraggingSplitter ? "select-none cursor-col-resize" : ""}`}
             >
-              <ChatPane
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                isProcessing={isProcessing}
-                onClearChat={handleClearChat}
-                onStopGenerating={handleStopGenerating}
-                currentAgentMode={currentAgentMode}
-                onAgentModeChange={setCurrentAgentMode}
-                cliEngine={cliEngine}
-                onCliEngineChange={(engine) => {
-                  setCliEngine(engine);
-                  localStorage.setItem("preferred_cli_engine", engine);
-                }}
-                activeConversationTitle={conversations.find((c) => c.id === activeConversationId)?.title}
-                activeProjectName={activeProject?.name}
-                onNewChat={() => handleCreateConversation(activeProject?.id)}
-                isRightPanelOpen={isRightPanelOpen}
-                onToggleRightPanel={() => {
-                  setIsRightPanelOpen((prev) => {
-                    const next = !prev;
-                    localStorage.setItem("workspace_right_panel_open", String(next));
-                    return next;
-                  });
-                }}
-                onOpenPreviewOnly={handleOpenPreviewOnly}
-              />
-            </div>
+              {/* Full-Screen Transparent Drag Overlay to prevent iframes/canvases from swallowing drag events */}
+              {isDraggingSplitter && (
+                <div className="fixed inset-0 z-50 cursor-col-resize select-none bg-transparent" />
+              )}
 
-            {/* Interactive Resizable Divider Bar (Only shown when Right Panel is Open) */}
-            {isRightPanelOpen && (
+              {/* Left Pane (Adjustable Width or Full Screen when Right Panel is Collapsed) */}
               <div
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setIsDraggingSplitter(true);
-                }}
-                onDoubleClick={() => {
-                  setLeftPanePercent(32);
-                  localStorage.setItem("workspace_left_width_pct", "32");
-                }}
-                className={`group relative w-2 hover:w-2.5 bg-border/40 hover:bg-emerald-500/80 cursor-col-resize z-20 shrink-0 transition-all flex items-center justify-center border-x border-white/5 ${
-                  isDraggingSplitter ? "bg-emerald-500 w-2.5 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : ""
+                style={{ width: isRightPanelOpen ? `${leftPanePercent}%` : "100%" }}
+                className={`h-full overflow-hidden flex flex-col ${
+                  isDraggingSplitter ? "" : "transition-[width] duration-150"
+                } ${
+                  isRightPanelOpen ? "shrink-0 min-w-[280px]" : "flex-1 w-full"
                 }`}
-                title="Drag to resize panels (Double-click to reset to 32%)"
               >
-                <div className="h-8 w-1 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
-              </div>
-            )}
-
-            {/* Right Pane (Dynamic Remaining Width — Collapsible) */}
-            {isRightPanelOpen && (
-              <div className="flex-1 h-full min-w-0 overflow-hidden relative animate-in fade-in duration-150">
-                {/* Invisible overlay during drag to prevent iframes from swallowing mouse movements */}
-                {isDraggingSplitter && <div className="absolute inset-0 z-50 cursor-col-resize bg-transparent" />}
-                <PreviewPane
-                  sandboxId={sandboxId}
-                  apiKey={apiKey || ""}
-                  serverUrl={serverUrl}
-                  previewUrl={previewUrl}
-                  activePort={activePort}
-                  terminalLogs={terminalLogs}
-                  userId={userId}
-                  projectId={activeProject?.id}
-                  openTabs={rightOpenTabs}
-                  onOpenTabsChange={setRightOpenTabs}
-                  activeTab={rightActiveTab}
-                  onActiveTabChange={setRightActiveTab}
-                  onToggleCollapse={() => {
-                    setIsRightPanelOpen(false);
-                    localStorage.setItem("workspace_right_panel_open", "false");
+                <ChatPane
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  isProcessing={isProcessing}
+                  onClearChat={handleClearChat}
+                  onStopGenerating={handleStopGenerating}
+                  currentAgentMode={currentAgentMode}
+                  onAgentModeChange={setCurrentAgentMode}
+                  cliEngine={cliEngine}
+                  onCliEngineChange={(engine) => {
+                    setCliEngine(engine);
+                    localStorage.setItem("preferred_cli_engine", engine);
                   }}
-                  onPortChange={(port) => {
-                    setActivePort(port);
-                    if (sandboxId) {
-                      setPreviewUrl(`https://${sandboxId}-${port}.daytona.app`);
-                    }
+                  activeConversationTitle={conversations.find((c) => c.id === activeConversationId)?.title}
+                  activeProjectName={activeProject?.name}
+                  onNewChat={() => handleCreateConversation(activeProject?.id)}
+                  isRightPanelOpen={isRightPanelOpen}
+                  onToggleRightPanel={() => {
+                    setIsRightPanelOpen((prev) => {
+                      const next = !prev;
+                      localStorage.setItem("workspace_right_panel_open", String(next));
+                      return next;
+                    });
                   }}
+                  onOpenPreviewOnly={handleOpenPreviewOnly}
                 />
               </div>
-            )}
+
+              {/* Interactive Resizable Divider Bar (Only shown when Right Panel is Open) */}
+              {isRightPanelOpen && (
+                <div
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setIsDraggingSplitter(true);
+                  }}
+                  onDoubleClick={() => {
+                    setLeftPanePercent(32);
+                    localStorage.setItem("workspace_left_width_pct", "32");
+                  }}
+                  className={`group relative w-2 hover:w-2.5 bg-border/40 hover:bg-emerald-500/80 cursor-col-resize z-20 shrink-0 transition-all flex items-center justify-center border-x border-white/5 ${
+                    isDraggingSplitter ? "bg-emerald-500 w-2.5 shadow-[0_0_12px_rgba(16,185,129,0.6)]" : ""
+                  }`}
+                  title="Drag to resize panels (Double-click to reset to 32%)"
+                >
+                  <div className="h-8 w-1 rounded-full bg-white/30 group-hover:bg-white transition-colors" />
+                </div>
+              )}
+
+              {/* Right Pane (Dynamic Remaining Width — Collapsible) */}
+              {isRightPanelOpen && (
+                <div className="flex-1 h-full min-w-[320px] overflow-hidden relative animate-in fade-in duration-150">
+                  <PreviewPane
+                    sandboxId={sandboxId}
+                    apiKey={apiKey || ""}
+                    serverUrl={serverUrl}
+                    previewUrl={previewUrl}
+                    activePort={activePort}
+                    terminalLogs={terminalLogs}
+                    userId={userId}
+                    projectId={activeProject?.id}
+                    openTabs={rightOpenTabs}
+                    onOpenTabsChange={setRightOpenTabs}
+                    activeTab={rightActiveTab}
+                    onActiveTabChange={setRightActiveTab}
+                    onToggleCollapse={() => {
+                      setIsRightPanelOpen(false);
+                      localStorage.setItem("workspace_right_panel_open", "false");
+                    }}
+                    onPortChange={(port) => {
+                      setActivePort(port);
+                      if (sandboxId) {
+                        setPreviewUrl(`https://${sandboxId}-${port}.daytona.app`);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Workspace & Environment Settings Modal */}
