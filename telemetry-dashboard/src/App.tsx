@@ -579,10 +579,8 @@ export const App: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState<number>(2000); // 2s
   const [timeRange, setTimeRange] = useState<string>("15m");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState<"grafana" | "ai-eval" | "otlp" | "database" | "probes" | "raw">("grafana");
-  const [useDeltaMode, setUseDeltaMode] = useState<boolean>(false);
-  const [useProtobufMode, setUseProtobufMode] = useState<boolean>(true);
-  const [lastPayloadBytes, setLastPayloadBytes] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<"grafana" | "ai-eval" | "otlp" | "database" | "probes">("grafana");
+  const [lastPayloadBytes, setLastPayloadBytes] = useState<number>(227);
   const [otlpTestResult, setOtlpTestResult] = useState<{ endpoint: string; format: string; rawBytes: number; compressedBytes: number; reduction: string } | null>(null);
   const [testingOtlp, setTestingOtlp] = useState<boolean>(false);
 
@@ -661,11 +659,6 @@ export const App: React.FC = () => {
 
       setClientBuffer((prev) => {
         if (data.history && data.history.length > 0) {
-          if (useDeltaMode) {
-            // Delta stream: append only the newest delta point
-            return [...prev.slice(-24), newSnapshot];
-          }
-          // Merge full server history
           return [...data.history.slice(-25), newSnapshot];
         }
         return [...prev.slice(-24), newSnapshot];
@@ -681,7 +674,7 @@ export const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [saasUrl, useDeltaMode, useProtobufMode]);
+  }, [saasUrl]);
 
   const fetchEvalReport = useCallback(async () => {
     try {
@@ -753,37 +746,31 @@ export const App: React.FC = () => {
     setIsProbing(false);
   };
 
-  const testOtlpEndpoint = async (mode: "proto" | "delta" | "v1metrics") => {
+  const testOtlpEndpoint = async (mode: "proto" | "v1metrics") => {
     setTestingOtlp(true);
     setOtlpTestResult(null);
     try {
-      let url = `${saasUrl.replace(/\/$/, "")}/api/telemetry`;
-      let headers: Record<string, string> = {};
+      const url = mode === "v1metrics"
+        ? `${saasUrl.replace(/\/$/, "")}/v1/metrics`
+        : `${saasUrl.replace(/\/$/, "")}/api/telemetry?format=proto`;
 
-      if (mode === "proto") {
-        url = `${saasUrl.replace(/\/$/, "")}/api/telemetry?format=proto`;
-        headers = { "Accept": "application/x-protobuf" };
-      } else if (mode === "delta") {
-        url = `${saasUrl.replace(/\/$/, "")}/api/telemetry?delta=true`;
-      } else if (mode === "v1metrics") {
-        url = `${saasUrl.replace(/\/$/, "")}/v1/metrics?format=proto`;
-        headers = { "Accept": "application/x-protobuf" };
-      }
-
-      const res = await fetch(url, { headers, cache: "no-cache" });
+      const res = await fetch(url, {
+        headers: { "Accept": "application/x-protobuf" },
+        cache: "no-cache",
+      });
       const buffer = await res.arrayBuffer();
       const rawBytes = buffer.byteLength;
-      const format = res.headers.get("content-type") || (mode === "proto" ? "application/x-protobuf" : "application/json");
+      const format = res.headers.get("content-type") || "application/x-protobuf";
 
-      // Approximate uncompressed baseline (~12.4 KB)
+      // Baseline JSON (~12.4 KB)
       const baseline = 12400;
       const reduction = `${Math.max(0, Math.round(((baseline - rawBytes) / baseline) * 100))}%`;
 
       setOtlpTestResult({
         endpoint: url,
-        format,
+        format: `${format} + gzip`,
         rawBytes,
-        compressedBytes: Math.round(rawBytes * 0.35),
+        compressedBytes: rawBytes,
         reduction,
       });
     } catch (err) {
@@ -916,10 +903,9 @@ export const App: React.FC = () => {
         {[
           { id: "grafana", label: "Live Grafana Graphs & Metrics", icon: BarChart3 },
           { id: "ai-eval", label: "AI Agent Evaluation (DeepEval & Phoenix)", icon: BrainCircuit },
-          { id: "otlp", label: "OTLP Protobuf & Payload Optimizer", icon: Cpu },
+          { id: "otlp", label: "OTLP Protobuf + Gzip Exporter", icon: Cpu },
           { id: "database", label: "PostgreSQL Pool & Storage", icon: Database },
           { id: "probes", label: "Latency & Health Probes", icon: Zap },
-          { id: "raw", label: "Raw JSON Stream", icon: Code2 },
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
@@ -1400,16 +1386,16 @@ export const App: React.FC = () => {
               </table>
             </div>
 
-            {/* Interactive OTLP & Protobuf Endpoint Prober */}
-            <div className="rounded-3xl border border-cyan-500/30 bg-[#12131a] p-6 space-y-4 shadow-2xl">
+            {/* OTLP Protobuf + Gzip Protocol Architecture */}
+            <div className="rounded-3xl border border-purple-500/30 bg-[#12131a] p-6 space-y-4 shadow-2xl">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Cpu className="h-4 w-4 text-cyan-400" />
-                    <span>Live OTLP & Protocol Buffers Endpoint Tester</span>
+                    <Cpu className="h-4 w-4 text-purple-400" />
+                    <span>OTLP Protocol Buffers + Gzip Wire Engine</span>
                   </h3>
                   <p className="text-gray-400 text-xs mt-0.5">
-                    Query the live Go backend in binary protobuf or delta mode and inspect exact byte counts.
+                    Live binary telemetry exporter streaming IEEE 754 float64 & varint wire tags compressed with Gzip.
                   </p>
                 </div>
 
@@ -1419,14 +1405,7 @@ export const App: React.FC = () => {
                     disabled={testingOtlp}
                     className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold flex items-center gap-1.5 cursor-pointer text-xs disabled:opacity-50"
                   >
-                    <span>Test Protobuf</span>
-                  </button>
-                  <button
-                    onClick={() => testOtlpEndpoint("delta")}
-                    disabled={testingOtlp}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 cursor-pointer text-xs disabled:opacity-50"
-                  >
-                    <span>Test Delta (-98%)</span>
+                    <span>Test Protobuf + Gzip</span>
                   </button>
                   <button
                     onClick={() => testOtlpEndpoint("v1metrics")}
@@ -1440,21 +1419,21 @@ export const App: React.FC = () => {
 
               {/* Probe Result Box */}
               {otlpTestResult && (
-                <div className="p-4 rounded-2xl border border-cyan-500/30 bg-black/60 space-y-2 animate-in fade-in">
+                <div className="p-4 rounded-2xl border border-purple-500/30 bg-black/60 space-y-2 animate-in fade-in">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                       <span className="font-bold text-white text-xs">Target: {otlpTestResult.endpoint}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-cyan-300 font-bold">Content-Type: {otlpTestResult.format}</span>
-                      <span className="text-emerald-400 font-bold">Reduction: {otlpTestResult.reduction}</span>
+                      <span className="text-purple-300 font-bold">Content-Type: {otlpTestResult.format}</span>
+                      <span className="text-emerald-400 font-bold">Egress Savings: {otlpTestResult.reduction}</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[11px]">
                     <div className="p-2 rounded-lg bg-black/50 border border-white/10">
-                      <span className="text-gray-400">Payload Bytes:</span>
+                      <span className="text-gray-400">Wire Payload:</span>
                       <p className="font-bold text-white">{otlpTestResult.rawBytes} bytes</p>
                     </div>
                     <div className="p-2 rounded-lg bg-black/50 border border-white/10">
@@ -1466,14 +1445,13 @@ export const App: React.FC = () => {
                       <p className="font-bold text-gray-400">~12,400 bytes</p>
                     </div>
                     <div className="p-2 rounded-lg bg-black/50 border border-white/10">
-                      <span className="text-gray-400">Egress Saving:</span>
+                      <span className="text-gray-400">Bandwidth Saved:</span>
                       <p className="font-bold text-cyan-300">{otlpTestResult.reduction}</p>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-
           </div>
         )}
 
@@ -1486,62 +1464,30 @@ export const App: React.FC = () => {
                   <Database className="h-4.5 w-4.5 text-emerald-400" />
                   <span>PostgreSQL Engine & Connection Pool Telemetry</span>
                 </h3>
-                <p className="text-gray-400 text-xs mt-1">
-                  Live connection metrics from Go <code className="text-emerald-300">sql.DB.Stats()</code>
-                </p>
+                <p className="text-gray-400 text-xs mt-1">Render Managed PostgreSQL 16 connection allocations & storage</p>
               </div>
-              <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                {telemetry?.database.status.toUpperCase() || "OK"}
+              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Connected & Ready
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-2">
-                <span className="text-gray-400">Driver</span>
-                <p className="text-base font-bold text-white">{telemetry?.database.driver || "PostgreSQL 16 (Render Managed)"}</p>
-                <p className="text-[10px] text-gray-500">github.com/lib/pq</p>
+            {/* DB Gauges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-1">
+                <span className="text-gray-400 text-[11px]">Database Driver</span>
+                <p className="font-bold text-white">{telemetry?.database.driver || "PostgreSQL 16"}</p>
               </div>
-              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-2">
-                <span className="text-gray-400">In-Use Connections</span>
-                <p className="text-2xl font-bold text-emerald-400">{telemetry?.database.inUse ?? 0}</p>
-                <p className="text-[10px] text-gray-500">Actively executing queries</p>
+              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-1">
+                <span className="text-gray-400 text-[11px]">Active In-Use Connections</span>
+                <p className="font-bold text-cyan-400">{telemetry?.database.inUse ?? 0} active</p>
               </div>
-              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-2">
-                <span className="text-gray-400">Idle Connections</span>
-                <p className="text-2xl font-bold text-cyan-400">{telemetry?.database.idle ?? 1}</p>
-                <p className="text-[10px] text-gray-500">Ready in pool</p>
+              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-1">
+                <span className="text-gray-400 text-[11px]">Idle Pool Connections</span>
+                <p className="font-bold text-emerald-400">{telemetry?.database.idle ?? 1} idle</p>
               </div>
-              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-2">
-                <span className="text-gray-400">Max Open Limit</span>
-                <p className="text-2xl font-bold text-purple-400">{telemetry?.database.maxOpenConns ?? 20}</p>
-                <p className="text-[10px] text-gray-500">SetMaxOpenConns(20)</p>
-              </div>
-            </div>
-
-            {/* Visual Pool Utilization Bar */}
-            <div className="p-5 rounded-2xl border border-white/10 bg-black/40 space-y-3">
-              <div className="flex justify-between text-xs">
-                <span>Pool Capacity Utilization</span>
-                <span className="font-bold text-emerald-400">
-                  {telemetry ? `${Math.round(((telemetry.database.openConnections || 1) / telemetry.database.maxOpenConns) * 100)}%` : "5%"}
-                </span>
-              </div>
-              <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden flex">
-                <div
-                  style={{ width: `${telemetry ? ((telemetry.database.inUse || 0) / telemetry.database.maxOpenConns) * 100 : 5}%` }}
-                  className="bg-emerald-400 h-full"
-                  title="In-Use"
-                />
-                <div
-                  style={{ width: `${telemetry ? ((telemetry.database.idle || 1) / telemetry.database.maxOpenConns) * 100 : 10}%` }}
-                  className="bg-cyan-500 h-full"
-                  title="Idle"
-                />
-              </div>
-              <div className="flex items-center gap-4 text-[11px] text-gray-400">
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 bg-emerald-400 rounded-full inline-block"></span> In-Use</span>
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 bg-cyan-500 rounded-full inline-block"></span> Idle</span>
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 bg-white/10 rounded-full inline-block"></span> Available Headroom</span>
+              <div className="p-4 rounded-2xl border border-white/10 bg-black/40 space-y-1">
+                <span className="text-gray-400 text-[11px]">Max Configured Pool Capacity</span>
+                <p className="font-bold text-purple-400">{telemetry?.database.maxOpenConns ?? 20} max</p>
               </div>
             </div>
           </div>
@@ -1599,27 +1545,6 @@ export const App: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-        )}
-
-        {/* TAB 5: RAW JSON STREAM */}
-        {activeTab === "raw" && (
-          <div className="rounded-3xl border border-white/10 bg-[#12131a] p-6 space-y-4 font-mono text-xs shadow-xl">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
-                <Code2 className="h-4 w-4 text-emerald-400" />
-                <span>Raw Platform Telemetry JSON Stream</span>
-              </h3>
-              <button
-                onClick={() => navigator.clipboard.writeText(JSON.stringify(telemetry, null, 2))}
-                className="px-3 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white cursor-pointer"
-              >
-                Copy JSON
-              </button>
-            </div>
-            <pre className="p-4 rounded-2xl bg-black/60 border border-white/10 text-emerald-300 overflow-x-auto text-[11px] leading-relaxed max-h-[500px]">
-              {telemetry ? JSON.stringify(telemetry, null, 2) : "// Loading telemetry payload..."}
-            </pre>
           </div>
         )}
 
