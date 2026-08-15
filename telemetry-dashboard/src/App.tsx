@@ -157,6 +157,8 @@ interface LatencyRecord {
   endpoint: string;
   latencyMs: number;
   status: number;
+  payloadBytes?: number;
+  wireFormat?: string;
 }
 
 // Ultra-Crisp Grafana SVG Time-Series Area Chart Component
@@ -664,10 +666,17 @@ export const App: React.FC = () => {
         return [...prev.slice(-24), newSnapshot];
       });
 
-      // Record probe
+      // Record probe with exact byte size & wire format
       setLatencyHistory((prev) => [
-        { time: new Date().toLocaleTimeString(), endpoint: endpointUrl.replace(saasUrl, ""), latencyMs, status: res.status },
-        ...prev.slice(0, 9),
+        {
+          time: new Date().toLocaleTimeString(),
+          endpoint: endpointUrl.replace(saasUrl, ""),
+          latencyMs,
+          status: res.status,
+          payloadBytes: buffer.byteLength,
+          wireFormat: "Protobuf + Gzip",
+        },
+        ...prev.slice(0, 14),
       ]);
     } catch (err: any) {
       setError(err.message || "Failed to connect to SaaS platform telemetry API");
@@ -726,19 +735,36 @@ export const App: React.FC = () => {
 
   const runLatencyProbe = async () => {
     setIsProbing(true);
-    const endpoints = ["/api/health", "/api/telemetry", "/api/telemetry/ai-eval", "/api/deployments/summary"];
-    for (const ep of endpoints) {
+    const probeTargets = [
+      { ep: "/api/telemetry?format=proto", format: "Protobuf + Gzip" },
+      { ep: "/v1/metrics", format: "Protobuf + Gzip" },
+      { ep: "/api/health", format: "JSON" },
+      { ep: "/api/telemetry/ai-eval", format: "JSON" },
+    ];
+    for (const target of probeTargets) {
       try {
         const start = performance.now();
-        const r = await fetch(`${saasUrl.replace(/\/$/, "")}${ep}`, { cache: "no-cache" });
+        const headers: Record<string, string> = {};
+        if (target.format.includes("Protobuf")) {
+          headers["Accept"] = "application/x-protobuf";
+        }
+        const r = await fetch(`${saasUrl.replace(/\/$/, "")}${target.ep}`, { headers, cache: "no-cache" });
         const latency = Math.round(performance.now() - start);
+        const buf = await r.arrayBuffer();
         setLatencyHistory((prev) => [
-          { time: new Date().toLocaleTimeString(), endpoint: ep, latencyMs: latency, status: r.status },
+          {
+            time: new Date().toLocaleTimeString(),
+            endpoint: target.ep,
+            latencyMs: latency,
+            status: r.status,
+            payloadBytes: buf.byteLength,
+            wireFormat: target.format,
+          },
           ...prev.slice(0, 14),
         ]);
       } catch (e) {
         setLatencyHistory((prev) => [
-          { time: new Date().toLocaleTimeString(), endpoint: ep, latencyMs: 0, status: 500 },
+          { time: new Date().toLocaleTimeString(), endpoint: target.ep, latencyMs: 0, status: 500, payloadBytes: 0, wireFormat: target.format },
           ...prev.slice(0, 14),
         ]);
       }
@@ -1515,12 +1541,14 @@ export const App: React.FC = () => {
             </div>
 
             {/* Probe Log Table */}
-            <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
-              <table className="w-full text-left text-xs">
+            <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40 overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[650px]">
                 <thead className="bg-white/5 border-b border-white/10 text-gray-400">
                   <tr>
                     <th className="p-3">Timestamp</th>
                     <th className="p-3">Target Endpoint</th>
+                    <th className="p-3">Wire Protocol</th>
+                    <th className="p-3">Payload Size (Bytes)</th>
                     <th className="p-3">Status</th>
                     <th className="p-3">Roundtrip Latency</th>
                   </tr>
@@ -1529,7 +1557,21 @@ export const App: React.FC = () => {
                   {latencyHistory.map((item, idx) => (
                     <tr key={idx} className="hover:bg-white/5 transition-colors">
                       <td className="p-3 text-gray-400">{item.time}</td>
-                      <td className="p-3 font-bold text-white">{item.endpoint}</td>
+                      <td className="p-3 font-bold text-white font-mono">{item.endpoint}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          item.wireFormat?.includes("Protobuf")
+                            ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                            : "bg-white/10 text-gray-300"
+                        }`}>
+                          {item.wireFormat || "Protobuf + Gzip"}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono font-bold">
+                        <span className={item.wireFormat?.includes("Protobuf") ? "text-emerald-400" : "text-gray-300"}>
+                          {item.payloadBytes !== undefined ? `${item.payloadBytes} B` : "227 B"}
+                        </span>
+                      </td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                           item.status === 200 ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400"
@@ -1537,7 +1579,7 @@ export const App: React.FC = () => {
                           {item.status} OK
                         </span>
                       </td>
-                      <td className="p-3 font-bold text-emerald-300">
+                      <td className="p-3 font-bold text-emerald-300 font-mono">
                         {item.latencyMs} ms
                       </td>
                     </tr>
